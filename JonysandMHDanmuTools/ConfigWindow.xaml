@@ -1,0 +1,11 @@
+﻿<Window  
+    x:Name="ConfigWindow_main" x:Class="JonysandMHDanmuTools.ConfigWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+    xmlns:local="clr-namespace:JonysandMHDanmuTools"
+    mc:Ignorable="d"
+    Title="插件设置"
+    Loaded="OnLoaded"
+    Closing="OnClosing" Height="248" Width="209"/>
