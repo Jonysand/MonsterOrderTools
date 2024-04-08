@@ -20,7 +20,7 @@ namespace JonysandMHDanmuTools
         private string[] order_monster_patterns;
 
         // 点怪记录
-        private Queue<string> m_recordOrder = new Queue<string>();
+        private Queue<long> m_recordUserID = new Queue<long>();
 
         public DanmuManager(ToolsMain toolsMain)
         {
@@ -55,43 +55,14 @@ namespace JonysandMHDanmuTools
                 return;
             }
 
-            var userName = e.Danmaku.UserName;
-
             // 是否是重复的用户 
-            if (IsRepeatUser(userName))
+            if (IsRepeatUser(e.Danmaku.UserID_long))
             {
                 return;
             }
 
             //todo 在这里判怪物名字库
-
-            //todo 打完之后需要回调回来，根据key去remove RecordOrderDic
-
-            if (e.Danmaku.UserGuardLevel > 0)
-            {
-                switch (e.Danmaku.UserGuardLevel)
-                {
-                    case 1:
-                        {
-                            userName += "（总）";
-                            break;
-                        }
-                    case 2:
-                        {
-                            userName += "（提）";
-                            break;
-                        }
-                    case 3:
-                        {
-                            userName += "（舰）";
-                            break;
-                        }
-                    default:
-                        break;
-                }
-                
-            }
-            
+            var monsterName = string.Empty;
             if (e.Danmaku.MsgType == MsgTypeEnum.Comment)
             {
                 foreach (var pattern in order_monster_patterns)
@@ -99,23 +70,44 @@ namespace JonysandMHDanmuTools
                     Match match = Regex.Match(e.Danmaku.CommentText, pattern);
                     if (match.Success)
                     {
-                        string monster_name = e.Danmaku.CommentText.Substring(match.Index + 2);
-                        monster_name = NormalizeMonsterName(monster_name);
-                        
-                        if (!CheckMonsterOrderrable(monster_name, e.Danmaku))
-                            return;
-
-                        // 记录当前的订单
-                        m_recordOrder.Enqueue(userName);
-
-                        _OrderedMonsterWindow.Dispatcher.Invoke(new Action(delegate
-                        {
-                            _OrderedMonsterWindow.AddOrder(userName, monster_name);
-                        }));
-                        break;
+                        monsterName = e.Danmaku.CommentText.Substring(match.Index + 2);
+                        monsterName = NormalizeMonsterName(monsterName);
                     }
                 }
             }
+
+            var userName = e.Danmaku.UserName;
+            if (e.Danmaku.UserGuardLevel > 0)
+            {
+                switch (e.Danmaku.UserGuardLevel)
+                {
+                    case 1:
+                    {
+                        userName += "（总督）";
+                        break;
+                    }
+                    case 2:
+                    {
+                        userName += "（提督）";
+                        break;
+                    }
+                    case 3:
+                    {
+                        userName += "（舰长）";
+                        break;
+                    }
+                    default:
+                        break;
+                }
+
+            }
+
+            //todo 处理优先问题，实际是排序
+
+            // 记录当前的订单
+            m_recordUserID.Enqueue(e.Danmaku.UserID_long);
+            // 创建订单
+            CreateOrder(userName, monsterName);
         }
 
         private bool IsWearingMedal(JToken data)
@@ -129,9 +121,9 @@ namespace JonysandMHDanmuTools
             return false;
         }
 
-        private bool IsRepeatUser(string data)
+        private bool IsRepeatUser(long data)
         {
-            return m_recordOrder.Contains(data);
+            return m_recordUserID.Contains(data);
         }
 
         private string NormalizeMonsterName(string monster_name)
@@ -142,21 +134,18 @@ namespace JonysandMHDanmuTools
             return monster_name;
         }
 
-        // 本怪物是否可点
-        private bool CheckMonsterOrderrable(string monster_name, DanmakuModel danmu_info)
+        private void CreateOrder(string userName, string monsterName)
         {
-            int fans_medal_level = (int)danmu_info.RawDataJToken["data"]["fans_medal_level"];
-            string fans_medal_name = danmu_info.RawDataJToken["data"]["fans_medal_name"].ToString();
-            _ToolsMain.Log("弹幕粉丝牌：" + fans_medal_name + " 等级 " + fans_medal_level.ToString() + " 舰长状态 " + danmu_info.UserGuardLevel.ToString());
-            if (fans_medal_level == 0)
-                return false;
-            return true;
+            _OrderedMonsterWindow.Dispatcher.Invoke(new Action(delegate
+            {
+                _OrderedMonsterWindow.AddOrder(userName, monsterName);
+            }));
         }
 
         // 移除记录
         public void RemoveRecord()
         {
-            m_recordOrder.Dequeue();
+            m_recordUserID.Dequeue();
         }
     }
 }
