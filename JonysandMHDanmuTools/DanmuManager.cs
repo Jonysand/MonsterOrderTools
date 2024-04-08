@@ -19,6 +19,9 @@ namespace JonysandMHDanmuTools
 
         private string[] order_monster_patterns;
 
+        // 点怪记录
+        private Dictionary<string, string> m_recordOrder = new Dictionary<string, string>();
+
         public DanmuManager(ToolsMain toolsMain)
         {
             _ToolsMain = toolsMain;
@@ -32,26 +35,55 @@ namespace JonysandMHDanmuTools
         }
 
         // 收到弹幕的处理
-        public void OnReceivedDanmaku(object sender, BilibiliDM_PluginFramework.ReceivedDanmakuArgs e)
+        public void OnReceivedDanmaku(object sender, ReceivedDanmakuArgs e)
         {
-            string danmu_user = e.Danmaku.UserName;
+            // 如果窗口都没初始化成功,那么其实后面的流程都不需要走了
+            if (_OrderedMonsterWindow == null)
+            {
+                return;
+            }
+
+            var jsonData = e.Danmaku.RawDataJToken["data"];
+            if (jsonData == null)
+            {
+                return;
+            }
+
+            // 是否成功佩戴粉丝牌
+            if (!IsWearingMedal(jsonData))
+            {
+                return;
+            }
+
+            var userName = e.Danmaku.UserName;
+
+            // 是否是重复的用户 
+            if (IsRepeatUser(userName))
+            {
+                return;
+            }
+
+            //todo 在这里判怪物名字库
+
+            //todo 打完之后需要回调回来，根据key去remove RecordOrderDic
+
             if (e.Danmaku.UserGuardLevel > 0)
             {
                 switch (e.Danmaku.UserGuardLevel)
                 {
                     case 1:
                         {
-                            danmu_user = danmu_user + "（总）";
+                            userName += "（总）";
                             break;
                         }
                     case 2:
                         {
-                            danmu_user = danmu_user + "（提）";
+                            userName += "（提）";
                             break;
                         }
                     case 3:
                         {
-                            danmu_user = danmu_user + "（舰）";
+                            userName += "（舰）";
                             break;
                         }
                     default:
@@ -59,7 +91,7 @@ namespace JonysandMHDanmuTools
                 }
                 
             }
-
+            
             if (e.Danmaku.MsgType == MsgTypeEnum.Comment)
             {
                 foreach (var pattern in order_monster_patterns)
@@ -69,18 +101,37 @@ namespace JonysandMHDanmuTools
                     {
                         string monster_name = e.Danmaku.CommentText.Substring(match.Index + 2);
                         monster_name = NormalizeMonsterName(monster_name);
+                        
                         if (!CheckMonsterOrderrable(monster_name, e.Danmaku))
                             return;
-                        if (_OrderedMonsterWindow == null)
-                            return;
+
+                        // 记录当前的订单
+                        m_recordOrder.Add(userName, monster_name);
+
                         _OrderedMonsterWindow.Dispatcher.Invoke(new Action(delegate
                         {
-                            _OrderedMonsterWindow.AddOrder(danmu_user, monster_name);
+                            _OrderedMonsterWindow.AddOrder(userName, monster_name);
                         }));
                         break;
                     }
                 }
             }
+        }
+
+        private bool IsWearingMedal(JToken data)
+        {
+            if (data["fans_medal_wearing_status"] != null)
+            {
+                var status = data["fans_medal_wearing_status"].ToObject<bool>();
+                return status;
+            }
+
+            return false;
+        }
+
+        private bool IsRepeatUser(string data)
+        {
+            return m_recordOrder.ContainsKey(data);
         }
 
         private string NormalizeMonsterName(string monster_name)
@@ -101,5 +152,6 @@ namespace JonysandMHDanmuTools
                 return false;
             return true;
         }
+
     }
 }
