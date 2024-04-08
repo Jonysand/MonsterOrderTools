@@ -28,8 +28,6 @@ namespace JonysandMHDanmuTools
     /// </summary>
     public partial class OrderedMonsterWindow : Window
     {
-        // just for logging
-        private ToolsMain mToolsMain = null;
         // 点击计时
         private const uint ORDER_FINISH_CLICK_INTERVAL = 100; // in milliseconds
         // 拖曳时的画布
@@ -38,9 +36,8 @@ namespace JonysandMHDanmuTools
         private Queue<string> mInfoQueue;
         private DispatcherTimer mInfoChangeTimer;
         private const string _defaultInfo = "欢迎来到老白直播间，发送“点怪 xxx”进行点怪";
-        public OrderedMonsterWindow(ToolsMain toolsMain)
+        public OrderedMonsterWindow()
         {
-            mToolsMain = toolsMain;
             InitializeComponent();
             InfoText_Animation.Duration = new Duration(new TimeSpan(0, 0, 10));
             InfoText.Text = _defaultInfo;
@@ -127,7 +124,7 @@ namespace JonysandMHDanmuTools
         {
             MainList.Items.RemoveAt(index);
             // 暂时处理成手动打完移除
-            mToolsMain.RemoveRecord();
+            GlobalEventListener.Invoke("RemoveOrder", index);
         }
 
         // 添加跑马灯消息

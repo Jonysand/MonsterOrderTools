@@ -7,6 +7,7 @@ using System.Windows.Media;
 using System.Windows;
 using System.Runtime.InteropServices;
 using System.Windows.Documents;
+using System.Diagnostics.Tracing;
 
 namespace JonysandMHDanmuTools
 {
@@ -62,4 +63,40 @@ namespace JonysandMHDanmuTools
         [DllImport("user32.dll")]
         public static extern bool GetCursorPos(ref POINT point);
     }
+
+    // Event Listener
+    public class GlobalEventListener
+    {
+        private static Dictionary<string, List<Action<object>>> EventMap= new Dictionary<string, List<Action<object>>>();
+        public static void Invoke(string event_name, object args)
+        {
+            foreach (var action in EventMap[event_name])
+            {
+                action(args);
+            }
+        }
+
+        public static void AddListener(string event_name, Action<object> action)
+        {
+            if (!EventMap.ContainsKey(event_name))
+            {
+                EventMap[event_name] = new List<Action<object>>();
+            }
+            EventMap[event_name].Add(action);
+        }
+
+        public static void RemoveListener(string event_name, Action<object> action)
+        {
+            if (!EventMap.ContainsKey(event_name))
+            {
+                return;
+            }
+            EventMap[event_name].Remove(action);
+            if (EventMap[event_name].Count() == 0)
+            {
+                EventMap.Remove(event_name);
+            }
+        }
+    };
+
 }

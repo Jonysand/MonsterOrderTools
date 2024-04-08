@@ -14,7 +14,6 @@ namespace JonysandMHDanmuTools
 {
     internal class DanmuManager
     {
-        private static ToolsMain _ToolsMain = null;
         private static OrderedMonsterWindow _OrderedMonsterWindow = null;
 
         private string[] order_monster_patterns;
@@ -22,9 +21,8 @@ namespace JonysandMHDanmuTools
         // 点怪记录
         private Queue<long> m_recordUserID = new Queue<long>();
 
-        public DanmuManager(ToolsMain toolsMain)
+        public DanmuManager()
         {
-            _ToolsMain = toolsMain;
             order_monster_patterns = new string[6] { @"^点怪", @"^点个", @"^点只", 
                                                     @"^點怪", @"^點個", @"^點隻" };
         }
@@ -64,6 +62,7 @@ namespace JonysandMHDanmuTools
             var monsterName = string.Empty;
             if (e.Danmaku.MsgType == MsgTypeEnum.Comment)
             {
+                // GlobalEventListener.Invoke("LOG", "[Receive comment] " + e.Danmaku.CommentText);
                 foreach (var pattern in order_monster_patterns)
                 {
                     Match match = Regex.Match(e.Danmaku.CommentText, pattern);

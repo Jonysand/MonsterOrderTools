@@ -55,7 +55,7 @@ namespace JonysandMHDanmuTools
         {
             try
             {
-                _OrderedMonsterWindow = new OrderedMonsterWindow(this);
+                _OrderedMonsterWindow = new OrderedMonsterWindow();
             }
             catch (Exception e)
             {
@@ -65,7 +65,7 @@ namespace JonysandMHDanmuTools
 
             try
             {
-                _DanmuManager = new DanmuManager(this);
+                _DanmuManager = new DanmuManager();
                 _DanmuManager.SetOrderedMonsterWindow(_OrderedMonsterWindow);
             }
             catch (Exception e)
@@ -73,6 +73,10 @@ namespace JonysandMHDanmuTools
                 MessageBox.Show($"启动失败,请将桌面上的错误报告发送给作者（/TДT)/\n{e}", "零食小插件", 0, MessageBoxImage.Error);
                 throw;
             }
+
+            // 事件注册
+            GlobalEventListener.AddListener("LOG", (object msg) => Log(msg.ToString()));
+            GlobalEventListener.AddListener("RemoveOrder", (object msg) => RemoveRecord());
         }
 
         private void OnConnected(object sender, BilibiliDM_PluginFramework.ConnectedEvtArgs e)
