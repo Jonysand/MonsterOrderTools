@@ -62,8 +62,8 @@ namespace JonysandMHDanmuTools
             mInfoChangeTimer.Start();
 
             // TEST
-            // for (int i = 0; i < 4; i++)
-            //     AddOrder("水友" + (i + 1).ToString(), "怪物名字最多八字" + (i+1).ToString());
+            // for (int i = 0; i < 16; i++)
+            //    AddOrder("水友" + (i + 1).ToString(), "怪物名字最多八字" + (i+1).ToString());
         }
 
         private void OnClosing(object sender, CancelEventArgs e)

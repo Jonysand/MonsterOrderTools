@@ -50,11 +50,11 @@
             PreviewQueryContinueDrag="MainList_QueryContinueDrag"
             ScrollViewer.HorizontalScrollBarVisibility="Hidden"
             ScrollViewer.VerticalScrollBarVisibility="Hidden"
-            VerticalAlignment="Bottom"
-            Height="320"
+            VerticalAlignment="Top"
+            Height="Auto"
             SelectionMode="Single"
             d:ItemsSource="{d:SampleData ItemCount=5}"
-            AllowDrop="True">
+            AllowDrop="True" RenderTransformOrigin="0.5,0.5">
             <ListView.Resources>
                 <!--隐藏 header-->
                 <Style TargetType="GridViewColumnHeader">
@@ -62,6 +62,14 @@
                 </Style>
 
             </ListView.Resources>
+            <ListView.RenderTransform>
+                <TransformGroup>
+                    <ScaleTransform/>
+                    <SkewTransform/>
+                    <RotateTransform/>
+                    <TranslateTransform Y="36"/>
+                </TransformGroup>
+            </ListView.RenderTransform>
             <ListView.Style>
                 <Style TargetType="ListView">
                     <Setter Property="ItemContainerStyle">

@@ -22,7 +22,8 @@ namespace JonysandMHDanmuTools
         public DanmuManager(ToolsMain toolsMain)
         {
             _ToolsMain = toolsMain;
-            order_monster_patterns = new string[3] { @"^点怪", @"^点个", @"^点只" };
+            order_monster_patterns = new string[6] { @"^点怪", @"^点个", @"^点只", 
+                                                    @"^點怪", @"^點個", @"^點隻" };
         }
 
         public void SetOrderedMonsterWindow(OrderedMonsterWindow orderedMonsterWindow)
@@ -31,7 +32,6 @@ namespace JonysandMHDanmuTools
         }
 
         // 收到弹幕的处理
-        string order_monster_pattern = @"^点怪";
         public void OnReceivedDanmaku(object sender, BilibiliDM_PluginFramework.ReceivedDanmakuArgs e)
         {
             string danmu_user = e.Danmaku.UserName;
@@ -41,17 +41,17 @@ namespace JonysandMHDanmuTools
                 {
                     case 1:
                         {
-                            danmu_user = danmu_user + "（总督）";
+                            danmu_user = danmu_user + "（总）";
                             break;
                         }
                     case 2:
                         {
-                            danmu_user = danmu_user + "（提督）";
+                            danmu_user = danmu_user + "（提）";
                             break;
                         }
                     case 3:
                         {
-                            danmu_user = danmu_user + "（舰长）";
+                            danmu_user = danmu_user + "（舰）";
                             break;
                         }
                     default:
