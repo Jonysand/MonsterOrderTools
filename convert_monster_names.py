@@ -25,6 +25,9 @@ if __name__ == "__main__":
                         continue
                     print("{@\"\\b" + nickname + "\\b\",\"" + monster_name + "\"},")
                     keys.add(nickname)
+                if monster_name not in keys:
+                    print("{@\"\\b" + monster_name + "\\b\",\"" + monster_name + "\"},")
+                    keys.add(monster_name)
             else:
                 if monster_name in keys:
                     continue
