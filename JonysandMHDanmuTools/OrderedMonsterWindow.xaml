@@ -83,6 +83,7 @@
                                 <Setter Property="Background" Value="#33696969"/>
                                 <Setter Property="FontSize" Value="24"/>
                                 <Setter Property="Height" Value="60"/>
+                                <Setter Property="Focusable" Value="False" />
                                 <!-- <EventSetter Event="MouseDoubleClick" Handler="OnListItemDoubleClick"/> -->
                                 <Style.Triggers>
                                     <!--item 鼠标悬浮-->

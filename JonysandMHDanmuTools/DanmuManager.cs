@@ -72,12 +72,16 @@ namespace JonysandMHDanmuTools
                         monsterName = NormalizeMonsterName(monsterName);
                         // 在这里判怪物名字库
                         monsterName = MonsterData.GetInst().GetMatchedMonsterName(monsterName);
-                        if (monsterName.Count() == 0)
-                            return;
+                        if (string.IsNullOrEmpty(monsterName))
+                            continue;
                         break;
                     }
                 }
+                if (string.IsNullOrEmpty(monsterName))
+                    return;
             }
+            else
+                return;
 
             var userName = e.Danmaku.UserName;
             if (e.Danmaku.UserGuardLevel > 0)
@@ -86,17 +90,17 @@ namespace JonysandMHDanmuTools
                 {
                     case 1:
                     {
-                        userName += "（总督）";
+                        userName += "[总]";
                         break;
                     }
                     case 2:
                     {
-                        userName += "（提督）";
+                        userName += "[提]";
                         break;
                     }
                     case 3:
                     {
-                        userName += "（舰长）";
+                        userName += "[舰]";
                         break;
                     }
                     default:
