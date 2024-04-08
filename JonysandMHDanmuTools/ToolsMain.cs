@@ -22,9 +22,9 @@ namespace JonysandMHDanmuTools
             this.Disconnected += OnDisconnected;
             this.ReceivedDanmaku += OnReceivedDanmaku;
             this.ReceivedRoomCount += OnReceivedRoomCount;
-            this.PluginAuth = "鬼酒时雨";
+            this.PluginAuth = "鬼酒时雨;Hey_Coder";
             this.PluginName = "点怪姬";
-            this.PluginVer = "v0.1";
+            this.PluginVer = "v0.2";
             this.PluginDesc = "弹幕姬插件开发学习中，祝你每天吃饱饱！";
             this.PluginCont = "QQ: 1600402178";
         }

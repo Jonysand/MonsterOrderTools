@@ -32,8 +32,6 @@ namespace JonysandMHDanmuTools
         private ToolsMain mToolsMain = null;
         // 点击计时
         private const uint ORDER_FINISH_CLICK_INTERVAL = 100; // in milliseconds
-        private DateTime mClickStartTime = DateTime.Now;
-        private bool mClickStart = false;
         // 拖曳时的画布
         private AdornerLayer mAdornerLayer = null;
         // 显示info的队列
@@ -52,7 +50,7 @@ namespace JonysandMHDanmuTools
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
             this.Height = 360;
-            this.Width = 400;
+            this.Width = 440;
 
             // init timer
             mInfoChangeTimer = new DispatcherTimer();
@@ -60,10 +58,6 @@ namespace JonysandMHDanmuTools
             mInfoChangeTimer.Interval = InfoText_Animation.Duration.TimeSpan;
             mInfoChangeTimer.Tick += new EventHandler(OnTimerTick);
             mInfoChangeTimer.Start();
-
-            // TEST
-            // for (int i = 0; i < 16; i++)
-            //    AddOrder("水友" + (i + 1).ToString(), "怪物名字最多八字" + (i+1).ToString());
         }
 
         private void OnClosing(object sender, CancelEventArgs e)
@@ -110,6 +104,13 @@ namespace JonysandMHDanmuTools
             }
         }
 
+        private void OnClickOrder(object sender, RoutedEventArgs e)
+        {
+            Button button = sender as Button;
+            MonsterOrderInfo orderInfo = button.DataContext as MonsterOrderInfo;
+            PopOrder(MainList.Items.IndexOf(orderInfo));
+        }
+
         // 添加点怪
         public void AddOrder(string audience_name, string monster_name)
         {
@@ -144,12 +145,12 @@ namespace JonysandMHDanmuTools
         }
         private void MainList_PreviewMouseDown(object sender, MouseButtonEventArgs e)
         {
-            mClickStartTime = DateTime.Now;
-            mClickStart = true;
             e.Handled = true;
-            if (e.LeftButton != MouseButtonState.Pressed)
+            if (e.RightButton != MouseButtonState.Pressed)
                 return;
             Point pos = e.GetPosition(MainList);
+            if (pos.X < 50)
+                return;
             HitTestResult result = VisualTreeHelper.HitTest(MainList, pos);
             if (result == null)
                 return;
@@ -183,14 +184,6 @@ namespace JonysandMHDanmuTools
             if (ReferenceEquals(targetPerson, sourcePerson))
             {
                 // check if finish order
-                if (mClickStart)
-                {
-                    var timeinterval = (DateTime.Now - mClickStartTime).TotalMilliseconds;
-                    mToolsMain.Log("[MainList_Drop] interval: " + timeinterval.ToString());
-                    if (timeinterval < ORDER_FINISH_CLICK_INTERVAL)
-                        PopOrder(MainList.Items.IndexOf(targetPerson));
-                }
-                mClickStart = false;
                 return;
             }
             MainList.Items.Remove(sourcePerson);

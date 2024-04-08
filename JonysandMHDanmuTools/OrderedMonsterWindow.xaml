@@ -10,7 +10,7 @@
     Loaded="OnLoaded"
     Closing="OnClosing"
     d:DesignHeight="360"
-    d:DesignWidth="400"
+    d:DesignWidth="440"
     WindowStyle="None"
     Background="Transparent"
     AllowsTransparency="True"
@@ -46,7 +46,7 @@
             BorderBrush="LightGray"
             Background="Transparent"
             PreviewDrop="MainList_Drop"
-            PreviewMouseDown="MainList_PreviewMouseDown"
+            PreviewMouseRightButtonDown="MainList_PreviewMouseDown"
             PreviewQueryContinueDrag="MainList_QueryContinueDrag"
             ScrollViewer.HorizontalScrollBarVisibility="Hidden"
             ScrollViewer.VerticalScrollBarVisibility="Hidden"
@@ -60,7 +60,6 @@
                 <Style TargetType="GridViewColumnHeader">
                     <Setter Property="Visibility" Value="Collapsed" />
                 </Style>
-
             </ListView.Resources>
             <ListView.RenderTransform>
                 <TransformGroup>
@@ -84,7 +83,7 @@
                                 <Setter Property="Background" Value="#33696969"/>
                                 <Setter Property="FontSize" Value="24"/>
                                 <Setter Property="Height" Value="60"/>
-                                <EventSetter Event="MouseDoubleClick" Handler="OnListItemDoubleClick"/>
+                                <!-- <EventSetter Event="MouseDoubleClick" Handler="OnListItemDoubleClick"/> -->
                                 <Style.Triggers>
                                     <!--item 鼠标悬浮-->
                                     <Trigger Property="IsMouseOver" Value="True">
@@ -105,8 +104,21 @@
             </ListView.Style>
             <ListView.View>
                 <GridView>
+                    <GridViewColumn Header="" Width="Auto">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <Button x:Name="btnOrderFinish" 
+                                        Click="OnClickOrder" 
+                                        Background="Transparent"
+                                        BorderBrush="Transparent"
+                                        Content="" 
+                                        Height="20"
+                                        Width="20"/>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
                     <GridViewColumn Header="水友名" Width="220" DisplayMemberBinding="{Binding AudienceName}"/>
-                    <GridViewColumn Header="怪物名字" Width="Auto" DisplayMemberBinding="{Binding MonsterName}"/>
+                    <GridViewColumn Header="怪物名字" Width="220" DisplayMemberBinding="{Binding MonsterName}"/>
                 </GridView>
             </ListView.View>
         </ListView>
