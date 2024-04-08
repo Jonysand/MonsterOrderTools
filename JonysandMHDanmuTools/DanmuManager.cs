@@ -61,7 +61,6 @@ namespace JonysandMHDanmuTools
                 return;
             }
 
-            //todo 在这里判怪物名字库
             var monsterName = string.Empty;
             if (e.Danmaku.MsgType == MsgTypeEnum.Comment)
             {
@@ -72,6 +71,11 @@ namespace JonysandMHDanmuTools
                     {
                         monsterName = e.Danmaku.CommentText.Substring(match.Index + 2);
                         monsterName = NormalizeMonsterName(monsterName);
+                        // 在这里判怪物名字库
+                        monsterName = MonsterData.GetInst().GetMatchedMonsterName(monsterName);
+                        if (monsterName.Count() == 0)
+                            return;
+                        break;
                     }
                 }
             }

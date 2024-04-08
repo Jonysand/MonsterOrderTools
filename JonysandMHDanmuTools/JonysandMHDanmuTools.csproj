@@ -60,6 +60,7 @@
       <DependentUpon>ConfigWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="DanmuManager.cs" />
+    <Compile Include="MonsterData.cs" />
     <Compile Include="OrderedMonsterWindow.xaml.cs">
       <DependentUpon>OrderedMonsterWindow.xaml</DependentUpon>
     </Compile>
