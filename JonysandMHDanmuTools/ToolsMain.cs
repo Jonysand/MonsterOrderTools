@@ -129,5 +129,10 @@ namespace JonysandMHDanmuTools
                 }));
             }
         }
+
+        public void RemoveRecord()
+        {
+            _DanmuManager.RemoveRecord();
+        }
     }
 }

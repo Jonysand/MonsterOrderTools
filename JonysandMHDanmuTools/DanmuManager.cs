@@ -20,7 +20,7 @@ namespace JonysandMHDanmuTools
         private string[] order_monster_patterns;
 
         // 点怪记录
-        private Dictionary<string, string> m_recordOrder = new Dictionary<string, string>();
+        private Queue<string> m_recordOrder = new Queue<string>();
 
         public DanmuManager(ToolsMain toolsMain)
         {
@@ -106,7 +106,7 @@ namespace JonysandMHDanmuTools
                             return;
 
                         // 记录当前的订单
-                        m_recordOrder.Add(userName, monster_name);
+                        m_recordOrder.Enqueue(userName);
 
                         _OrderedMonsterWindow.Dispatcher.Invoke(new Action(delegate
                         {
@@ -131,7 +131,7 @@ namespace JonysandMHDanmuTools
 
         private bool IsRepeatUser(string data)
         {
-            return m_recordOrder.ContainsKey(data);
+            return m_recordOrder.Contains(data);
         }
 
         private string NormalizeMonsterName(string monster_name)
@@ -153,5 +153,10 @@ namespace JonysandMHDanmuTools
             return true;
         }
 
+        // 移除记录
+        public void RemoveRecord()
+        {
+            m_recordOrder.Dequeue();
+        }
     }
 }

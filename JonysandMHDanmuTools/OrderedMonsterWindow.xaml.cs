@@ -125,6 +125,8 @@ namespace JonysandMHDanmuTools
         public void PopOrder(int index=0)
         {
             MainList.Items.RemoveAt(index);
+            // 暂时处理成手动打完移除
+            mToolsMain.RemoveRecord();
         }
 
         // 添加跑马灯消息
