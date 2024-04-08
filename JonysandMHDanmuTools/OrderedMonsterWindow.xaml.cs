@@ -17,6 +17,7 @@ using System.Windows.Shapes;
 using System.Windows.Interop;
 using System.Runtime.InteropServices;
 using System.Windows.Threading;
+using System.Globalization;
 
 
 
@@ -36,6 +37,8 @@ namespace JonysandMHDanmuTools
         private Queue<string> mInfoQueue;
         private DispatcherTimer mInfoChangeTimer;
         private const string _defaultInfo = "欢迎来到老白直播间，发送“点怪 xxx”进行点怪";
+        // 界面是否锁定
+        private bool mIsLocked = false;
         public OrderedMonsterWindow()
         {
             InitializeComponent();
@@ -55,12 +58,42 @@ namespace JonysandMHDanmuTools
             mInfoChangeTimer.Interval = InfoText_Animation.Duration.TimeSpan;
             mInfoChangeTimer.Tick += new EventHandler(OnTimerTick);
             mInfoChangeTimer.Start();
+
+            Hotkey.Regist(this, HotkeyModifiers.Ctrl, Key.Decimal, OnHotKey);
         }
 
         private void OnClosing(object sender, CancelEventArgs e)
         {
             e.Cancel = true;
             Hide();
+        }
+
+        // 热键锁定窗口
+        [DllImport("user32", EntryPoint = "SetWindowLong")]
+        private static extern uint SetWindowLong(IntPtr hwnd, int nIndex, uint dwNewLong);
+        [DllImport("user32", EntryPoint = "GetWindowLong")]
+        private static extern uint GetWindowLong(IntPtr hwnd, int nIndex);
+        private void OnHotKey()
+        {
+            mIsLocked = !mIsLocked;
+            if (mIsLocked)
+            {
+                // 背景透明，且可以穿透
+                MainWindow.Background = Brushes.Transparent;
+                IntPtr hwnd = new WindowInteropHelper(this).Handle;
+                uint extendedStyle = GetWindowLong(hwnd, -20);
+                SetWindowLong(hwnd, -20, extendedStyle | 0x20);
+                Topmost = true;
+            }
+            else
+            {
+                // 背景调黑，且可以操作窗口
+                MainWindow.Background = Brushes.Gray;
+                IntPtr hwnd = new WindowInteropHelper(this).Handle;
+                uint extendedStyle = GetWindowLong(hwnd, -20);
+                SetWindowLong(hwnd, -20, extendedStyle ^ 0x20);
+                Topmost = false;
+            }
         }
 
         // 更新跑马灯消息
@@ -78,6 +111,8 @@ namespace JonysandMHDanmuTools
         public static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
         private void OnClientAreaMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            if (mIsLocked)
+                return;
             if (e.ChangedButton == MouseButton.Left)
             {
                 IntPtr hwnd = new WindowInteropHelper(this).Handle;
@@ -85,24 +120,11 @@ namespace JonysandMHDanmuTools
             }
         }
 
-        // 双击某个item以完成订单
-        private void OnListItemDoubleClick(object sender, MouseButtonEventArgs e)
-        {
-            if (e.ChangedButton == MouseButton.Left)
-            {
-                var pos = e.GetPosition(MainList);
-                HitTestResult result = VisualTreeHelper.HitTest(MainList, pos);
-                if (result == null)
-                    return;
-                var listViewItem = Utils.FindVisualParent<ListViewItem>(result.VisualHit);
-                if (listViewItem == null)
-                    return;
-                PopOrder(MainList.Items.IndexOf(listViewItem.Content));
-            }
-        }
-
+        // 点击以完成订单
         private void OnClickOrder(object sender, RoutedEventArgs e)
         {
+            if (mIsLocked)
+                return;
             Button button = sender as Button;
             MonsterOrderInfo orderInfo = button.DataContext as MonsterOrderInfo;
             PopOrder(MainList.Items.IndexOf(orderInfo));
@@ -136,12 +158,16 @@ namespace JonysandMHDanmuTools
         // 拖拽排序 -------------------------------------
         private void MainList_QueryContinueDrag(object sender, QueryContinueDragEventArgs e)
         {
+            if (mIsLocked)
+                return;
             if (mAdornerLayer == null)
                 return;
             mAdornerLayer.Update();
         }
         private void MainList_PreviewMouseDown(object sender, MouseButtonEventArgs e)
         {
+            if (mIsLocked)
+                return;
             e.Handled = true;
             if (e.RightButton != MouseButtonState.Pressed)
                 return;
@@ -167,6 +193,8 @@ namespace JonysandMHDanmuTools
         }
         private void MainList_Drop(object sender, DragEventArgs e)
         {
+            if (mIsLocked)
+                return;
             Point pos = e.GetPosition(MainList);
             HitTestResult result = VisualTreeHelper.HitTest(MainList, pos);
             if (result == null)

@@ -41,7 +41,6 @@ namespace JonysandMHDanmuTools
                 _OrderedMonsterWindow.Dispatcher.Invoke(new Action(delegate
                 {
                     _OrderedMonsterWindow.Hide();
-                    _OrderedMonsterWindow.Topmost = false;
                 }));
             }
         }
@@ -86,7 +85,6 @@ namespace JonysandMHDanmuTools
                 _OrderedMonsterWindow.Dispatcher.Invoke(new Action(delegate
                 {
                     _OrderedMonsterWindow.Show();
-                    _OrderedMonsterWindow.Topmost = true;
                 }));
             }
         }
@@ -98,8 +96,6 @@ namespace JonysandMHDanmuTools
             if (_ConfigWindow == null)
                 _ConfigWindow = new ConfigWindow();
             _ConfigWindow.Show();
-            _ConfigWindow.Topmost = true;
-            _ConfigWindow.Topmost = false;
         }
 
         public override void Stop()
@@ -113,7 +109,6 @@ namespace JonysandMHDanmuTools
                 _OrderedMonsterWindow.Dispatcher.Invoke(new Action(delegate
                 {
                     _OrderedMonsterWindow.Hide();
-                    _OrderedMonsterWindow.Topmost = false;
                 }));
             }
         }
@@ -129,7 +124,6 @@ namespace JonysandMHDanmuTools
                 _OrderedMonsterWindow.Dispatcher.Invoke(new Action(delegate
                 {
                     _OrderedMonsterWindow.Show();
-                    _OrderedMonsterWindow.Topmost = true;
                 }));
             }
         }
