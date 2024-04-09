@@ -18,6 +18,10 @@ namespace JonysandMHDanmuTools
 
         private string[] order_monster_patterns;
 
+        private string[] priority_patterns;
+
+        private PriorityQueue m_queueRecord = new PriorityQueue();
+
         // 点怪记录
         private Queue<long> m_recordUserID = new Queue<long>();
 
@@ -25,6 +29,8 @@ namespace JonysandMHDanmuTools
         {
             order_monster_patterns = new string[6] { @"^点怪", @"^点个", @"^点只", 
                                                     @"^點怪", @"^點個", @"^點隻" };
+
+            priority_patterns = new string[] { @"^优先", @"^插队" };
         }
 
         public void SetOrderedMonsterWindow(OrderedMonsterWindow orderedMonsterWindow)
@@ -59,6 +65,8 @@ namespace JonysandMHDanmuTools
                 return;
             }
 
+            var isPriority = false;
+
             var monsterName = string.Empty;
             if (e.Danmaku.MsgType == MsgTypeEnum.Comment)
             {
@@ -79,6 +87,15 @@ namespace JonysandMHDanmuTools
                 }
                 if (string.IsNullOrEmpty(monsterName))
                     return;
+
+                foreach (var priorityPattern in priority_patterns)
+                {
+                    var match = Regex.Match(e.Danmaku.CommentText, priorityPattern);
+                    if (match.Success && e.Danmaku.UserGuardLevel > 0)
+                    {
+                        isPriority = true;
+                    }
+                }
             }
             else
                 return;
@@ -109,7 +126,10 @@ namespace JonysandMHDanmuTools
 
             }
 
+
             //todo 处理优先问题，实际是排序
+            //var timeStamp = GetDanMuTimeStamp(jsonData);
+            //m_queueRecord.Enqueue(e.Danmaku.UserID_long, timeStamp, isPriority);
 
             // 记录当前的订单
             m_recordUserID.Enqueue(e.Danmaku.UserID_long);
@@ -131,6 +151,7 @@ namespace JonysandMHDanmuTools
         private bool IsRepeatUser(long data)
         {
             return m_recordUserID.Contains(data);
+            // return m_queueRecord.Contains(data);
         }
 
         private string NormalizeMonsterName(string monster_name)
@@ -139,6 +160,17 @@ namespace JonysandMHDanmuTools
                 .Replace(",", "")
                 .Replace("，", "");
             return monster_name;
+        }
+
+        private long GetDanMuTimeStamp(JToken data)
+        {
+            if (data["fans_medal_wearing_status"] != null)
+            {
+                var timeStamp = data["timestamp"].ToObject<long>();
+                return timeStamp;
+            }
+
+            return -1;
         }
 
         private void CreateOrder(string userName, string monsterName)
@@ -153,6 +185,7 @@ namespace JonysandMHDanmuTools
         public void RemoveRecord()
         {
             m_recordUserID.Dequeue();
+            //m_queueRecord.Dequeue();
         }
     }
 }
