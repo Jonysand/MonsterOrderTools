@@ -130,7 +130,7 @@ namespace JonysandMHDanmuTools
 
             //处理优先并记录当前的订单
             var timeStamp = GetDanMuTimeStamp(jsonData);
-            m_queueRecord.Enqueue(e.Danmaku.UserID_long, timeStamp, isPriority);
+            m_queueRecord.Enqueue(e.Danmaku.UserID_long, timeStamp, isPriority, userName, monsterName);
 
             // 记录当前的订单
             // m_recordUserID.Enqueue(e.Danmaku.UserID_long);
@@ -178,7 +178,7 @@ namespace JonysandMHDanmuTools
         {
             _OrderedMonsterWindow.Dispatcher.Invoke(new Action(delegate
             {
-                _OrderedMonsterWindow.AddOrder(userName, monsterName);
+                _OrderedMonsterWindow.AddOrder(userName, monsterName, m_queueRecord);
             }));
         }
 

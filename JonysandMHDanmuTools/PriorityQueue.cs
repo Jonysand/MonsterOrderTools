@@ -5,13 +5,15 @@ namespace JonysandMHDanmuTools
 {
     public class PriorityQueue
     {
-        private SortedSet<PriorityQueueNode> _queue;
+        private SortedSet<PriorityQueueNode> _queue = new SortedSet<PriorityQueueNode>();
+
+        public SortedSet<PriorityQueueNode> Queue { get { return _queue; } }
 
         public int Count => _queue.Count;
 
-        public void Enqueue(long userId, long timeStamp, bool priority)
+        public void Enqueue(long userId, long timeStamp, bool priority, string userName, string monsterName)
         {
-            _queue.Add(new PriorityQueueNode(userId, timeStamp, priority));
+            _queue.Add(new PriorityQueueNode(userId, timeStamp, priority, userName, monsterName));
         }
 
         public PriorityQueueNode Dequeue()
@@ -55,12 +57,16 @@ namespace JonysandMHDanmuTools
         public long UserId;
         public long TimeStamp;
         public bool Priority;
+        public string UserName;
+        public string MonsterName;
 
-        public PriorityQueueNode(long userId, long timeStamp, bool priority)
+        public PriorityQueueNode(long userId, long timeStamp, bool priority, string userName, string monsterName)
         {
             UserId = userId;
             TimeStamp = timeStamp;
             Priority = priority;
+            UserName = userName;
+            MonsterName = monsterName;
         }
 
         public int CompareTo(PriorityQueueNode other)
