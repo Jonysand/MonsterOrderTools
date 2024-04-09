@@ -20,10 +20,11 @@ namespace JonysandMHDanmuTools
 
         private string[] priority_patterns;
 
+        // 简易优先队列实现点怪记录
         private PriorityQueue m_queueRecord = new PriorityQueue();
 
         // 点怪记录
-        private Queue<long> m_recordUserID = new Queue<long>();
+        // private Queue<long> m_recordUserID = new Queue<long>();
 
         public DanmuManager()
         {
@@ -127,12 +128,12 @@ namespace JonysandMHDanmuTools
             }
 
 
-            //todo 处理优先问题，实际是排序
-            //var timeStamp = GetDanMuTimeStamp(jsonData);
-            //m_queueRecord.Enqueue(e.Danmaku.UserID_long, timeStamp, isPriority);
+            //处理优先并记录当前的订单
+            var timeStamp = GetDanMuTimeStamp(jsonData);
+            m_queueRecord.Enqueue(e.Danmaku.UserID_long, timeStamp, isPriority);
 
             // 记录当前的订单
-            m_recordUserID.Enqueue(e.Danmaku.UserID_long);
+            // m_recordUserID.Enqueue(e.Danmaku.UserID_long);
             // 创建订单
             CreateOrder(userName, monsterName);
         }
@@ -150,8 +151,8 @@ namespace JonysandMHDanmuTools
 
         private bool IsRepeatUser(long data)
         {
-            return m_recordUserID.Contains(data);
-            // return m_queueRecord.Contains(data);
+            // return m_recordUserID.Contains(data);
+            return m_queueRecord.Contains(data);
         }
 
         private string NormalizeMonsterName(string monster_name)
@@ -184,8 +185,8 @@ namespace JonysandMHDanmuTools
         // 移除记录
         public void RemoveRecord()
         {
-            m_recordUserID.Dequeue();
-            //m_queueRecord.Dequeue();
+            //m_recordUserID.Dequeue();
+            m_queueRecord.Dequeue();
         }
     }
 }
