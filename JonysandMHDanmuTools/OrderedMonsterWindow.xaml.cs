@@ -37,7 +37,6 @@ namespace JonysandMHDanmuTools
         private Queue<string> mInfoQueue;
         private DispatcherTimer mInfoChangeTimer;
         private const string _defaultInfo = "欢迎来到老白直播间，发送“点怪 xxx”进行点怪";
-        private MonsterOrderInfo tempData = new MonsterOrderInfo();
         // 界面是否锁定
         private bool mIsLocked = false;
         public OrderedMonsterWindow()
@@ -143,13 +142,12 @@ namespace JonysandMHDanmuTools
         public void AddOrder(string audience_name, string monster_name, PriorityQueue queue)
         {
             MainList.Items.Clear();
-            tempData.Clear();
+            MonsterOrderInfo tempData = new MonsterOrderInfo();
             foreach (var items in queue.Queue)
             {
                 tempData.AudienceName = items.UserName;
                 tempData.MonsterName = items.MonsterName;
                 MainList.Items.Add(tempData);
-                tempData.Clear();
             }
             // 标题提示
             AddRollingInfo(audience_name + " 点怪 " + monster_name + " 成功！");
