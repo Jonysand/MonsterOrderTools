@@ -49,6 +49,7 @@
             PreviewDrop="MainList_Drop"
             PreviewMouseRightButtonDown="MainList_PreviewMouseDown"
             PreviewQueryContinueDrag="MainList_QueryContinueDrag"
+            PreviewMouseLeftButtonDown="OnClickOrder"
             ScrollViewer.HorizontalScrollBarVisibility="Hidden"
             ScrollViewer.VerticalScrollBarVisibility="Hidden"
             VerticalAlignment="Top"
@@ -85,7 +86,6 @@
                                 <Setter Property="FontSize" Value="24"/>
                                 <Setter Property="Height" Value="60"/>
                                 <Setter Property="Focusable" Value="False" />
-                                <!-- <EventSetter Event="MouseDoubleClick" Handler="OnListItemDoubleClick"/> -->
                                 <Style.Triggers>
                                     <!--item 鼠标悬浮-->
                                     <Trigger Property="IsMouseOver" Value="True">
@@ -106,19 +106,6 @@
             </ListView.Style>
             <ListView.View>
                 <GridView>
-                    <GridViewColumn Header="" Width="Auto">
-                        <GridViewColumn.CellTemplate>
-                            <DataTemplate>
-                                <Button x:Name="btnOrderFinish" 
-                                        Click="OnClickOrder" 
-                                        Background="Transparent"
-                                        BorderBrush="Transparent"
-                                        Content="" 
-                                        Height="20"
-                                        Width="20"/>
-                            </DataTemplate>
-                        </GridViewColumn.CellTemplate>
-                    </GridViewColumn>
                     <GridViewColumn Header="水友名" Width="220" DisplayMemberBinding="{Binding AudienceName}"/>
                     <GridViewColumn Header="怪物名字" Width="220" DisplayMemberBinding="{Binding MonsterName}"/>
                 </GridView>

@@ -59,7 +59,7 @@ namespace JonysandMHDanmuTools
             mInfoChangeTimer.Tick += new EventHandler(OnTimerTick);
             mInfoChangeTimer.Start();
 
-            Hotkey.Regist(this, HotkeyModifiers.Ctrl, Key.Decimal, OnHotKey);
+            Hotkey.Regist(this, HotkeyModifiers.Alt, Key.Decimal, OnHotKey);
         }
 
         private void OnClosing(object sender, CancelEventArgs e)
@@ -121,12 +121,20 @@ namespace JonysandMHDanmuTools
         }
 
         // 点击以完成订单
-        private void OnClickOrder(object sender, RoutedEventArgs e)
+        private void OnClickOrder(object sender, MouseButtonEventArgs e)
         {
             if (mIsLocked)
                 return;
-            Button button = sender as Button;
-            MonsterOrderInfo orderInfo = button.DataContext as MonsterOrderInfo;
+            if (e.ChangedButton != MouseButton.Left)
+                return;
+            Point pos = e.GetPosition(MainList);
+            HitTestResult result = VisualTreeHelper.HitTest(MainList, pos);
+            if (result == null)
+                return;
+            ListViewItem selectedItem = Utils.FindVisualParent<ListViewItem>(result.VisualHit);
+            if (selectedItem == null || selectedItem.DataContext == null)
+                return;
+            MonsterOrderInfo orderInfo = selectedItem.DataContext as MonsterOrderInfo;
             PopOrder(MainList.Items.IndexOf(orderInfo));
         }
 
@@ -177,7 +185,7 @@ namespace JonysandMHDanmuTools
             HitTestResult result = VisualTreeHelper.HitTest(MainList, pos);
             if (result == null)
                 return;
-            ListViewItem selectedItem = Utils.FindVisualParent<ListViewItem>(result.VisualHit); // Find your actual visual you want to drag
+            ListViewItem selectedItem = Utils.FindVisualParent<ListViewItem>(result.VisualHit);
             if (selectedItem == null || selectedItem.DataContext == null)
                 return;
             MonsterOrderInfo dataItem = selectedItem.DataContext as MonsterOrderInfo;
