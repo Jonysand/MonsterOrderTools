@@ -247,7 +247,7 @@ namespace JonysandMHDanmuTools
         public void Clear()
         {
             this.AudienceName = null;
-            this.MonsterName = null
+            this.MonsterName = null;
         }
     }
 }
