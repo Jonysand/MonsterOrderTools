@@ -18,9 +18,7 @@ namespace JonysandMHDanmuTools
         private static OrderedMonsterWindow _OrderedMonsterWindow = null;
 
         private string[] order_monster_patterns;
-
-        private string[] priority_patterns_withOrder;
-
+        
         private string[] priority_patterns_withoutOrder;
 
         // 简易优先队列实现点怪记录
@@ -31,9 +29,7 @@ namespace JonysandMHDanmuTools
         {
             order_monster_patterns = new string[6] { @"^点怪", @"^点个", @"^点只", 
                                                     @"^點怪", @"^點個", @"^點隻" };
-
-            priority_patterns_withOrder = new string[4] { @"优先", @"插队", @"優先", @"插隊" };
-
+            
             priority_patterns_withoutOrder = new string[4] { @"^优先", @"^插队", @"^優先", @"^插隊" };
         }
 
@@ -106,20 +102,24 @@ namespace JonysandMHDanmuTools
             var monsterName = string.Empty;
             if (e.Danmaku.MsgType == MsgTypeEnum.Comment)
             {
+                var msg = e.Danmaku.CommentText;
+                msg = NormalizeString(msg);
                 foreach (var pattern in order_monster_patterns)
                 {
-                    Match match = Regex.Match(e.Danmaku.CommentText, pattern);
+                    // 点怪规则匹配
+                    Match match = Regex.Match(msg, pattern);
                     if (match.Success)
                     {
-                        var subString = e.Danmaku.CommentText.Substring(match.Index + 2);
-                        // 插队匹配
-                        foreach (var priority in priority_patterns_withOrder)
+                        // 插队规则匹配
+                        var subString = msg.Substring(match.Index + 2);
+                        foreach (var priority in priority_patterns_withoutOrder)
                         {
                             var priorityMatch = Regex.Match(subString, priority);
+                            
                             if (priorityMatch.Success && e.Danmaku.UserGuardLevel > 0)
                             {
                                 isPriority = true;
-                                subString = subString.Substring(match.Index + 3);
+                                subString = subString.Substring(match.Index + 2);
                             }
                         }
                         monsterName = NormalizeMonsterName(subString);
@@ -168,7 +168,7 @@ namespace JonysandMHDanmuTools
             }
 
 
-            //处理优先并记录当前的订单
+            //记录当前的订单
             var timeStamp = GetDanMuTimeStamp(jsonData);
             m_queueRecord.Enqueue(e.Danmaku.UserID_long, timeStamp, isPriority, userName, monsterName);
             
@@ -198,6 +198,12 @@ namespace JonysandMHDanmuTools
                 .Replace(",", "")
                 .Replace("，", "");
             return monster_name;
+        }
+
+        private string NormalizeString(string data)
+        {
+            data = data.Replace(" ", "").Replace(",", "").Replace("，", "");
+            return data;
         }
 
         private long GetDanMuTimeStamp(JToken data)
