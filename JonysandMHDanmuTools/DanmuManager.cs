@@ -9,6 +9,7 @@ using System.Windows.Interop;
 using System.Linq.Expressions;
 using Newtonsoft.Json.Linq;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
+using System.Reflection;
 
 namespace JonysandMHDanmuTools
 {
@@ -18,20 +19,22 @@ namespace JonysandMHDanmuTools
 
         private string[] order_monster_patterns;
 
-        private string[] priority_patterns;
+        private string[] priority_patterns_withOrder;
+
+        private string[] priority_patterns_withoutOrder;
 
         // 简易优先队列实现点怪记录
         private PriorityQueue m_queueRecord = new PriorityQueue();
-
-        // 点怪记录
-        // private Queue<long> m_recordUserID = new Queue<long>();
+        
 
         public DanmuManager()
         {
             order_monster_patterns = new string[6] { @"^点怪", @"^点个", @"^点只", 
                                                     @"^點怪", @"^點個", @"^點隻" };
 
-            priority_patterns = new string[] { @"^优先", @"^插队" };
+            priority_patterns_withOrder = new string[4] { @"优先", @"插队", @"優先", @"插隊" };
+
+            priority_patterns_withoutOrder = new string[4] { @"^优先", @"^插队", @"^優先", @"^插隊" };
         }
 
         public void SetOrderedMonsterWindow(OrderedMonsterWindow orderedMonsterWindow)
@@ -54,12 +57,44 @@ namespace JonysandMHDanmuTools
                 return;
             }
 
+            //处理优先逻辑
+            var check = false;
+            if (e.Danmaku.MsgType == MsgTypeEnum.Comment)
+            {
+                foreach (var pattern in priority_patterns_withoutOrder)
+                {
+                    Match match = Regex.Match(e.Danmaku.CommentText, pattern);
+                    if (match.Success)
+                    {
+                        var queue = m_queueRecord;
+                        for (int i = 0; i < queue.Count; i++)
+                        {
+                            if (queue.Queue[i].UserId == e.Danmaku.UserID_long && e.Danmaku.UserGuardLevel > 0 && !queue.Queue[i].Priority)
+                            {
+                                queue.Queue[i].Priority = true;
+                                break;
+                            }
+                        }
+
+                        queue.SortQueue();
+                        RefreshOrder();
+                        check = true;
+                    }
+                }
+            }
+
+            if (check)
+            {
+                return;
+            }
+
+
             // 是否成功佩戴粉丝牌
             if (!IsWearingMedal(jsonData))
             {
                 return;
             }
-
+            
             // 是否是重复的用户 
             if (IsRepeatUser(e.Danmaku.UserID_long))
             {
@@ -71,31 +106,36 @@ namespace JonysandMHDanmuTools
             var monsterName = string.Empty;
             if (e.Danmaku.MsgType == MsgTypeEnum.Comment)
             {
-                // GlobalEventListener.Invoke("LOG", "[Receive comment] " + e.Danmaku.CommentText);
                 foreach (var pattern in order_monster_patterns)
                 {
                     Match match = Regex.Match(e.Danmaku.CommentText, pattern);
                     if (match.Success)
                     {
-                        monsterName = e.Danmaku.CommentText.Substring(match.Index + 2);
-                        monsterName = NormalizeMonsterName(monsterName);
+                        var subString = e.Danmaku.CommentText.Substring(match.Index + 2);
+                        // 插队匹配
+                        foreach (var priority in priority_patterns_withOrder)
+                        {
+                            var priorityMatch = Regex.Match(subString, priority);
+                            if (priorityMatch.Success && e.Danmaku.UserGuardLevel > 0)
+                            {
+                                isPriority = true;
+                                subString = subString.Substring(match.Index + 3);
+                            }
+                        }
+                        monsterName = NormalizeMonsterName(subString);
                         // 在这里判怪物名字库
                         monsterName = MonsterData.GetInst().GetMatchedMonsterName(monsterName);
                         if (string.IsNullOrEmpty(monsterName))
+                        {
                             continue;
+                        }
                         break;
                     }
                 }
-                if (string.IsNullOrEmpty(monsterName))
-                    return;
 
-                foreach (var priorityPattern in priority_patterns)
+                if (string.IsNullOrEmpty(monsterName))
                 {
-                    var match = Regex.Match(e.Danmaku.CommentText, priorityPattern);
-                    if (match.Success && e.Danmaku.UserGuardLevel > 0)
-                    {
-                        isPriority = true;
-                    }
+                    return;
                 }
             }
             else
@@ -108,17 +148,17 @@ namespace JonysandMHDanmuTools
                 {
                     case 1:
                     {
-                        userName += "[总]";
+                        userName += "[总督]";
                         break;
                     }
                     case 2:
                     {
-                        userName += "[提]";
+                        userName += "[提督]";
                         break;
                     }
                     case 3:
                     {
-                        userName += "[舰]";
+                        userName += "[舰长]";
                         break;
                     }
                     default:
@@ -131,9 +171,7 @@ namespace JonysandMHDanmuTools
             //处理优先并记录当前的订单
             var timeStamp = GetDanMuTimeStamp(jsonData);
             m_queueRecord.Enqueue(e.Danmaku.UserID_long, timeStamp, isPriority, userName, monsterName);
-
-            // 记录当前的订单
-            // m_recordUserID.Enqueue(e.Danmaku.UserID_long);
+            
             // 创建订单
             CreateOrder(userName, monsterName);
         }
@@ -151,7 +189,6 @@ namespace JonysandMHDanmuTools
 
         private bool IsRepeatUser(long data)
         {
-            // return m_recordUserID.Contains(data);
             return m_queueRecord.Contains(data);
         }
 
@@ -182,10 +219,17 @@ namespace JonysandMHDanmuTools
             }));
         }
 
+        private void RefreshOrder()
+        {
+            _OrderedMonsterWindow.Dispatcher.Invoke(new Action(delegate
+            {
+                _OrderedMonsterWindow.RefreshOrder(m_queueRecord);
+            }));
+        }
+
         // 移除记录
         public void RemoveRecord()
         {
-            //m_recordUserID.Dequeue();
             m_queueRecord.Dequeue();
         }
     }

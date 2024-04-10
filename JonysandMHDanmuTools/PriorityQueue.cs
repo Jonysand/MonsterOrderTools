@@ -1,19 +1,24 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Security.Cryptography;
 
 namespace JonysandMHDanmuTools
 {
     public class PriorityQueue
     {
-        private SortedSet<PriorityQueueNode> _queue = new SortedSet<PriorityQueueNode>();
+        private readonly List<PriorityQueueNode> _queue = new List<PriorityQueueNode>();
 
-        public SortedSet<PriorityQueueNode> Queue { get { return _queue; } }
+        public List<PriorityQueueNode> Queue { get { return _queue; } }
 
         public int Count => _queue.Count;
 
         public void Enqueue(long userId, long timeStamp, bool priority, string userName, string monsterName)
         {
             _queue.Add(new PriorityQueueNode(userId, timeStamp, priority, userName, monsterName));
+            if (priority)
+            {
+                SortQueue();
+            }
         }
 
         public PriorityQueueNode Dequeue()
@@ -23,7 +28,7 @@ namespace JonysandMHDanmuTools
                 throw new InvalidOperationException("queue is empty");
             }
 
-            var node = _queue.Min;
+            var node = _queue[0];
             _queue.Remove(node);
             return node;
         }
@@ -35,7 +40,7 @@ namespace JonysandMHDanmuTools
                 throw new InvalidOperationException("queue is empty");
             }
 
-            return _queue.Min;
+            return _queue[0];
         }
 
         public bool Contains(long userId)
@@ -50,13 +55,18 @@ namespace JonysandMHDanmuTools
 
             return false;
         }
+
+        public void SortQueue()
+        {
+            _queue.Sort((a, b) => a.CompareTo(b));
+        }
     }
 
     public class PriorityQueueNode : IComparable<PriorityQueueNode>
     {
         public long UserId;
         public long TimeStamp;
-        public bool Priority;
+        public bool Priority; //todo 可能要从bool改为int,如果要排总督、提督、舰长。同时改一下CompareTo
         public string UserName;
         public string MonsterName;
 
@@ -71,17 +81,12 @@ namespace JonysandMHDanmuTools
 
         public int CompareTo(PriorityQueueNode other)
         {
-            if (Priority && !other.Priority)
+            if (Priority != other.Priority)
             {
-                return -1;
+                return Priority ? -1 : 1;
             }
-
-            if (Priority && other.Priority)
-            {
-                return TimeStamp < other.TimeStamp ? -1 : 1;
-            }
-
-            return 1;
+            
+            return TimeStamp < other.TimeStamp ? -1 : 1;
         }
     }
 

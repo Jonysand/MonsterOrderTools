@@ -18,6 +18,7 @@ using System.Windows.Interop;
 using System.Runtime.InteropServices;
 using System.Windows.Threading;
 using System.Globalization;
+using System.Collections;
 
 
 
@@ -141,14 +142,7 @@ namespace JonysandMHDanmuTools
         // 添加点怪
         public void AddOrder(string audience_name, string monster_name, PriorityQueue queue)
         {
-            MainList.Items.Clear();
-            MonsterOrderInfo tempData = new MonsterOrderInfo();
-            foreach (var items in queue.Queue)
-            {
-                tempData.AudienceName = items.UserName;
-                tempData.MonsterName = items.MonsterName;
-                MainList.Items.Add(tempData);
-            }
+            RefreshOrder(queue);
             // 标题提示
             AddRollingInfo(audience_name + " 点怪 " + monster_name + " 成功！");
         }
@@ -165,6 +159,18 @@ namespace JonysandMHDanmuTools
         public void AddRollingInfo(string msg)
         {
             mInfoQueue.Enqueue(msg);
+        }
+
+        public void RefreshOrder(PriorityQueue queue)
+        {
+            MainList.Items.Clear();
+            foreach (var items in queue.Queue)
+            {
+                MonsterOrderInfo tempData = new MonsterOrderInfo();
+                tempData.AudienceName = items.UserName;
+                tempData.MonsterName = items.MonsterName;
+                MainList.Items.Add(tempData);
+            }
         }
 
         // 拖拽排序 -------------------------------------
