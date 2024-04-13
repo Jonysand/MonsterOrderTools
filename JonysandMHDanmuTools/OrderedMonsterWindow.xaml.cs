@@ -85,6 +85,7 @@ namespace JonysandMHDanmuTools
                 uint extendedStyle = GetWindowLong(hwnd, -20);
                 SetWindowLong(hwnd, -20, extendedStyle | 0x20);
                 Topmost = true;
+                GlobalEventListener.Invoke("OrderWindowLocked", "");
             }
             else
             {
@@ -118,6 +119,8 @@ namespace JonysandMHDanmuTools
             {
                 IntPtr hwnd = new WindowInteropHelper(this).Handle;
                 SendMessage(hwnd, 0x112, (IntPtr)0xF012, IntPtr.Zero);
+
+                GlobalEventListener.Invoke("ConfigChanged", "WindowPosition");
             }
         }
 

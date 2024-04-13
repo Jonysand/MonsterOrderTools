@@ -1,15 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Media;
 using System.Windows;
 using System.Runtime.InteropServices;
 using System.Windows.Documents;
-using System.Diagnostics.Tracing;
 using System.Windows.Input;
 using System.Windows.Interop;
+using Newtonsoft.Json;
+using System.IO;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 
 namespace JonysandMHDanmuTools
 {
@@ -178,5 +179,72 @@ namespace JonysandMHDanmuTools
         Ctrl = 0x2,
         Shift = 0x4,
         Win = 0x8
+    }
+
+    // 配置文件
+    [JsonObject(MemberSerialization = MemberSerialization.OptIn)]
+    public class MainConfig
+    {
+        [JsonProperty]
+        public Point TopPos { get => _topLeftPos; set { if (_topLeftPos != value) { _topLeftPos = value; OnPropertyChanged(); } } }
+
+        // 窗口左上角坐标
+        private Point _topLeftPos = new Point(0, 0);
+
+        public event PropertyChangedEventHandler PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+    }
+    public sealed class ConfigService
+    {
+        public MainConfig Config => _config;
+        private readonly MainConfig _config;
+        private readonly string _configDirectory;
+        private readonly string _configFileName;
+        private bool _configChanged = false;
+
+        public ConfigService()
+        {
+            _configDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), @"弹幕姬\plugins\MonsterOrder");
+            _configFileName = "MainConfig.cfg";
+            _config = new MainConfig();
+            _config.PropertyChanged += OnConfigChanged;
+        }
+
+        public bool LoadConfig()
+        {
+            string configPath = Path.Combine(_configDirectory, _configFileName);
+            if (File.Exists(configPath))
+            {
+                string json = File.ReadAllText(configPath);
+                MainConfig config = JsonConvert.DeserializeObject<MainConfig>(json);
+                _config.TopPos = config.TopPos;
+                return true;
+            }
+            return false;
+        }
+
+        public void SaveConfig(bool force=false)
+        {
+            if (_config == null)
+            {
+                return;
+            }
+            if (!Directory.Exists(_configDirectory))
+            {
+                Directory.CreateDirectory(_configDirectory);
+            }
+            if (!force && !_configChanged)
+                return;
+            string configPath = Path.Combine(_configDirectory, _configFileName);
+            File.WriteAllText(configPath, JsonConvert.SerializeObject(_config));
+        }
+
+        public void OnConfigChanged(object sender, PropertyChangedEventArgs e)
+        {
+            _configChanged = true;
+        }
     }
 }

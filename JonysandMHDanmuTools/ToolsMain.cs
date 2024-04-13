@@ -15,6 +15,7 @@ namespace JonysandMHDanmuTools
         private ConfigWindow _ConfigWindow = null;
         private OrderedMonsterWindow _OrderedMonsterWindow = null;
         private DanmuManager _DanmuManager = null;
+        private ConfigService _Config = null;
 
         public ToolsMain()
         {
@@ -54,7 +55,22 @@ namespace JonysandMHDanmuTools
         {
             try
             {
+                _Config = new ConfigService();
+                _Config.LoadConfig();
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show($"加载配置文件失败,请将桌面上的错误报告发送给作者（/TДT)/\n{e}", "零食小插件", 0, MessageBoxImage.Error);
+            }
+            try
+            {
                 _OrderedMonsterWindow = new OrderedMonsterWindow();
+                if (_Config != null)
+                {
+                    _OrderedMonsterWindow.WindowStartupLocation = WindowStartupLocation.Manual;
+                    _OrderedMonsterWindow.Left = _Config.Config.TopPos.X;
+                    _OrderedMonsterWindow.Top = _Config.Config.TopPos.Y;
+                }
             }
             catch (Exception e)
             {
@@ -76,6 +92,8 @@ namespace JonysandMHDanmuTools
             // 事件注册
             GlobalEventListener.AddListener("LOG", (object msg) => Log(msg.ToString()));
             GlobalEventListener.AddListener("RemoveOrder", (object msg) => RemoveRecord());
+            GlobalEventListener.AddListener("ConfigChanged", (object msg) => ConfigChanged(msg));
+            GlobalEventListener.AddListener("OrderWindowLocked", (object msg) => OnOrderWindowLocked());
         }
 
         private void OnConnected(object sender, BilibiliDM_PluginFramework.ConnectedEvtArgs e)
@@ -131,6 +149,22 @@ namespace JonysandMHDanmuTools
         public void RemoveRecord()
         {
             _DanmuManager.RemoveRecord();
+        }
+
+        public void ConfigChanged(object msg)
+        {
+            var message = msg.ToString();
+            if (message == "WindowPosition")
+            {
+                double top = _OrderedMonsterWindow.Top;
+                double left = _OrderedMonsterWindow.Left;
+                _Config.Config.TopPos = new Point(left, top);
+            }
+        }
+
+        public void OnOrderWindowLocked()
+        {
+            _Config.SaveConfig();
         }
     }
 }
