@@ -106,8 +106,15 @@
             </ListView.Style>
             <ListView.View>
                 <GridView>
-                    <GridViewColumn Header="水友名" Width="220" DisplayMemberBinding="{Binding AudienceName}"/>
-                    <GridViewColumn Header="怪物名字" Width="220" DisplayMemberBinding="{Binding MonsterName}"/>
+                    <GridViewColumn Header="水友名" Width="190" DisplayMemberBinding="{Binding AudienceName}"/>
+                    <GridViewColumn Header="怪物icon" Width="60">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <Image Source="{Binding MonsterIcon}"/>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="怪物名字" Width="190" DisplayMemberBinding="{Binding MonsterName}"/>
                 </GridView>
             </ListView.View>
         </ListView>

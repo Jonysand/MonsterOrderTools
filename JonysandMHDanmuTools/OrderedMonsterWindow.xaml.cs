@@ -2,23 +2,15 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 using System.Windows.Interop;
 using System.Runtime.InteropServices;
 using System.Windows.Threading;
-using System.Globalization;
-using System.Collections;
 
 
 
@@ -35,7 +27,7 @@ namespace JonysandMHDanmuTools
         // 拖曳时的画布
         private AdornerLayer mAdornerLayer = null;
         // 显示info的队列
-        private Queue<string> mInfoQueue;
+        private Queue<RollingInfo> mInfoQueue;
         private DispatcherTimer mInfoChangeTimer;
         private const string _defaultInfo = "欢迎来到老白直播间，发送“点怪 xxx”进行点怪";
         // 界面是否锁定
@@ -46,6 +38,8 @@ namespace JonysandMHDanmuTools
             InfoText_Animation.Duration = new Duration(new TimeSpan(0, 0, 10));
             InfoText.Text = _defaultInfo;
             InfoText_Animation.To = -InfoText.Text.Count() * InfoText.FontSize;
+
+            GlobalEventListener.AddListener("AddRollingInfo", (object rollingInfo) => AddRollingInfo(rollingInfo as RollingInfo));
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
@@ -55,7 +49,7 @@ namespace JonysandMHDanmuTools
 
             // init timer
             mInfoChangeTimer = new DispatcherTimer();
-            mInfoQueue = new Queue<string>();
+            mInfoQueue = new Queue<RollingInfo>();
             mInfoChangeTimer.Interval = InfoText_Animation.Duration.TimeSpan;
             mInfoChangeTimer.Tick += new EventHandler(OnTimerTick);
             mInfoChangeTimer.Start();
@@ -102,9 +96,16 @@ namespace JonysandMHDanmuTools
         private void OnTimerTick(object sender, EventArgs e)
         {
             if (mInfoQueue.Count == 0)
+            {
                 InfoText.Text = _defaultInfo;
+                InfoText.Foreground = new SolidColorBrush(Colors.LightYellow);
+            }
             else
-                InfoText.Text = mInfoQueue.Dequeue();
+            {
+                var rollingInfo = mInfoQueue.Dequeue();
+                InfoText.Text = rollingInfo.Text;
+                InfoText.Foreground = new SolidColorBrush(rollingInfo.TextColor);
+            }
             InfoText_Animation.To = -InfoText.Text.Count() * InfoText.FontSize;
         }
 
@@ -147,7 +148,8 @@ namespace JonysandMHDanmuTools
         {
             RefreshOrder(queue);
             // 标题提示
-            AddRollingInfo(audience_name + " 点怪 " + monster_name + " 成功！");
+
+            AddRollingInfo(new RollingInfo(audience_name + " 点怪 " + monster_name + " 成功！", Colors.Yellow));
         }
 
         // 完成（取消）点怪
@@ -159,9 +161,9 @@ namespace JonysandMHDanmuTools
         }
 
         // 添加跑马灯消息
-        public void AddRollingInfo(string msg)
+        public void AddRollingInfo(RollingInfo rollingInfo)
         {
-            mInfoQueue.Enqueue(msg);
+            mInfoQueue.Enqueue(rollingInfo);
         }
 
         public void RefreshOrder(PriorityQueue queue)
@@ -172,6 +174,9 @@ namespace JonysandMHDanmuTools
                 MonsterOrderInfo tempData = new MonsterOrderInfo();
                 tempData.AudienceName = items.UserName;
                 tempData.MonsterName = items.MonsterName;
+                string iconUrl = MonsterData.GetInst().GetMatchedMonsterIconUrl(tempData.MonsterName);
+                if (!string.IsNullOrEmpty(iconUrl))
+                    tempData.MonsterIcon = new Uri(iconUrl, UriKind.RelativeOrAbsolute);
                 MainList.Items.Add(tempData);
             }
         }
@@ -241,6 +246,7 @@ namespace JonysandMHDanmuTools
     {
         public string AudienceName { set; get; }
         public string MonsterName { set; get; }
+        public Uri MonsterIcon { set; get; }
 
         public MonsterOrderInfo()
         {
@@ -255,6 +261,18 @@ namespace JonysandMHDanmuTools
         {
             this.AudienceName = null;
             this.MonsterName = null;
+        }
+    }
+
+    public class RollingInfo
+    {
+        public string Text { set; get; }
+        public Color TextColor { set; get; }
+
+        public RollingInfo(string text, Color color)
+        {
+            this.Text = text;
+            this.TextColor = color;
         }
     }
 }

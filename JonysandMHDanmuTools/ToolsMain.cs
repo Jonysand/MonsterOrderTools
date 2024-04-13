@@ -25,14 +25,14 @@ namespace JonysandMHDanmuTools
             this.ReceivedRoomCount += OnReceivedRoomCount;
             this.PluginAuth = "鬼酒时雨;Hey_Coder";
             this.PluginName = "点怪姬";
-            this.PluginVer = "v0.3";
+            this.PluginVer = "v0.4";
             this.PluginDesc = "弹幕姬插件开发学习中，祝你每天吃饱饱！";
             this.PluginCont = "QQ: 1600402178";
         }
 
         private void OnReceivedRoomCount(object sender, BilibiliDM_PluginFramework.ReceivedRoomCountArgs e)
         {
-            
+            _DanmuManager.OnReceivedRoomCount(sender, e);
         }
 
         private void OnDisconnected(object sender, BilibiliDM_PluginFramework.DisconnectEvtArgs e)

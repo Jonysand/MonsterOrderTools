@@ -10,6 +10,7 @@ namespace JonysandMHDanmuTools
     internal class MonsterData
     {
         private Dictionary<string, string> ORDERRABLE_MONSTERS;
+        private Dictionary<string, string> MONSTER_ICON_URLS;
         private static MonsterData _Inst = null;
 
         // Singleton
@@ -522,6 +523,81 @@ namespace JonysandMHDanmuTools
                 { @"\b嗨丝\b", "黑蚀龙" },
                 { @"\b黑蚀龙\b", "黑蚀龙" },
             };
+
+            MONSTER_ICON_URLS = new Dictionary<string, string>
+            {
+                {@"冥灯龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em105_ID.png"},
+                {@"冥赤龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em104_ID.png"},
+                {@"冰呪龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em124_ID.png"},
+                {@"冰牙龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em042_ID.png"},
+                {@"冰鱼龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em122_ID.png"},
+                {@"凶爪龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em113_01_ID.png"},
+                {@"古代鹿首精",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em127_01_ID.png"},
+                {@"土砂龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em044_ID.png"},
+                {@"大痹贼龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em112_ID.png"},
+                {@"大贼龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em101_ID.png"},
+                {@"天地煌啼龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em126_ID.png"},
+                {@"尸套龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em115_ID.png"},
+                {@"岩贼龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em116_ID.png"},
+                {@"恐暴龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em043_ID.png"},
+                {@"惨爪龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em113_ID.png"},
+                {@"惶怒恐暴龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em043_05_ID.png"},
+                {@"战痕黑狼鸟",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em018_05_ID.png"},
+                {@"搔鸟",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em107_ID.png"},
+                {@"斩龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em080_ID.png"},
+                {@"樱火龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em001_01_ID.png"},
+                {@"歼世灭尽龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em103_05_ID.png"},
+                {@"毒妖鸟",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em102_ID.png"},
+                {@"水妖鸟",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em102_01_ID.png"},
+                {@"泥鱼龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em108_ID.png"},
+                {@"浮眠龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em110_01_ID.png"},
+                {@"浮空龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em110_ID.png"},
+                {@"溟波龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em125_ID.png"},
+                {@"激昂金狮子",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em023_05_ID.png"},
+                {@"火龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em002_ID.png"},
+                {@"灭尽龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em103_ID.png"},
+                {@"炎妃龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em026_ID.png"},
+                {@"炎王龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em027_ID.png"},
+                {@"煌黑龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em050_ID.png"},
+                {@"熔山龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em106_ID.png"},
+                {@"熔岩龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em036_ID.png"},
+                {@"爆锤龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em045_ID.png"},
+                {@"爆鳞龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em118_ID.png"},
+                {@"狱狼龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em057_01_ID.png"},
+                {@"猛爆碎龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em063_05_ID.png"},
+                {@"猛牛龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em123_ID.png"},
+                {@"痹毒龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em109_01_ID.png"},
+                {@"眩鸟",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em120_ID.png"},
+                {@"硫斩龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em080_01_ID.png"},
+                {@"碎龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em063_ID.png"},
+                {@"红莲爆鳞龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em118_05_ID.png"},
+                {@"绚辉龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em117_ID.png"},
+                {@"苍火龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em002_01_ID.png"},
+                {@"蛮颚龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em100_ID.png"},
+                {@"角龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em007_ID.png"},
+                {@"贝希摩斯",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em121_ID.png"},
+                {@"轰龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em032_ID.png"},
+                {@"迅龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em037_ID.png"},
+                {@"金火龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em001_02_ID.png"},
+                {@"金狮子",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em023_ID.png"},
+                {@"钢龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em024_ID.png"},
+                {@"银火龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em002_02_ID.png"},
+                {@"雌火龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em001_ID.png"},
+                {@"雷狼龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em057_ID.png"},
+                {@"雷颚龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em100_01_ID.png"},
+                {@"雾瘴尸套龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em115_05_ID.png"},
+                {@"霜刃冰牙龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em042_05_ID.png"},
+                {@"霜翼风漂龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em111_05_ID.png"},
+                {@"风漂龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em111_ID.png"},
+                {@"飞雷龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em109_ID.png"},
+                {@"骨锤龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em114_ID.png"},
+                {@"鹿首精",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em127_ID.png"},
+                {@"麒麟",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em011_ID.png"},
+                {@"黑狼鸟",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em018_ID.png"},
+                {@"黑角龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em007_01_ID.png"},
+                {@"黑轰龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em032_01_ID.png"},
+                {@"黑龙",@"https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em013_ID.png"},
+            };
         }
 
         public string GetMatchedMonsterName(string inputText)
@@ -533,6 +609,14 @@ namespace JonysandMHDanmuTools
                     return item.Value;
             }
 
+            return "";
+        }
+
+        public string GetMatchedMonsterIconUrl(string monsterName)
+        {
+            monsterName = monsterName.Replace("历战王", "").Replace("历战", "");
+            if (MONSTER_ICON_URLS.ContainsKey(monsterName))
+                return MONSTER_ICON_URLS[monsterName];
             return "";
         }
     }

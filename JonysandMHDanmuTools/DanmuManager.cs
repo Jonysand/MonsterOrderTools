@@ -42,7 +42,7 @@ namespace JonysandMHDanmuTools
         public void OnReceivedDanmaku(object sender, ReceivedDanmakuArgs e)
         {
             // 如果窗口都没初始化成功,那么其实后面的流程都不需要走了
-            if (_OrderedMonsterWindow == null)
+            if (e == null || e.Danmaku == null || _OrderedMonsterWindow == null || e.Danmaku.RawDataJToken == null)
             {
                 return;
             }
@@ -174,6 +174,10 @@ namespace JonysandMHDanmuTools
             
             // 创建订单
             CreateOrder(userName, monsterName);
+        }
+
+        public void OnReceivedRoomCount(object sender, ReceivedRoomCountArgs e)
+        {
         }
 
         private bool IsWearingMedal(JToken data)
