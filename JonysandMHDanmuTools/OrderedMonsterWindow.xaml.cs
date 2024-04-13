@@ -11,6 +11,7 @@ using System.Windows.Media;
 using System.Windows.Interop;
 using System.Runtime.InteropServices;
 using System.Windows.Threading;
+using System.Text.RegularExpressions;
 
 
 
@@ -174,9 +175,18 @@ namespace JonysandMHDanmuTools
                 MonsterOrderInfo tempData = new MonsterOrderInfo();
                 tempData.AudienceName = items.UserName;
                 tempData.MonsterName = items.MonsterName;
+                tempData.GuardLevel = items.GuardLevel;
                 string iconUrl = MonsterData.GetInst().GetMatchedMonsterIconUrl(tempData.MonsterName);
+                // icon 设置
                 if (!string.IsNullOrEmpty(iconUrl))
                     tempData.MonsterIcon = new Uri(iconUrl, UriKind.RelativeOrAbsolute);
+                // 历战等级设置
+                if (Regex.Match(tempData.MonsterName, @"^历战王").Success)
+                    tempData.TemperedLevel = 2;
+                else if ((Regex.Match(tempData.MonsterName, @"^历战").Success))
+                    tempData.TemperedLevel = 1;
+                else
+                    tempData.TemperedLevel = 0;
                 MainList.Items.Add(tempData);
             }
         }
@@ -247,6 +257,10 @@ namespace JonysandMHDanmuTools
         public string AudienceName { set; get; }
         public string MonsterName { set; get; }
         public Uri MonsterIcon { set; get; }
+        public int GuardLevel { set; get; }
+
+        // 历战等级：0 非历战，1 历战，2 历战王
+        public int TemperedLevel { set; get; }
 
         public MonsterOrderInfo()
         {

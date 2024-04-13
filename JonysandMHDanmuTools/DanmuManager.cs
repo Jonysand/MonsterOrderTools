@@ -170,7 +170,7 @@ namespace JonysandMHDanmuTools
 
             //记录当前的订单
             var timeStamp = GetDanMuTimeStamp(jsonData);
-            m_queueRecord.Enqueue(e.Danmaku.UserID_long, timeStamp, isPriority, userName, monsterName);
+            m_queueRecord.Enqueue(new PriorityQueueNode(e.Danmaku.UserID_long, timeStamp, isPriority, userName, monsterName, e.Danmaku.UserGuardLevel));
             
             // 创建订单
             CreateOrder(userName, monsterName);

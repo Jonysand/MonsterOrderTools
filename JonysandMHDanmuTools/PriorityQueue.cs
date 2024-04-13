@@ -12,10 +12,10 @@ namespace JonysandMHDanmuTools
 
         public int Count => _queue.Count;
 
-        public void Enqueue(long userId, long timeStamp, bool priority, string userName, string monsterName)
+        public void Enqueue(PriorityQueueNode node)
         {
-            _queue.Add(new PriorityQueueNode(userId, timeStamp, priority, userName, monsterName));
-            if (priority)
+            _queue.Add(node);
+            if (node.Priority)
             {
                 SortQueue();
             }
@@ -69,14 +69,16 @@ namespace JonysandMHDanmuTools
         public bool Priority; //todo 可能要从bool改为int,如果要排总督、提督、舰长。同时改一下CompareTo
         public string UserName;
         public string MonsterName;
+        public int GuardLevel;
 
-        public PriorityQueueNode(long userId, long timeStamp, bool priority, string userName, string monsterName)
+        public PriorityQueueNode(long userId, long timeStamp, bool priority, string userName, string monsterName, int guardLevel)
         {
             UserId = userId;
             TimeStamp = timeStamp;
             Priority = priority;
             UserName = userName;
             MonsterName = monsterName;
+            GuardLevel = guardLevel;
         }
 
         public int CompareTo(PriorityQueueNode other)
