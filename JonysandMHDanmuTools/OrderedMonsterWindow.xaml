@@ -115,13 +115,13 @@
                                             <Setter Property="Foreground" Value="White"></Setter>
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding GuardLevel}" Value="3">
-                                                    <Setter Property="Foreground" Value="LightBlue" />
+                                                    <Setter Property="Foreground" Value="#00d1f1" />
                                                 </DataTrigger>
                                                 <DataTrigger Binding="{Binding GuardLevel}" Value="2">
-                                                    <Setter Property="Foreground" Value="MediumPurple" />
+                                                    <Setter Property="Foreground" Value="#e17aff" />
                                                 </DataTrigger>
                                                 <DataTrigger Binding="{Binding GuardLevel}" Value="1">
-                                                    <Setter Property="Foreground" Value="HotPink" />
+                                                    <Setter Property="Foreground" Value="#ce623e" />
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
@@ -147,10 +147,10 @@
                                             <Setter Property="FontWeight" Value="Bold"></Setter>
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding TemperedLevel}" Value="2">
-                                                    <Setter Property="Foreground" Value="IndianRed" />
+                                                    <Setter Property="Foreground" Value="#ce623e" />
                                                 </DataTrigger>
                                                 <DataTrigger Binding="{Binding TemperedLevel}" Value="1">
-                                                    <Setter Property="Foreground" Value="Purple" />
+                                                    <Setter Property="Foreground" Value="#8b63d1" />
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
