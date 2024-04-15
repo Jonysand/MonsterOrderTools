@@ -41,6 +41,7 @@ namespace JonysandMHDanmuTools
             InfoText_Animation.To = -InfoText.Text.Count() * InfoText.FontSize;
 
             GlobalEventListener.AddListener("AddRollingInfo", (object rollingInfo) => AddRollingInfo(rollingInfo as RollingInfo));
+            GlobalEventListener.AddListener("RefreshOrder", (object queue) => RefreshOrder(queue as PriorityQueue));
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
@@ -54,6 +55,8 @@ namespace JonysandMHDanmuTools
             mInfoChangeTimer.Interval = InfoText_Animation.Duration.TimeSpan;
             mInfoChangeTimer.Tick += new EventHandler(OnTimerTick);
             mInfoChangeTimer.Start();
+
+            DanmuManager.GetInst().LoadHistoryOrder();
 
             Hotkey.Regist(this, HotkeyModifiers.Alt, Key.Decimal, OnHotKey);
         }
@@ -144,15 +147,6 @@ namespace JonysandMHDanmuTools
             PopOrder(MainList.Items.IndexOf(orderInfo));
         }
 
-        // 添加点怪
-        public void AddOrder(string audience_name, string monster_name, PriorityQueue queue)
-        {
-            RefreshOrder(queue);
-            // 标题提示
-
-            AddRollingInfo(new RollingInfo(audience_name + " 点怪 " + monster_name + " 成功！", Colors.Yellow));
-        }
-
         // 完成（取消）点怪
         public void PopOrder(int index=0)
         {
@@ -169,26 +163,29 @@ namespace JonysandMHDanmuTools
 
         public void RefreshOrder(PriorityQueue queue)
         {
-            MainList.Items.Clear();
-            foreach (var items in queue.Queue)
+            Dispatcher.Invoke(new Action(delegate
             {
-                MonsterOrderInfo tempData = new MonsterOrderInfo();
-                tempData.AudienceName = items.UserName;
-                tempData.MonsterName = items.MonsterName;
-                tempData.GuardLevel = items.GuardLevel;
-                string iconUrl = MonsterData.GetInst().GetMatchedMonsterIconUrl(tempData.MonsterName);
-                // icon 设置
-                if (!string.IsNullOrEmpty(iconUrl))
-                    tempData.MonsterIcon = new Uri(iconUrl, UriKind.RelativeOrAbsolute);
-                // 历战等级设置
-                if (Regex.Match(tempData.MonsterName, @"^历战王").Success)
-                    tempData.TemperedLevel = 2;
-                else if ((Regex.Match(tempData.MonsterName, @"^历战").Success))
-                    tempData.TemperedLevel = 1;
-                else
-                    tempData.TemperedLevel = 0;
-                MainList.Items.Add(tempData);
-            }
+                MainList.Items.Clear();
+                foreach (var items in queue.Queue)
+                {
+                    MonsterOrderInfo tempData = new MonsterOrderInfo();
+                    tempData.AudienceName = items.UserName;
+                    tempData.MonsterName = items.MonsterName;
+                    tempData.GuardLevel = items.GuardLevel;
+                    string iconUrl = MonsterData.GetInst().GetMatchedMonsterIconUrl(tempData.MonsterName);
+                    // icon 设置
+                    if (!string.IsNullOrEmpty(iconUrl))
+                        tempData.MonsterIcon = new Uri(iconUrl, UriKind.RelativeOrAbsolute);
+                    // 历战等级设置
+                    if (Regex.Match(tempData.MonsterName, @"^历战王").Success)
+                        tempData.TemperedLevel = 2;
+                    else if ((Regex.Match(tempData.MonsterName, @"^历战").Success))
+                        tempData.TemperedLevel = 1;
+                    else
+                        tempData.TemperedLevel = 0;
+                    MainList.Items.Add(tempData);
+                }
+            }));
         }
 
         // 拖拽排序 -------------------------------------

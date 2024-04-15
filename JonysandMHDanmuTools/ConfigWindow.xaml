@@ -8,4 +8,7 @@
     mc:Ignorable="d"
     Title="插件设置"
     Loaded="OnLoaded"
-    Closing="OnClosing" Height="248" Width="209"/>
+    Background="Gray"
+    Closing="OnClosing" Height="150" Width="150">
+    <Button Content="清空点怪列表" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Click="OnClearList"/>
+</Window>

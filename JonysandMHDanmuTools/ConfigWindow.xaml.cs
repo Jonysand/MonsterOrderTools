@@ -35,5 +35,10 @@ namespace JonysandMHDanmuTools
             e.Cancel = true;
             Hide();
         }
+
+        private void OnClearList(object sender, RoutedEventArgs e)
+        {
+            DanmuManager.GetInst().ClearHistoryOrder();
+        }
     }
 }

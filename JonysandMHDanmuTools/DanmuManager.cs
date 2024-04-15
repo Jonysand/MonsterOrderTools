@@ -10,20 +10,27 @@ using System.Linq.Expressions;
 using Newtonsoft.Json.Linq;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 using System.Reflection;
+using System.Windows.Media;
 
 namespace JonysandMHDanmuTools
 {
     internal class DanmuManager
     {
-        private static OrderedMonsterWindow _OrderedMonsterWindow = null;
-
         private string[] order_monster_patterns;
         
         private string[] priority_patterns_withoutOrder;
 
         // 简易优先队列实现点怪记录
         private PriorityQueue m_queueRecord = new PriorityQueue();
-        
+
+        static DanmuManager _Inst = null;
+
+        public static DanmuManager GetInst()
+        {
+            if (_Inst == null)
+                _Inst = new DanmuManager();
+            return _Inst;
+        }
 
         public DanmuManager()
         {
@@ -33,16 +40,25 @@ namespace JonysandMHDanmuTools
             priority_patterns_withoutOrder = new string[4] { @"^优先", @"^插队", @"^優先", @"^插隊" };
         }
 
-        public void SetOrderedMonsterWindow(OrderedMonsterWindow orderedMonsterWindow)
+        public PriorityQueue LoadHistoryOrder()
         {
-            _OrderedMonsterWindow = orderedMonsterWindow;
+            m_queueRecord.LoadList();
+            GlobalEventListener.Invoke("RefreshOrder", m_queueRecord);
+            return m_queueRecord;
+        }
+
+        public PriorityQueue ClearHistoryOrder()
+        {
+            m_queueRecord.Clear();
+            GlobalEventListener.Invoke("RefreshOrder", m_queueRecord);
+            return m_queueRecord;
         }
 
         // 收到弹幕的处理
         public void OnReceivedDanmaku(object sender, ReceivedDanmakuArgs e)
         {
             // 如果窗口都没初始化成功,那么其实后面的流程都不需要走了
-            if (e == null || e.Danmaku == null || _OrderedMonsterWindow == null || e.Danmaku.RawDataJToken == null)
+            if (e == null || e.Danmaku == null ||  e.Danmaku.RawDataJToken == null)
             {
                 return;
             }
@@ -52,6 +68,9 @@ namespace JonysandMHDanmuTools
             {
                 return;
             }
+
+            // 阿b把uid给去了，真的服
+            string open_id = jsonData["open_id"].ToString();
 
             //处理优先逻辑
             var check = false;
@@ -65,7 +84,7 @@ namespace JonysandMHDanmuTools
                         var queue = m_queueRecord;
                         for (int i = 0; i < queue.Count; i++)
                         {
-                            if (queue.Queue[i].UserId == e.Danmaku.UserID_long && e.Danmaku.UserGuardLevel > 0 && !queue.Queue[i].Priority)
+                            if (queue.Queue[i].UserId == open_id && e.Danmaku.UserGuardLevel > 0 && !queue.Queue[i].Priority)
                             {
                                 queue.Queue[i].Priority = true;
                                 break;
@@ -92,7 +111,7 @@ namespace JonysandMHDanmuTools
             }
             
             // 是否是重复的用户 
-            if (IsRepeatUser(e.Danmaku.UserID_long))
+            if (IsRepeatUser(open_id))
             {
                 return;
             }
@@ -167,10 +186,9 @@ namespace JonysandMHDanmuTools
 
             }
 
-
             //记录当前的订单
             var timeStamp = GetDanMuTimeStamp(jsonData);
-            m_queueRecord.Enqueue(new PriorityQueueNode(e.Danmaku.UserID_long, timeStamp, isPriority, userName, monsterName, e.Danmaku.UserGuardLevel));
+            m_queueRecord.Enqueue(new PriorityQueueNode(open_id, timeStamp, isPriority, userName, monsterName, e.Danmaku.UserGuardLevel));
             
             // 创建订单
             CreateOrder(userName, monsterName);
@@ -191,7 +209,7 @@ namespace JonysandMHDanmuTools
             return false;
         }
 
-        private bool IsRepeatUser(long data)
+        private bool IsRepeatUser(string data)
         {
             return m_queueRecord.Contains(data);
         }
@@ -223,18 +241,13 @@ namespace JonysandMHDanmuTools
 
         private void CreateOrder(string userName, string monsterName)
         {
-            _OrderedMonsterWindow.Dispatcher.Invoke(new Action(delegate
-            {
-                _OrderedMonsterWindow.AddOrder(userName, monsterName, m_queueRecord);
-            }));
+            GlobalEventListener.Invoke("RefreshOrder", m_queueRecord);
+            GlobalEventListener.Invoke("AddRollingInfo", new RollingInfo(userName + " 点怪 " + monsterName + " 成功！", Colors.Yellow));
         }
 
         private void RefreshOrder()
         {
-            _OrderedMonsterWindow.Dispatcher.Invoke(new Action(delegate
-            {
-                _OrderedMonsterWindow.RefreshOrder(m_queueRecord);
-            }));
+            GlobalEventListener.Invoke("RefreshOrder", m_queueRecord);
         }
 
         // 移除记录

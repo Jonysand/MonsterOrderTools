@@ -1,16 +1,30 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Security.Cryptography;
+using System.Windows.Forms;
+using System.Xml.Linq;
 
 namespace JonysandMHDanmuTools
 {
     public class PriorityQueue
     {
-        private readonly List<PriorityQueueNode> _queue = new List<PriorityQueueNode>();
+        private List<PriorityQueueNode> _queue = new List<PriorityQueueNode>();
 
         public List<PriorityQueueNode> Queue { get { return _queue; } }
 
         public int Count => _queue.Count;
+
+        private string _saveDir = null;
+        private string _saveFileName = null;
+
+        public PriorityQueue()
+        {
+            _saveDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), @"弹幕姬\plugins\MonsterOrder");
+            _saveFileName = "OrderList.list";
+            LoadList();
+        }
 
         public void Enqueue(PriorityQueueNode node)
         {
@@ -19,6 +33,7 @@ namespace JonysandMHDanmuTools
             {
                 SortQueue();
             }
+            SaveList();
         }
 
         public PriorityQueueNode Dequeue()
@@ -30,6 +45,7 @@ namespace JonysandMHDanmuTools
 
             var node = _queue[0];
             _queue.Remove(node);
+            SaveList();
             return node;
         }
 
@@ -43,7 +59,7 @@ namespace JonysandMHDanmuTools
             return _queue[0];
         }
 
-        public bool Contains(long userId)
+        public bool Contains(string userId)
         {
             foreach (var node in _queue)
             {
@@ -60,18 +76,57 @@ namespace JonysandMHDanmuTools
         {
             _queue.Sort((a, b) => a.CompareTo(b));
         }
+
+        public bool LoadList()
+        {
+            if (_saveDir == null || _saveFileName == null)
+                return false;
+
+            string orderListPath = Path.Combine(_saveDir, _saveFileName);
+            if (!File.Exists(orderListPath))
+                return false;
+            string json = File.ReadAllText(orderListPath);
+            _queue = JsonConvert.DeserializeObject<List<PriorityQueueNode>>(json);
+            return true;
+        }
+
+        public void SaveList()
+        {
+            if (_saveDir == null || _saveFileName == null)
+                return;
+
+            if (!Directory.Exists(_saveDir))
+            {
+                Directory.CreateDirectory(_saveDir);
+            }
+            string configPath = Path.Combine(_saveDir, _saveFileName);
+            File.WriteAllText(configPath, JsonConvert.SerializeObject(Queue));
+        }
+
+        public void Clear()
+        {
+            Queue.Clear();
+            SaveList();
+        }
     }
 
+    [JsonObject(MemberSerialization = MemberSerialization.OptIn)]
     public class PriorityQueueNode : IComparable<PriorityQueueNode>
     {
-        public long UserId;
+        [JsonProperty]
+        public string UserId;
+        [JsonProperty]
         public long TimeStamp;
+        [JsonProperty]
         public bool Priority; //todo 可能要从bool改为int,如果要排总督、提督、舰长。同时改一下CompareTo
+        [JsonProperty]
         public string UserName;
+        [JsonProperty]
         public string MonsterName;
+        [JsonProperty]
         public int GuardLevel;
 
-        public PriorityQueueNode(long userId, long timeStamp, bool priority, string userName, string monsterName, int guardLevel)
+        public PriorityQueueNode(string userId, long timeStamp, bool priority, string userName, string monsterName, int guardLevel)
         {
             UserId = userId;
             TimeStamp = timeStamp;

@@ -14,7 +14,6 @@ namespace JonysandMHDanmuTools
     {
         private ConfigWindow _ConfigWindow = null;
         private OrderedMonsterWindow _OrderedMonsterWindow = null;
-        private DanmuManager _DanmuManager = null;
         private ConfigService _Config = null;
 
         public ToolsMain()
@@ -25,14 +24,14 @@ namespace JonysandMHDanmuTools
             this.ReceivedRoomCount += OnReceivedRoomCount;
             this.PluginAuth = "鬼酒时雨;Hey_Coder";
             this.PluginName = "点怪姬";
-            this.PluginVer = "v0.4";
+            this.PluginVer = "v0.5";
             this.PluginDesc = "弹幕姬插件开发学习中，祝你每天吃饱饱！";
             this.PluginCont = "QQ: 1600402178";
         }
 
         private void OnReceivedRoomCount(object sender, BilibiliDM_PluginFramework.ReceivedRoomCountArgs e)
         {
-            _DanmuManager.OnReceivedRoomCount(sender, e);
+            DanmuManager.GetInst().OnReceivedRoomCount(sender, e);
         }
 
         private void OnDisconnected(object sender, BilibiliDM_PluginFramework.DisconnectEvtArgs e)
@@ -48,7 +47,7 @@ namespace JonysandMHDanmuTools
 
         private void OnReceivedDanmaku(object sender, BilibiliDM_PluginFramework.ReceivedDanmakuArgs e)
         {
-            _DanmuManager.OnReceivedDanmaku(sender, e);
+            DanmuManager.GetInst().OnReceivedDanmaku(sender, e);
         }
 
         public override void Inited()
@@ -80,8 +79,7 @@ namespace JonysandMHDanmuTools
 
             try
             {
-                _DanmuManager = new DanmuManager();
-                _DanmuManager.SetOrderedMonsterWindow(_OrderedMonsterWindow);
+                DanmuManager.GetInst();
             }
             catch (Exception e)
             {
@@ -148,7 +146,7 @@ namespace JonysandMHDanmuTools
 
         public void RemoveRecord()
         {
-            _DanmuManager.RemoveRecord();
+            DanmuManager.GetInst().RemoveRecord();
         }
 
         public void ConfigChanged(object msg)
