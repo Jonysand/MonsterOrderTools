@@ -1,9 +1,10 @@
 ﻿using Newtonsoft.Json;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
-using System.Security.Cryptography;
-using System.Windows.Forms;
+using System.Linq;
+using System.Threading;
 using System.Xml.Linq;
 
 namespace JonysandMHDanmuTools
@@ -19,6 +20,16 @@ namespace JonysandMHDanmuTools
         private string _saveDir = null;
         private string _saveFileName = null;
 
+        private static PriorityQueue _Inst = null;
+
+        public static PriorityQueue GetInst()
+        {
+            if (_Inst != null)
+                return _Inst;
+            _Inst = new PriorityQueue();
+            return _Inst;
+        }
+
         public PriorityQueue()
         {
             _saveDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), @"弹幕姬\plugins\MonsterOrder");
@@ -29,21 +40,16 @@ namespace JonysandMHDanmuTools
         public void Enqueue(PriorityQueueNode node)
         {
             _queue.Add(node);
-            if (node.Priority)
-            {
-                SortQueue();
-            }
             SaveList();
         }
 
-        public PriorityQueueNode Dequeue()
+        public PriorityQueueNode Dequeue(int index)
         {
-            if (Count == 0)
+            if (index < 0 || index >= Count)
             {
-                throw new InvalidOperationException("queue is empty");
+                throw new InvalidOperationException("queue size error");
             }
-
-            var node = _queue[0];
+            PriorityQueueNode node = _queue[index];
             _queue.Remove(node);
             SaveList();
             return node;
@@ -55,7 +61,6 @@ namespace JonysandMHDanmuTools
             {
                 throw new InvalidOperationException("queue is empty");
             }
-
             return _queue[0];
         }
 
@@ -68,7 +73,6 @@ namespace JonysandMHDanmuTools
                     return true;
                 }
             }
-
             return false;
         }
 

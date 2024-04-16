@@ -89,7 +89,6 @@ namespace JonysandMHDanmuTools
 
             // 事件注册
             GlobalEventListener.AddListener("LOG", (object msg) => Log(msg.ToString()));
-            GlobalEventListener.AddListener("RemoveOrder", (object msg) => RemoveRecord());
             GlobalEventListener.AddListener("ConfigChanged", (object msg) => ConfigChanged(msg));
             GlobalEventListener.AddListener("OrderWindowLocked", (object msg) => OnOrderWindowLocked());
         }
@@ -142,11 +141,6 @@ namespace JonysandMHDanmuTools
                     _OrderedMonsterWindow.Show();
                 }));
             }
-        }
-
-        public void RemoveRecord()
-        {
-            DanmuManager.GetInst().RemoveRecord();
         }
 
         public void ConfigChanged(object msg)

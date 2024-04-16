@@ -41,7 +41,7 @@ namespace JonysandMHDanmuTools
             InfoText_Animation.To = -InfoText.Text.Count() * InfoText.FontSize;
 
             GlobalEventListener.AddListener("AddRollingInfo", (object rollingInfo) => AddRollingInfo(rollingInfo as RollingInfo));
-            GlobalEventListener.AddListener("RefreshOrder", (object queue) => RefreshOrder(queue as PriorityQueue));
+            GlobalEventListener.AddListener("RefreshOrder", (object _) => RefreshOrder());
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
@@ -144,15 +144,8 @@ namespace JonysandMHDanmuTools
             if (selectedItem == null || selectedItem.DataContext == null)
                 return;
             MonsterOrderInfo orderInfo = selectedItem.DataContext as MonsterOrderInfo;
-            PopOrder(MainList.Items.IndexOf(orderInfo));
-        }
-
-        // 完成（取消）点怪
-        public void PopOrder(int index=0)
-        {
-            MainList.Items.RemoveAt(index);
-            // 暂时处理成手动打完移除
-            GlobalEventListener.Invoke("RemoveOrder", index);
+            PriorityQueue.GetInst().Dequeue(MainList.Items.IndexOf(orderInfo));
+            RefreshOrder();
         }
 
         // 添加跑马灯消息
@@ -161,12 +154,15 @@ namespace JonysandMHDanmuTools
             mInfoQueue.Enqueue(rollingInfo);
         }
 
-        public void RefreshOrder(PriorityQueue queue)
+        public void RefreshOrder()
         {
-            Dispatcher.Invoke(new Action(delegate
+            // 应该不用加锁，每次队列变化时都会调用这里
+            // 也就是说变化过后必定刷新一次
+            Dispatcher.InvokeAsync(new Action(delegate
             {
+                PriorityQueue.GetInst().SortQueue();
                 MainList.Items.Clear();
-                foreach (var items in queue.Queue)
+                foreach (var items in PriorityQueue.GetInst().Queue)
                 {
                     MonsterOrderInfo tempData = new MonsterOrderInfo();
                     tempData.AudienceName = items.UserName;

@@ -11,6 +11,7 @@ using Newtonsoft.Json.Linq;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 using System.Reflection;
 using System.Windows.Media;
+using System.Collections;
 
 namespace JonysandMHDanmuTools
 {
@@ -19,9 +20,6 @@ namespace JonysandMHDanmuTools
         private string[] order_monster_patterns;
         
         private string[] priority_patterns_withoutOrder;
-
-        // 简易优先队列实现点怪记录
-        private PriorityQueue m_queueRecord = new PriorityQueue();
 
         static DanmuManager _Inst = null;
 
@@ -40,18 +38,16 @@ namespace JonysandMHDanmuTools
             priority_patterns_withoutOrder = new string[4] { @"^优先", @"^插队", @"^優先", @"^插隊" };
         }
 
-        public PriorityQueue LoadHistoryOrder()
+        public void LoadHistoryOrder()
         {
-            m_queueRecord.LoadList();
-            GlobalEventListener.Invoke("RefreshOrder", m_queueRecord);
-            return m_queueRecord;
+            PriorityQueue.GetInst().LoadList();
+            GlobalEventListener.Invoke("RefreshOrder", null);
         }
 
-        public PriorityQueue ClearHistoryOrder()
+        public void ClearHistoryOrder()
         {
-            m_queueRecord.Clear();
-            GlobalEventListener.Invoke("RefreshOrder", m_queueRecord);
-            return m_queueRecord;
+            PriorityQueue.GetInst().Clear();
+            GlobalEventListener.Invoke("RefreshOrder", null);
         }
 
         // 收到弹幕的处理
@@ -81,18 +77,15 @@ namespace JonysandMHDanmuTools
                     Match match = Regex.Match(e.Danmaku.CommentText, pattern);
                     if (match.Success)
                     {
-                        var queue = m_queueRecord;
-                        for (int i = 0; i < queue.Count; i++)
+                        for (int i = 0; i < PriorityQueue.GetInst().Count; i++)
                         {
-                            if (queue.Queue[i].UserId == open_id && e.Danmaku.UserGuardLevel > 0 && !queue.Queue[i].Priority)
+                            if (PriorityQueue.GetInst().Queue[i].UserId == open_id && e.Danmaku.UserGuardLevel > 0 && !PriorityQueue.GetInst().Queue[i].Priority)
                             {
-                                queue.Queue[i].Priority = true;
+                                PriorityQueue.GetInst().Queue[i].Priority = true;
                                 break;
                             }
                         }
-
-                        queue.SortQueue();
-                        RefreshOrder();
+                        GlobalEventListener.Invoke("RefreshOrder", null);
                         check = true;
                     }
                 }
@@ -188,7 +181,7 @@ namespace JonysandMHDanmuTools
 
             //记录当前的订单
             var timeStamp = GetDanMuTimeStamp(jsonData);
-            m_queueRecord.Enqueue(new PriorityQueueNode(open_id, timeStamp, isPriority, userName, monsterName, e.Danmaku.UserGuardLevel));
+            PriorityQueue.GetInst().Enqueue(new PriorityQueueNode(open_id, timeStamp, isPriority, userName, monsterName, e.Danmaku.UserGuardLevel));
             
             // 创建订单
             CreateOrder(userName, monsterName);
@@ -211,7 +204,7 @@ namespace JonysandMHDanmuTools
 
         private bool IsRepeatUser(string data)
         {
-            return m_queueRecord.Contains(data);
+            return PriorityQueue.GetInst().Contains(data);
         }
 
         private string NormalizeMonsterName(string monster_name)
@@ -241,19 +234,8 @@ namespace JonysandMHDanmuTools
 
         private void CreateOrder(string userName, string monsterName)
         {
-            GlobalEventListener.Invoke("RefreshOrder", m_queueRecord);
+            GlobalEventListener.Invoke("RefreshOrder", null);
             GlobalEventListener.Invoke("AddRollingInfo", new RollingInfo(userName + " 点怪 " + monsterName + " 成功！", Colors.Yellow));
-        }
-
-        private void RefreshOrder()
-        {
-            GlobalEventListener.Invoke("RefreshOrder", m_queueRecord);
-        }
-
-        // 移除记录
-        public void RemoveRecord()
-        {
-            m_queueRecord.Dequeue();
         }
     }
 }
