@@ -84,6 +84,7 @@ namespace JonysandMHDanmuTools
                 SetWindowLong(hwnd, -20, extendedStyle | 0x20);
                 Topmost = true;
                 GlobalEventListener.Invoke("OrderWindowLocked", "");
+                MainList.ScrollIntoView(MainList.Items[0]);
             }
             else
             {
