@@ -168,17 +168,11 @@ namespace JonysandMHDanmuTools
                     tempData.AudienceName = items.UserName;
                     tempData.MonsterName = items.MonsterName;
                     tempData.GuardLevel = items.GuardLevel;
+                    tempData.TemperedLevel = items.TemperedLevel;
                     string iconUrl = MonsterData.GetInst().GetMatchedMonsterIconUrl(tempData.MonsterName);
                     // icon 设置
                     if (!string.IsNullOrEmpty(iconUrl))
                         tempData.MonsterIcon = new Uri(iconUrl, UriKind.RelativeOrAbsolute);
-                    // 历战等级设置
-                    if (Regex.Match(tempData.MonsterName, @"^历战王").Success)
-                        tempData.TemperedLevel = 2;
-                    else if ((Regex.Match(tempData.MonsterName, @"^历战").Success))
-                        tempData.TemperedLevel = 1;
-                    else
-                        tempData.TemperedLevel = 0;
                     MainList.Items.Add(tempData);
                 }
             }));

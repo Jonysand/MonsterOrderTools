@@ -129,7 +129,12 @@ namespace JonysandMHDanmuTools
         public string MonsterName;
         [JsonProperty]
         public int GuardLevel;
+        [JsonProperty]
+        public int TemperedLevel=0; // 0 - 普通，1 - 历战，2 - 历战王
 
+        public PriorityQueueNode()
+        {
+        }
         public PriorityQueueNode(string userId, long timeStamp, bool priority, string userName, string monsterName, int guardLevel)
         {
             UserId = userId;

@@ -112,6 +112,7 @@ namespace JonysandMHDanmuTools
             var isPriority = false;
 
             var monsterName = string.Empty;
+            int temperedLevel = 0;
             if (e.Danmaku.MsgType == MsgTypeEnum.Comment)
             {
                 var msg = e.Danmaku.CommentText;
@@ -134,9 +135,24 @@ namespace JonysandMHDanmuTools
                                 subString = subString.Substring(match.Index + 2);
                             }
                         }
-                        monsterName = NormalizeMonsterName(subString);
                         // 在这里判怪物名字库
-                        monsterName = MonsterData.GetInst().GetMatchedMonsterName(monsterName);
+                        var real_monster_names = MonsterData.GetInst().GetMatchedMonsterName(subString);
+                        // 如果直接匹配到，直接用，一般是特殊任务
+                        if (!string.IsNullOrEmpty(real_monster_names.Item1))
+                        {
+                            monsterName = real_monster_names.Item1;
+                            temperedLevel = real_monster_names.Item2;
+                        }
+                        else
+                        {
+                            var monster_names = NormalizeMonsterName(subString);
+                            monsterName = monster_names.Item1;
+                            temperedLevel = monster_names.Item2;
+                            real_monster_names = MonsterData.GetInst().GetMatchedMonsterName(monsterName);
+                            if (real_monster_names.Item2 > 0)
+                                temperedLevel = real_monster_names.Item2;
+                            monsterName = real_monster_names.Item1;
+                        }
                         if (string.IsNullOrEmpty(monsterName))
                         {
                             continue;
@@ -181,7 +197,15 @@ namespace JonysandMHDanmuTools
 
             //记录当前的订单
             var timeStamp = GetDanMuTimeStamp(jsonData);
-            PriorityQueue.GetInst().Enqueue(new PriorityQueueNode(open_id, timeStamp, isPriority, userName, monsterName, e.Danmaku.UserGuardLevel));
+            var oneNode = new PriorityQueueNode();
+            oneNode.UserId = open_id;
+            oneNode.TimeStamp = timeStamp;
+            oneNode.Priority = isPriority;
+            oneNode.UserName = userName;
+            oneNode.MonsterName = monsterName;
+            oneNode.GuardLevel = e.Danmaku.UserGuardLevel;
+            oneNode.TemperedLevel = temperedLevel;
+            PriorityQueue.GetInst().Enqueue(oneNode);
             
             // 创建订单
             CreateOrder(userName, monsterName);
@@ -207,12 +231,30 @@ namespace JonysandMHDanmuTools
             return PriorityQueue.GetInst().Contains(data);
         }
 
-        private string NormalizeMonsterName(string monster_name)
+        // 返回：（怪物名，历战等级）
+        // 曙光的话应该还能用来标记怪异等级，到时候再说
+        private Tuple<string, int> NormalizeMonsterName(string monster_name)
         {
-            monster_name = monster_name.Replace(" ", "")
-                .Replace(",", "")
-                .Replace("，", "");
-            return monster_name;
+            int temperedLevel;
+            // 历战等级设置
+            if (Regex.Match(monster_name, @"^历战王").Success)
+            {
+                temperedLevel = 2;
+                monster_name = monster_name.Substring(3);
+            }
+            else if ((Regex.Match(monster_name, @"^历战").Success))
+            {
+                temperedLevel = 1;
+                monster_name = monster_name.Substring(2);
+            }
+            else if ((Regex.Match(monster_name, @"^王").Success))
+            {
+                temperedLevel = 2;
+                monster_name = monster_name.Substring(1);
+            }
+            else
+                temperedLevel = 0;
+            return new Tuple<string, int>(monster_name, temperedLevel);
         }
 
         private string NormalizeString(string data)
