@@ -60,7 +60,7 @@ namespace JonysandMHDanmuTools
             }
 
             var jsonData = e.Danmaku.RawDataJToken["data"];
-            if (jsonData == null)
+            if (jsonData == null || !jsonData.Contains("open_id") || e.Danmaku.MsgType != MsgTypeEnum.Comment)
             {
                 return;
             }
@@ -70,24 +70,21 @@ namespace JonysandMHDanmuTools
 
             //处理优先逻辑
             var check = false;
-            if (e.Danmaku.MsgType == MsgTypeEnum.Comment)
+            foreach (var pattern in priority_patterns_withoutOrder)
             {
-                foreach (var pattern in priority_patterns_withoutOrder)
+                Match match = Regex.Match(e.Danmaku.CommentText, pattern);
+                if (match.Success)
                 {
-                    Match match = Regex.Match(e.Danmaku.CommentText, pattern);
-                    if (match.Success)
+                    for (int i = 0; i < PriorityQueue.GetInst().Count; i++)
                     {
-                        for (int i = 0; i < PriorityQueue.GetInst().Count; i++)
+                        if (PriorityQueue.GetInst().Queue[i].UserId == open_id && e.Danmaku.UserGuardLevel > 0 && !PriorityQueue.GetInst().Queue[i].Priority)
                         {
-                            if (PriorityQueue.GetInst().Queue[i].UserId == open_id && e.Danmaku.UserGuardLevel > 0 && !PriorityQueue.GetInst().Queue[i].Priority)
-                            {
-                                PriorityQueue.GetInst().Queue[i].Priority = true;
-                                break;
-                            }
+                            PriorityQueue.GetInst().Queue[i].Priority = true;
+                            break;
                         }
-                        GlobalEventListener.Invoke("RefreshOrder", null);
-                        check = true;
                     }
+                    GlobalEventListener.Invoke("RefreshOrder", null);
+                    check = true;
                 }
             }
 
