@@ -60,13 +60,16 @@ namespace JonysandMHDanmuTools
             }
 
             var jsonData = e.Danmaku.RawDataJToken["data"];
-            if (jsonData == null || !jsonData.Contains("open_id") || e.Danmaku.MsgType != MsgTypeEnum.Comment)
+            if (jsonData == null || e.Danmaku.MsgType != MsgTypeEnum.Comment)
             {
                 return;
             }
 
             // 阿b把uid给去了，真的服
-            string open_id = jsonData["open_id"].ToString();
+            var open_id_obj = jsonData["open_id"];
+            if (open_id_obj == null)
+                return;
+            string open_id = open_id_obj.ToString();
 
             //处理优先逻辑
             var check = false;
