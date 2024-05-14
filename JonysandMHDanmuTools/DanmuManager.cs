@@ -37,7 +37,7 @@ namespace JonysandMHDanmuTools
             order_monster_patterns = new string[6] { @"^点怪", @"^点个", @"^点只", 
                                                     @"^點怪", @"^點個", @"^點隻" };
             
-            priority_patterns_withoutOrder = new string[4] { @".*优先.*", @".*插队.*", @".*優先.*", @".*插隊.*" };
+            priority_patterns_withoutOrder = new string[4] { @"优先", @"插队", @"優先", @"插隊" };
 
             separate_priority_patterns_withoutOrder = new string[4] { @"\b优先\b", @"\b插队\b", @"\b優先\b", @"\b插隊\b" };
         }
@@ -136,7 +136,7 @@ namespace JonysandMHDanmuTools
                             if (priorityMatch.Success && e.Danmaku.UserGuardLevel > 0)
                             {
                                 isPriority = true;
-                                subString = subString.Replace(subString.Substring(match.Index, match.Index + 2), "");
+                                subString = subString.Replace(subString.Substring(priorityMatch.Index, priority.Length), "");
                             }
                         }
                         // 在这里判怪物名字库
