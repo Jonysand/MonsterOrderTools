@@ -12,6 +12,7 @@ using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 using System.Reflection;
 using System.Windows.Media;
 using System.Collections;
+using System.Data.SqlTypes;
 
 namespace JonysandMHDanmuTools
 {
@@ -39,7 +40,7 @@ namespace JonysandMHDanmuTools
             
             priority_patterns_withoutOrder = new string[4] { @"优先", @"插队", @"優先", @"插隊" };
 
-            separate_priority_patterns_withoutOrder = new string[4] { @"\b优先\b", @"\b插队\b", @"\b優先\b", @"\b插隊\b" };
+            separate_priority_patterns_withoutOrder = new string[4] { @"^优先+$", @"^插队+$", @"^優先+$", @"^插隊+$" };
         }
 
         public void LoadHistoryOrder()
