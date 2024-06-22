@@ -40,7 +40,7 @@ namespace JonysandMHDanmuTools
             
             priority_patterns_withoutOrder = new string[4] { @"优先", @"插队", @"優先", @"插隊" };
 
-            separate_priority_patterns_withoutOrder = new string[4] { @"^优先+$", @"^插队+$", @"^優先+$", @"^插隊+$" };
+            // separate_priority_patterns_withoutOrder = new string[4] { @"^优先+$", @"^插队+$", @"^優先+$", @"^插隊+$" };
         }
 
         public void LoadHistoryOrder()
@@ -70,24 +70,38 @@ namespace JonysandMHDanmuTools
                 return;
             }
 
+            // 是否成功佩戴粉丝牌
+            if (!IsWearingMedal(jsonData))
+            {
+                return;
+            }
+
             // 阿b把uid给去了，真的服
             var open_id_obj = jsonData["open_id"];
             if (open_id_obj == null)
                 return;
             string open_id = open_id_obj.ToString();
 
+            var timeStamp = GetDanMuTimeStamp(jsonData);
+            var isPriority = false;
+
             //处理优先逻辑
             var check = false;
-            foreach (var pattern in separate_priority_patterns_withoutOrder)
+            foreach (var pattern in priority_patterns_withoutOrder)
             {
                 Match match = Regex.Match(e.Danmaku.CommentText, pattern);
                 if (match.Success)
                 {
+                    isPriority = true;
                     for (int i = 0; i < PriorityQueue.GetInst().Count; i++)
                     {
-                        if (PriorityQueue.GetInst().Queue[i].UserId == open_id && e.Danmaku.UserGuardLevel > 0 && !PriorityQueue.GetInst().Queue[i].Priority)
+                        if (PriorityQueue.GetInst().Queue[i].UserId == open_id && e.Danmaku.UserGuardLevel > 0)
                         {
-                            PriorityQueue.GetInst().Queue[i].Priority = true;
+                            // 只插队一次
+                            if (PriorityQueue.GetInst().Queue[i].Priority != 0)
+                                break;
+                            PriorityQueue.GetInst().Queue[i].Priority = e.Danmaku.UserGuardLevel;
+                            PriorityQueue.GetInst().Queue[i].TimeStamp = timeStamp;
                             break;
                         }
                     }
@@ -100,21 +114,12 @@ namespace JonysandMHDanmuTools
             {
                 return;
             }
-
-
-            // 是否成功佩戴粉丝牌
-            if (!IsWearingMedal(jsonData))
-            {
-                return;
-            }
             
             // 是否是重复的用户 
             if (IsRepeatUser(open_id))
             {
                 return;
             }
-
-            var isPriority = false;
 
             var monsterName = string.Empty;
             int temperedLevel = 0;
@@ -201,11 +206,10 @@ namespace JonysandMHDanmuTools
             }
 
             //记录当前的订单
-            var timeStamp = GetDanMuTimeStamp(jsonData);
             var oneNode = new PriorityQueueNode();
             oneNode.UserId = open_id;
             oneNode.TimeStamp = timeStamp;
-            oneNode.Priority = isPriority;
+            oneNode.Priority = isPriority ? e.Danmaku.UserGuardLevel : 0;
             oneNode.UserName = userName;
             oneNode.MonsterName = monsterName;
             oneNode.GuardLevel = e.Danmaku.UserGuardLevel;
