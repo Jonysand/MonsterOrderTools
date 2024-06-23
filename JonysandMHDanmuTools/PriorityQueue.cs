@@ -122,7 +122,7 @@ namespace JonysandMHDanmuTools
         [JsonProperty]
         public long TimeStamp;
         [JsonProperty]
-        public int Priority; //todo 可能要从bool改为int,如果要排总督、提督、舰长。同时改一下CompareTo
+        public bool Priority; //todo 可能要从bool改为int,如果要排总督、提督、舰长。同时改一下CompareTo
         [JsonProperty]
         public string UserName;
         [JsonProperty]
@@ -135,7 +135,7 @@ namespace JonysandMHDanmuTools
         public PriorityQueueNode()
         {
         }
-        public PriorityQueueNode(string userId, long timeStamp, int priority, string userName, string monsterName, int guardLevel)
+        public PriorityQueueNode(string userId, long timeStamp, bool priority, string userName, string monsterName, int guardLevel)
         {
             UserId = userId;
             TimeStamp = timeStamp;
@@ -147,12 +147,18 @@ namespace JonysandMHDanmuTools
 
         public int CompareTo(PriorityQueueNode other)
         {
+            // 如果一个优先另一个不优先，直接排序
             if (Priority != other.Priority)
+                return Priority ? -1:1;
+            // 如果都优先，按舰长等级
+            else if (Priority && other.Priority)
             {
-                return Priority > other.Priority ? -1 : 1;
+                if (GuardLevel > other.GuardLevel)
+                    return -1;
+                return TimeStamp < other.TimeStamp ? -1 : 1;
             }
-            
-            return TimeStamp < other.TimeStamp ? -1 : 1;
+            else
+                return TimeStamp < other.TimeStamp ? -1 : 1;
         }
     }
 

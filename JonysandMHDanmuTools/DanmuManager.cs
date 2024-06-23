@@ -75,7 +75,6 @@ namespace JonysandMHDanmuTools
             {
                 return;
             }
-
             // 阿b把uid给去了，真的服
             var open_id_obj = jsonData["open_id"];
             if (open_id_obj == null)
@@ -98,21 +97,21 @@ namespace JonysandMHDanmuTools
                         if (PriorityQueue.GetInst().Queue[i].UserId == open_id && e.Danmaku.UserGuardLevel > 0)
                         {
                             // 只插队一次
-                            if (PriorityQueue.GetInst().Queue[i].Priority != 0)
+                            if (PriorityQueue.GetInst().Queue[i].Priority)
                                 break;
-                            PriorityQueue.GetInst().Queue[i].Priority = e.Danmaku.UserGuardLevel;
+                            // 插队成功后重置时间戳
+                            PriorityQueue.GetInst().Queue[i].Priority = true;
                             PriorityQueue.GetInst().Queue[i].TimeStamp = timeStamp;
+                            check = true;
                             break;
                         }
                     }
-                    GlobalEventListener.Invoke("RefreshOrder", null);
-                    check = true;
+                    if (check)
+                    {
+                        GlobalEventListener.Invoke("RefreshOrder", null);
+                        return;
+                    }
                 }
-            }
-
-            if (check)
-            {
-                return;
             }
             
             // 是否是重复的用户 
@@ -209,7 +208,7 @@ namespace JonysandMHDanmuTools
             var oneNode = new PriorityQueueNode();
             oneNode.UserId = open_id;
             oneNode.TimeStamp = timeStamp;
-            oneNode.Priority = isPriority ? e.Danmaku.UserGuardLevel : 0;
+            oneNode.Priority = isPriority;
             oneNode.UserName = userName;
             oneNode.MonsterName = monsterName;
             oneNode.GuardLevel = e.Danmaku.UserGuardLevel;
