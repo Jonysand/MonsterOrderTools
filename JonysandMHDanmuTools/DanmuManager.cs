@@ -1,18 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Text.RegularExpressions;
 using BilibiliDM_PluginFramework;
-using System.Windows.Interop;
-using System.Linq.Expressions;
 using Newtonsoft.Json.Linq;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
-using System.Reflection;
 using System.Windows.Media;
-using System.Collections;
-using System.Data.SqlTypes;
 
 namespace JonysandMHDanmuTools
 {
@@ -225,10 +215,11 @@ namespace JonysandMHDanmuTools
 
         private bool IsWearingMedal(JToken data)
         {
-            if (data["fans_medal_wearing_status"] != null)
+            if (data["fans_medal_name"] != null && data["fans_medal_level"] != null)
             {
-                var status = data["fans_medal_wearing_status"].ToObject<bool>();
-                return status;
+                var name = data["fans_medal_name"].ToString();
+                var level = data["fans_medal_level"].ToObject<int>();
+                return name.Equals("柳白白") && level > 0;
             }
 
             return false;
