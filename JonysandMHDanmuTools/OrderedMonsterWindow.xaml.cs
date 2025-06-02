@@ -7,16 +7,12 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
-
 using System.Windows.Interop;
 using System.Runtime.InteropServices;
 using System.Windows.Threading;
-using System.Text.RegularExpressions;
 
 
-
-
-namespace JonysandMHDanmuTools
+namespace MonsterOrderWindows
 {
     /// <summary>
     /// Interaction logic for OrderedMonsterWindow.xaml
@@ -30,7 +26,7 @@ namespace JonysandMHDanmuTools
         // 显示info的队列
         private Queue<RollingInfo> mInfoQueue;
         private DispatcherTimer mInfoChangeTimer;
-        private const string _defaultInfo = "欢迎来到老白直播间，发送“点怪 xxx”进行点怪";
+        private const string _defaultInfo = "发送“点怪 xxx”进行点怪";
         // 界面是否锁定
         private bool mIsLocked = false;
         public OrderedMonsterWindow()
@@ -58,7 +54,7 @@ namespace JonysandMHDanmuTools
 
             DanmuManager.GetInst().LoadHistoryOrder();
 
-            Hotkey.Regist(this, HotkeyModifiers.Alt, Key.Decimal, OnHotKey);
+            // Hotkey.Regist(this, HotkeyModifiers.Alt, Key.Decimal, OnHotKeyLock);
         }
 
         private void OnClosing(object sender, CancelEventArgs e)
@@ -72,7 +68,7 @@ namespace JonysandMHDanmuTools
         private static extern uint SetWindowLong(IntPtr hwnd, int nIndex, uint dwNewLong);
         [DllImport("user32", EntryPoint = "GetWindowLong")]
         private static extern uint GetWindowLong(IntPtr hwnd, int nIndex);
-        private void OnHotKey()
+        public void OnHotKeyLock()
         {
             mIsLocked = !mIsLocked;
             if (mIsLocked)

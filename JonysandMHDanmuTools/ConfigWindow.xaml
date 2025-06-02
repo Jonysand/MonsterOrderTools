@@ -1,14 +1,168 @@
 ﻿<Window  
-    x:Name="ConfigWindow_main" x:Class="JonysandMHDanmuTools.ConfigWindow"
+    x:Name="ConfigWindow_main" x:Class="MonsterOrderWindows.ConfigWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-    xmlns:local="clr-namespace:JonysandMHDanmuTools"
+    xmlns:local="clr-namespace:MonsterOrderWindows"
     mc:Ignorable="d"
-    Title="插件设置"
+    Title="Monster Order - Wilds (beta)"
     Loaded="OnLoaded"
-    Background="Gray"
-    Closing="OnClosing" Height="150" Width="150">
-    <Button Content="清空点怪列表" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Click="OnClearList"/>
+    Closing="OnClosing"
+    Height="400" Width="400"
+    WindowStyle="ThreeDBorderWindow"
+    Background="Transparent">
+    <Border
+        Background="#eee"
+        Padding="0"
+        SnapsToDevicePixels="True"
+        Effect="{DynamicResource DropShadowEffect}">
+        <Grid>
+            <Grid.Resources>
+                <DropShadowEffect x:Key="DropShadowEffect" BlurRadius="16" ShadowDepth="0" Color="#33000000"/>
+                <Style TargetType="TextBox">
+                    <Setter Property="FontFamily" Value="Segoe UI Variable"/>
+                    <Setter Property="FontSize" Value="14"/>
+                    <Setter Property="Background" Value="#ddd"/>
+                    <Setter Property="BorderThickness" Value="0"/>
+                    <Setter Property="Foreground" Value="#222"/>
+                    <Setter Property="SnapsToDevicePixels" Value="True"/>
+                </Style>
+                <Style TargetType="PasswordBox">
+                    <Setter Property="FontFamily" Value="Segoe UI Variable"/>
+                    <Setter Property="FontSize" Value="14"/>
+                    <Setter Property="Background" Value="#ddd"/>
+                    <Setter Property="BorderThickness" Value="0"/>
+                    <Setter Property="Foreground" Value="#222"/>
+                    <Setter Property="SnapsToDevicePixels" Value="True"/>
+                </Style>
+                <Style TargetType="Button">
+                    <Setter Property="FontFamily" Value="Segoe UI Variable"/>
+                    <Setter Property="FontSize" Value="14"/>
+                    <Setter Property="Background" Value="#0078D4"/>
+                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="BorderBrush" Value="#0078D4"/>
+                    <Setter Property="BorderThickness" Value="0"/>
+                    <Setter Property="Padding" Value="0"/>
+                    <Setter Property="Width" Value="80"/>
+                    <Setter Property="Height" Value="32"/>
+                    <Setter Property="SnapsToDevicePixels" Value="True"/>
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="border"
+                                    Background="{TemplateBinding Background}" 
+                                    CornerRadius="6"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}">
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsPressed" Value="True">
+                                        <Setter TargetName="border" Property="Background" Value="#005A9E"/>
+                                        <Setter TargetName="border" Property="BorderBrush" Value="#005A9E"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </Grid.Resources>
+            <Border
+                Background="#ddd" 
+                CornerRadius="6"
+                Padding="6,2"
+                HorizontalAlignment="Left"
+                Margin="20,24,0,0"
+                Height="34"
+                VerticalAlignment="Top">
+                <Grid>
+                    <PasswordBox
+                        Name="IdentityCodeTextBox"
+                        VerticalAlignment="Center"
+                        Width="250"
+                        Height="28"
+                        PasswordChanged="IdentityCodeTextBox_PasswordChanged"/>
+                        <TextBlock
+                            Name="IdentityCodePlaceholder"
+                            Text="输入身份码"
+                            Foreground="#888"
+                            VerticalAlignment="Center"
+                            Margin="8,0,0,0"
+                            IsHitTestVisible="False"
+                            FontSize="14"
+                            FontFamily="Segoe UI Variable"
+                            Visibility="Visible"/>
+                </Grid>
+            </Border>
+            <!-- <Border
+                Background="#ddd" 
+                CornerRadius="6"
+                Padding="6,2"
+                HorizontalAlignment="Left"
+                Margin="20,72,0,0"
+                Height="34"
+                VerticalAlignment="Top">
+                <TextBox
+                    Name="MedalNameTextBox"
+                    Width="150"
+                    Height="32"
+                    VerticalAlignment="Top"
+                    HorizontalAlignment="Left"
+                    Text="输入粉丝牌名称"
+                    Foreground="#888"
+                    GotFocus="MedalNameTextBox_GotFocus"
+                    LostFocus="MedalNameTextBox_LostFocus"/>
+            </Border> -->
+            <Button
+                Content="连接"
+                HorizontalAlignment="Right"
+                Margin="0,24,20,0"
+                VerticalAlignment="Top"
+                Click="OnConfirmIDCode"/>
+            <Border
+                Name="StatusBG"
+                Background="#FFFDE7" 
+                CornerRadius="6"
+                Padding="6,2"
+                HorizontalAlignment="Left"
+                Margin="20,120,20,0"
+                VerticalAlignment="Top">
+                <Label
+                    Name="Status"
+                    Content="未连接"
+                    Background="Transparent"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Left"
+                    FontWeight="SemiBold"
+                    Foreground="#333"
+                    FontFamily="Segoe UI Variable"
+                    FontSize="14"/>
+            </Border>
+            <Button
+                Name="UpdateButton"
+                Content="更新app"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Bottom"
+                Margin="0,0,20,70"
+                Width="80"
+                Height="32"
+                Background="#888"
+                Foreground="White"
+                BorderBrush="#888"
+                Click="UpdateButton_Click"/>
+            <Button
+                Name="UpdateListButton"
+                Content="更新怪物列表"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Bottom"
+                Margin="0,0,20,20"
+                Width="100"
+                Height="32"
+                Background="#888"
+                Foreground="White"
+                BorderBrush="#888"
+                Click="UpdateListButton_Click"/>
+        </Grid>
+    </Border>
 </Window>

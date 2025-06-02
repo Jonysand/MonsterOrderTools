@@ -1,56 +1,24 @@
-﻿using BilibiliDM_PluginFramework;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Text.RegularExpressions;
 using System.Windows;
 
 
-namespace JonysandMHDanmuTools
+namespace MonsterOrderWindows
 {
-    public class ToolsMain : BilibiliDM_PluginFramework.DMPlugin
+    public class ToolsMain
     {
         private ConfigWindow _ConfigWindow = null;
         private OrderedMonsterWindow _OrderedMonsterWindow = null;
         private ConfigService _Config = null;
-
-        public ToolsMain()
-        {
-            this.Connected += OnConnected;
-            this.Disconnected += OnDisconnected;
-            this.ReceivedDanmaku += OnReceivedDanmaku;
-            this.ReceivedRoomCount += OnReceivedRoomCount;
+        /*
             this.PluginAuth = "鬼酒时雨;Hey_Coder";
             this.PluginName = "点怪姬";
             this.PluginVer = "v0.73";
             this.PluginDesc = "弹幕姬插件开发学习中，祝你每天吃饱饱！";
             this.PluginCont = "QQ: 1600402178";
-        }
+         */
 
-        private void OnReceivedRoomCount(object sender, BilibiliDM_PluginFramework.ReceivedRoomCountArgs e)
-        {
-            DanmuManager.GetInst().OnReceivedRoomCount(sender, e);
-        }
-
-        private void OnDisconnected(object sender, BilibiliDM_PluginFramework.DisconnectEvtArgs e)
-        {
-            if (_OrderedMonsterWindow != null)
-            {
-                _OrderedMonsterWindow.Dispatcher.Invoke(new Action(delegate
-                {
-                    _OrderedMonsterWindow.Hide();
-                }));
-            }
-        }
-
-        private void OnReceivedDanmaku(object sender, BilibiliDM_PluginFramework.ReceivedDanmakuArgs e)
-        {
-            DanmuManager.GetInst().OnReceivedDanmaku(sender, e);
-        }
-
-        public override void Inited()
+        public void Inited()
         {
             try
             {
@@ -88,37 +56,14 @@ namespace JonysandMHDanmuTools
             }
 
             // 事件注册
-            GlobalEventListener.AddListener("LOG", (object msg) => Log(msg.ToString()));
+            GlobalEventListener.AddListener("LOG", (object msg) => SendCommand("LOG:" + msg.ToString()));
             GlobalEventListener.AddListener("ConfigChanged", (object msg) => ConfigChanged(msg));
             GlobalEventListener.AddListener("OrderWindowLocked", (object msg) => OnOrderWindowLocked());
+            GlobalEventListener.AddListener("Message", (object msg) => OnOrderWindowLocked());
         }
 
-        private void OnConnected(object sender, BilibiliDM_PluginFramework.ConnectedEvtArgs e)
+        public void Stop()
         {
-            if (_OrderedMonsterWindow != null && this.Status)
-            {
-                _OrderedMonsterWindow.Dispatcher.Invoke(new Action(delegate
-                {
-                    _OrderedMonsterWindow.Show();
-                }));
-            }
-        }
-
-        public override void Admin()
-        {
-            base.Admin();
-
-            if (_ConfigWindow == null)
-                _ConfigWindow = new ConfigWindow();
-            _ConfigWindow.Show();
-        }
-
-        public override void Stop()
-        {
-            base.Stop();
-            //請勿使用任何阻塞方法
-            this.Log("Plugin Stoped!");
-
             if (_OrderedMonsterWindow != null)
             {
                 _OrderedMonsterWindow.Dispatcher.Invoke(new Action(delegate
@@ -128,12 +73,8 @@ namespace JonysandMHDanmuTools
             }
         }
 
-        public override void Start()
+        public void Start()
         {
-            base.Start();
-            //請勿使用任何阻塞方法
-            this.Log("Plugin Started!");
-
             if (_OrderedMonsterWindow != null)
             {
                 _OrderedMonsterWindow.Dispatcher.Invoke(new Action(delegate
@@ -157,6 +98,81 @@ namespace JonysandMHDanmuTools
         public void OnOrderWindowLocked()
         {
             _Config.SaveConfig();
+        }
+
+        // New interface from MonsterOrderWilds ------------------------------------------------------------------------------------------
+        public void OpenConfigWindow()
+        {
+            if (_ConfigWindow == null)
+                _ConfigWindow = new ConfigWindow();
+            _ConfigWindow.Show();
+        }
+
+        public void OnConnected()
+        {
+            if (_OrderedMonsterWindow != null)
+            {
+                _OrderedMonsterWindow.Dispatcher.Invoke(new Action(delegate
+                {
+                    _OrderedMonsterWindow.Show();
+                }));
+            }
+            if (_ConfigWindow != null)
+            {
+                _ConfigWindow.Dispatcher.Invoke(new Action(delegate
+                {
+                    _ConfigWindow.SetStatus(true);
+                }));
+            }
+        }
+
+        public void OnDisconnected()
+        {
+            if (_ConfigWindow != null)
+            {
+                _ConfigWindow.Dispatcher.Invoke(new Action(delegate
+                {
+                    _ConfigWindow.SetStatus(false);
+                }));
+            }
+        }
+
+        public void OnHotKeyLock()
+        {
+            if (_OrderedMonsterWindow != null)
+            {
+                _OrderedMonsterWindow.Dispatcher.Invoke(new Action(delegate
+                {
+                    _OrderedMonsterWindow.OnHotKeyLock();
+                }));
+            }
+        }
+
+        // 先保留用CSharp的逻辑处理，后面挪到cpp
+        public void OnReceivedRawMsg(String rawJsonStr)
+        {
+            DanmuManager.GetInst().OnReceicedRawJson(rawJsonStr);
+        }
+
+        static public Queue<String> CommandQueue;
+        static public void SendCommand(String message)
+        {
+            if (CommandQueue == null)
+                CommandQueue = new Queue<String>();
+            CommandQueue.Enqueue(message);
+        }
+        public String GetCommand()
+        {
+            if (CommandQueue == null)
+                CommandQueue = new Queue<String>();
+            if (CommandQueue.Count > 0)
+                return CommandQueue.Dequeue();
+            return "";
+        }
+
+        public bool RefreshMonsterList()
+        {
+            return MonsterData.GetInst().LoadJsonData();
         }
     }
 }

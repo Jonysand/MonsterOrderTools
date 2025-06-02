@@ -1,13 +1,9 @@
-﻿using Newtonsoft.Json;
-using System;
-using System.Collections.Concurrent;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Xml.Linq;
+using Newtonsoft.Json;
 
-namespace JonysandMHDanmuTools
+namespace MonsterOrderWindows
 {
     public class PriorityQueue
     {
@@ -32,7 +28,7 @@ namespace JonysandMHDanmuTools
 
         public PriorityQueue()
         {
-            _saveDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), @"弹幕姬\plugins\MonsterOrder");
+            _saveDir = Path.Combine(Environment.CurrentDirectory, @"MonsterOrderWilds_configs");
             _saveFileName = "OrderList.list";
             LoadList();
         }
@@ -130,7 +126,7 @@ namespace JonysandMHDanmuTools
         [JsonProperty]
         public int GuardLevel;
         [JsonProperty]
-        public int TemperedLevel=0; // 0 - 普通，1 - 历战，2 - 历战王
+        public int TemperedLevel = 0; // 0 - 普通，1 - 历战，2 - 历战王
 
         public PriorityQueueNode()
         {
