@@ -1,4 +1,5 @@
 #include "Network.h"
+#include "BliveManager.h"
 #include "CredentialsConsts.h"
 #include "WriteLog.h"
 
@@ -218,7 +219,7 @@ namespace Network {
 
     void StartWebSocketReceive(HINTERNET hWebSocket, WebsocketMessageCallback onMessage) {
         std::thread([hWebSocket, onMessage]() {
-            while (true) {
+            while (BliveManager::Inst()->IsConnected()) {
                 char headerBuffer[16];
                 ProtoUtils::Packet onePacket;
                 DWORD bytesTransferred = 0;

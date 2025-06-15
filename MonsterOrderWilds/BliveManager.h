@@ -8,9 +8,7 @@
 // Manager Class, Singleton
 class BliveManager
 {
-public:
-    static BliveManager* Inst();
-    static void Destroy();
+    DECLARE_SINGLETON(BliveManager)
 
     /*
     * 直播连接------------------------------------------------------------------
@@ -43,6 +41,8 @@ private:
     void OnReceiveWSMessage(HINTERNET hWebsocket, ProtoUtils::Packet message);
     // 处理 websocket 消息
     void HandleWSMessage();
+    // 处理一般的弹幕、送礼等消息
+    void HandleSmsReply(const std::string& msg);
 private:
     std::atomic<bool> connected{ false };
     // 直播身份码
@@ -108,6 +108,4 @@ private: \
     // 弹幕服务器断连
     REGISTER_EVENT_LISTENER(OnBliveDisconnected)
 
-
-    static BliveManager* __Instance;
 };

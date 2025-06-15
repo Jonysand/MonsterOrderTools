@@ -20,15 +20,19 @@ namespace MonsterOrderWindows
 
         public void Inited()
         {
-            try
+            if (_Config == null)
             {
-                _Config = new ConfigService();
-                _Config.LoadConfig();
+                try
+                {
+                    _Config = new ConfigService();
+                    _Config.LoadConfig();
+                }
+                catch (Exception e)
+                {
+                    MessageBox.Show($"加载配置文件失败,请将桌面上的错误报告发送给作者（/TДT)/\n{e}", "零食小插件", 0, MessageBoxImage.Error);
+                }
             }
-            catch (Exception e)
-            {
-                MessageBox.Show($"加载配置文件失败,请将桌面上的错误报告发送给作者（/TДT)/\n{e}", "零食小插件", 0, MessageBoxImage.Error);
-            }
+            
             try
             {
                 _OrderedMonsterWindow = new OrderedMonsterWindow();
@@ -87,11 +91,43 @@ namespace MonsterOrderWindows
         public void ConfigChanged(object msg)
         {
             var message = msg.ToString();
+            var parts = message.Split(':');
             if (message == "WindowPosition")
             {
                 double top = _OrderedMonsterWindow.Top;
                 double left = _OrderedMonsterWindow.Left;
                 _Config.Config.TopPos = new Point(left, top);
+            }
+            else if (parts[0] == "ID_CODE")
+            {
+                _Config.Config.ID_CODE = parts[1];
+                _Config.SaveConfig();
+            }
+            else if (parts[0] == "ENABLE_VOICE")
+            {
+                _Config.Config.ENABLE_VOICE = parts[1] == "1";
+            }
+            else if (parts[0] == "SPEECH_RATE")
+            {
+                if (int.TryParse(parts[1], out int speechRate))
+                {
+                    _Config.Config.SPEECH_RATE = speechRate;
+                }
+            }
+            else if (parts[0] == "ONLY_SPEEK_WEARING_MEDAL")
+            {
+                _Config.Config.ONLY_SPEEK_WEARING_MEDAL = parts[1] == "1";
+            }
+            else if (parts[0] == "ONLY_SPEEK_GUARD_LEVEL")
+            {
+                if (int.TryParse(parts[1], out int guardLevel))
+                {
+                    _Config.Config.ONLY_SPEEK_GUARD_LEVEL = guardLevel;
+                }
+            }
+            else if (parts[0] == "ONLY_SPEEK_PAID_GIFT")
+            {
+                _Config.Config.ONLY_SPEEK_PAID_GIFT = parts[1] == "1";
             }
         }
 
@@ -103,8 +139,21 @@ namespace MonsterOrderWindows
         // New interface from MonsterOrderWilds ------------------------------------------------------------------------------------------
         public void OpenConfigWindow()
         {
+            if (_Config == null)
+            {
+                try
+                {
+                    _Config = new ConfigService();
+                    _Config.LoadConfig();
+                }
+                catch (Exception e)
+                {
+                    MessageBox.Show($"加载配置文件失败,请将桌面上的错误报告发送给作者（/TДT)/\n{e}", "零食小插件", 0, MessageBoxImage.Error);
+                }
+            }
             if (_ConfigWindow == null)
                 _ConfigWindow = new ConfigWindow();
+            _ConfigWindow.FillConfig(_Config.GetConfig());
             _ConfigWindow.Show();
         }
 
@@ -173,6 +222,11 @@ namespace MonsterOrderWindows
         public bool RefreshMonsterList()
         {
             return MonsterData.GetInst().LoadJsonData();
+        }
+
+        public MainConfig GetConfig()
+        {
+            return _Config.GetConfig();
         }
     }
 }

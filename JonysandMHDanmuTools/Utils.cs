@@ -105,9 +105,38 @@ namespace MonsterOrderWindows
     {
         [JsonProperty]
         public Point TopPos { get => _topLeftPos; set { if (_topLeftPos != value) { _topLeftPos = value; OnPropertyChanged(); } } }
-
         // 窗口左上角坐标
         private Point _topLeftPos = new Point(0, 0);
+
+        [JsonProperty]
+        public String ID_CODE { get => _IDCode; set { if (_IDCode != value) { _IDCode = value; OnPropertyChanged(); } } }
+        // 身份码
+        private String _IDCode = "";
+
+        [JsonProperty]
+        public bool ENABLE_VOICE { get => _enableVoice; set { if (_enableVoice != value) { _enableVoice = value; OnPropertyChanged(); } } }
+        // 语音播报：是否开启
+        private bool _enableVoice = false;
+
+        [JsonProperty]
+        public int SPEECH_RATE { get => _speechRate; set { if (_speechRate != value) { _speechRate = value; OnPropertyChanged(); } } }
+        // 语音播报：语速
+        private int _speechRate = 0;
+
+        [JsonProperty]
+        public bool ONLY_SPEEK_WEARING_MEDAL { get => _onlySpeekWearingMedal; set { if (_onlySpeekWearingMedal != value) { _onlySpeekWearingMedal = value; OnPropertyChanged(); } } }
+        // 语音播报：只播报佩戴牌子
+        private bool _onlySpeekWearingMedal = false;
+
+        [JsonProperty]
+        public int ONLY_SPEEK_GUARD_LEVEL { get => _onlySpeekGuardLevel; set { if (_onlySpeekGuardLevel != value) { _onlySpeekGuardLevel = value; OnPropertyChanged(); } } }
+        // 语音播报：只播报对应的舰长等级
+        private int _onlySpeekGuardLevel = 0;
+
+        [JsonProperty]
+        public bool ONLY_SPEEK_PAID_GIFT { get => _onlySpeekPaidGift; set { if (_onlySpeekPaidGift != value) { _onlySpeekPaidGift = value; OnPropertyChanged(); } } }
+        // 语音播报：只播报付费礼物
+        private bool _onlySpeekPaidGift = false;
 
         public event PropertyChangedEventHandler PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
@@ -118,7 +147,7 @@ namespace MonsterOrderWindows
     public sealed class ConfigService
     {
         public MainConfig Config => _config;
-        private readonly MainConfig _config;
+        private MainConfig _config;
         private readonly string _configDirectory;
         private readonly string _configFileName;
         private bool _configChanged = false;
@@ -137,8 +166,7 @@ namespace MonsterOrderWindows
             if (File.Exists(configPath))
             {
                 string json = File.ReadAllText(configPath);
-                MainConfig config = JsonConvert.DeserializeObject<MainConfig>(json);
-                _config.TopPos = config.TopPos;
+                _config = JsonConvert.DeserializeObject<MainConfig>(json);
                 return true;
             }
             return false;
@@ -163,6 +191,11 @@ namespace MonsterOrderWindows
         public void OnConfigChanged(object sender, PropertyChangedEventArgs e)
         {
             _configChanged = true;
+        }
+
+        public MainConfig GetConfig()
+        {
+            return _config;
         }
     }
 }

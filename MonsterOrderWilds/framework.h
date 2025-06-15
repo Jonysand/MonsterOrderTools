@@ -60,6 +60,20 @@ typedef std::string TString;
 #define TIMER_ID 1
 #define TIMER_INTERVAL 100
 
+// Singleton
+
+#define DECLARE_SINGLETON(CLASS) public: \
+									static CLASS* Inst(); \
+									void Destroy(); \
+								private: \
+									static CLASS* __Instance;
+#define DEFINE_SINGLETON(CLASS) CLASS* CLASS::__Instance = nullptr; \
+								CLASS* CLASS::Inst(){ \
+									if (!__Instance) __Instance = new CLASS(); \
+									return __Instance; } \
+								void CLASS::Destroy() { \
+									if (__Instance) { delete __Instance; __Instance = nullptr; } \
+								}
 
 class Lock
 {

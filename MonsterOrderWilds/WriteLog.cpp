@@ -49,19 +49,6 @@ namespace WriteLog
 
 	static const TCHAR* strLogType[] = { TEXT("ERROR"), TEXT("WARNING"), TEXT("INFO"), TEXT("DEBUG") };
 
-	void ClearLog(void)
-	{
-		writtingLock.lock();
-		if (g_fp != NULL) {
-			LOG_INFO(TEXT("clear log on exit program."));
-			if (g_fp) {
-				fclose(g_fp);
-			}
-			g_fp = NULL;
-		}
-		writtingLock.unlock();
-	}
-
 	void WriteLog(LogLevel level, const TCHAR* msg, ...)
 	{
 		writtingLock.lock();

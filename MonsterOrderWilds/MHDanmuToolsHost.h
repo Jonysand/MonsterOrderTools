@@ -1,22 +1,14 @@
 #pragma once
 
 #include "framework.h"
-
-using namespace System;
-using namespace System::Windows;
-using namespace System::Windows::Documents;
-using namespace System::Threading;
-using namespace System::Windows::Controls;
-using namespace System::Windows::Media;
-using namespace System::Runtime::InteropServices;
 #include <msclr/marshal_cppstd.h>
 
 namespace ConvertUtils
 {
-	inline String^ TStringToString(const TString& input)
+	inline System::String^ TStringToString(const TString& input)
 	{
 #ifdef UNICODE
-		return gcnew String(input.c_str());
+		return gcnew System::String(input.c_str());
 #else
 		return msclr::interop::marshal_as<String^>(input);
 #endif
@@ -50,6 +42,8 @@ public:
 		return std::move(ConvertUtils::StringToStdString(toolsMainInstance->GetCommand())); 
 	}
 
+	inline MonsterOrderWindows::MainConfig^ GetConfig() { return toolsMainInstance->GetConfig(); }
+
 	inline bool RefreshMonsterList() { return toolsMainInstance->RefreshMonsterList(); }
 
 private:
@@ -59,3 +53,4 @@ private:
 	static ToolsMainHost^ __instance;
 };
 
+#define GET_CONFIG(NAME) ToolsMainHost::Inst()->GetConfig()->NAME

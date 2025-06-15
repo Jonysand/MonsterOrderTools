@@ -3,24 +3,18 @@
 #include "BliveManager.h"
 #include "AppUpdater.h"
 #include "CredentialsConsts.h"
+#include "TextToSpeech.h"
 #include "Network.h"
 #include "WriteLog.h"
 
 #define WIDGETID_IDINPUT	1001
 #define WIDGETID_IDCONFIRM	1002
 
-MonsterOrderWilds* MonsterOrderWilds::__Instance = nullptr;
+DEFINE_SINGLETON(MonsterOrderWilds)
 
 MonsterOrderWilds::MonsterOrderWilds()
 {
 	LOG_INFO(TEXT("--------------------MonsterOrderWilds start! v %d -------------------------"), APP_VERSION);
-}
-
-MonsterOrderWilds* MonsterOrderWilds::Inst()
-{
-	if (!__Instance)
-		__Instance = new MonsterOrderWilds();
-	return __Instance;
 }
 
 UINT MonsterOrderWilds::HandleHwndMsg(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -113,6 +107,12 @@ void MonsterOrderWilds::tickWPFCommand()
 		BliveManager::Inst()->Destroy();
 		PostQuitMessage(0);
 	}
+	// ÉèÖÃTTSÓïËÙ
+	if (strcmp(command[0].c_str(), "SetSpeechRate") == 0)
+	{
+		
+	}
+	
 }
 
 void MonsterOrderWilds::OnBliveConnected()

@@ -265,14 +265,7 @@ namespace FileHelper
 	}
 }
 
-AppUpdater* AppUpdater::__Instance = nullptr;
-
-AppUpdater* AppUpdater::Inst()
-{
-	if (!__Instance)
-		__Instance = new AppUpdater();
-	return __Instance;
-}
+DEFINE_SINGLETON(AppUpdater)
 
 void AppUpdater::Tick()
 {
@@ -291,15 +284,6 @@ void AppUpdater::Tick()
 		TString title = messageBoxQueue.begin()->second;
 		messageBoxQueue.pop_front();
 		MessageBoxW(NULL, content.c_str(), title.c_str(), MB_OK);
-	}
-}
-
-void AppUpdater::Destroy()
-{
-	if (__Instance)
-	{
-		delete __Instance;
-		__Instance = nullptr;
 	}
 }
 
@@ -404,7 +388,7 @@ void AppUpdater::OnVersionFetched(const std::string& response)
 			)));
 		}
 	}
-	catch (const json::parse_error& e) {
+	catch (const json::parse_error& _) {
 		LOG_ERROR(TEXT("JSON parse error: %s"), ProtoUtils::Decode(response).c_str());
 		return;
 	}

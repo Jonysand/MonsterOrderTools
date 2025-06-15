@@ -205,11 +205,12 @@ namespace MonsterOrderWindows
 
         private bool IsWearingMedal(Danmu.DanmuData data)
         {
-            if (medalName.Length == 0)
-                return true;
-            if (data.fans_medal_name.Length > 0)
-                return data.fans_medal_name.Equals(medalName) && data.fans_medal_level > 0;
-            return false;
+            // if (medalName.Length == 0)
+            //     return true;
+            // if (data.fans_medal_name.Length > 0)
+            //     return data.fans_medal_name.Equals(medalName) && data.fans_medal_level > 0;
+            // return false;
+            return data.fans_medal_wearing_status;
         }
 
         private bool IsRepeatUser(string data)

@@ -162,6 +162,7 @@
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="MHDanmuToolsHost.h" />
+    <ClInclude Include="TextToSpeech.h" />
     <ClInclude Include="WriteLog.h" />
   </ItemGroup>
   <ItemGroup>
@@ -171,6 +172,7 @@
     <ClCompile Include="MonsterOrderWilds.cpp" />
     <ClCompile Include="MHDanmuToolsHost.cpp" />
     <ClCompile Include="Network.cpp" />
+    <ClCompile Include="TextToSpeech.cpp" />
     <ClCompile Include="WriteLog.cpp" />
   </ItemGroup>
   <ItemGroup>

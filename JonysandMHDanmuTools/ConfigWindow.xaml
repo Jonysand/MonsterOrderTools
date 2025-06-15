@@ -9,7 +9,7 @@
     Title="Monster Order - Wilds (beta)"
     Loaded="OnLoaded"
     Closing="OnClosing"
-    Height="400" Width="400"
+    Height="480" Width="400"
     WindowStyle="ThreeDBorderWindow"
     Background="Transparent">
     <Border
@@ -126,7 +126,7 @@
                 CornerRadius="6"
                 Padding="6,2"
                 HorizontalAlignment="Left"
-                Margin="20,120,20,0"
+                Margin="20,80,20,0"
                 VerticalAlignment="Top">
                 <Label
                     Name="Status"
@@ -139,6 +139,90 @@
                     FontFamily="Segoe UI Variable"
                     FontSize="14"/>
             </Border>
+            <GroupBox
+                Header="语音播报"
+                Margin="20,130,20,0"
+                VerticalAlignment="Top"
+                HorizontalAlignment="Left"
+                FontFamily="Segoe UI Variable"
+                FontSize="14"
+                Foreground="#222"
+                Height="186"
+                Width="340">
+                    <StackPanel>
+                        <CheckBox
+                            Name="EnableVoiceCheckBox"
+                            Content="开启语音播报"
+                            Margin="8,8,0,0"
+                            FontFamily="Segoe UI Variable"
+                            FontSize="14"
+                            Foreground="#222"
+                            Checked="EnableVoiceCheckBox_Changed"/>
+                    <StackPanel Orientation="Horizontal" Margin="8,8,0,0" VerticalAlignment="Center">
+                        <Label
+                        Content="语音速率"
+                        VerticalAlignment="Center"
+                        FontFamily="Segoe UI Variable"
+                        FontSize="14"
+                        Foreground="#222"
+                        Margin="0,0,8,0"/>
+                        <Slider
+                        Name="VoiceRateSlider"
+                        Minimum="-10"
+                        Maximum="10"
+                        Value="0"
+                        TickFrequency="1"
+                        IsSnapToTickEnabled="True"
+                        Width="150"
+                        VerticalAlignment="Center"
+                        Margin="0,0,8,0"
+                        ValueChanged="VoiceRateSlider_ValueChanged"/>
+                        <TextBlock
+                        Text="{Binding ElementName=VoiceRateSlider, Path=Value, StringFormat=F0}"
+                        VerticalAlignment="Center"
+                        FontFamily="Segoe UI Variable"
+                        FontSize="14"
+                        Foreground="#222"
+                        Width="30"/>
+                    </StackPanel>
+                    <CheckBox
+                            Name="OnlyMedalCheckBox"
+                            Content="仅播报佩戴粉丝牌的弹幕"
+                            Margin="8,8,0,0"
+                            FontFamily="Segoe UI Variable"
+                            FontSize="14"
+                            Foreground="#222"
+                            Checked="OnlyMedalCheckBox_Changed"/>
+                    <StackPanel Orientation="Horizontal" Margin="8,8,0,0" VerticalAlignment="Center">
+                        <Label
+                            Content="播报至少等级"
+                            VerticalAlignment="Center"
+                            FontFamily="Segoe UI Variable"
+                            FontSize="14"
+                            Foreground="#222"
+                            Margin="0,0,8,0"/>
+                        <ComboBox
+                            Name="OnlyGuardLevel"
+                            Width="120"
+                            FontFamily="Segoe UI Variable"
+                            FontSize="14"
+                            SelectionChanged="OnlyGuardLevel_SelectionChanged">
+                            <ComboBoxItem Content="所有人" IsSelected="True" />
+                            <ComboBoxItem Content="舰长" />
+                            <ComboBoxItem Content="提督" />
+                            <ComboBoxItem Content="总督" />
+                        </ComboBox>
+                    </StackPanel>
+                    <CheckBox
+                        Name="OnlyPaidGitfCheckBox"
+                        Content="仅播报付费礼物"
+                        Margin="8,8,0,0"
+                        FontFamily="Segoe UI Variable"
+                        FontSize="14"
+                        Foreground="#222"
+                        Checked="OnlyPaidGitfCheckBox_Changed"/>
+                </StackPanel>
+            </GroupBox>
             <Button
                 Name="UpdateButton"
                 Content="更新app"

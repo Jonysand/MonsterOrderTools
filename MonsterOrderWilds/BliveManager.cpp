@@ -1,25 +1,10 @@
 #include "BliveManager.h"
 #include "CredentialsConsts.h"
 #include "WriteLog.h"
+#include "TextToSpeech.h"
 #include "MHDanmuToolsHost.h"
 
-BliveManager* BliveManager::__Instance = nullptr;
-
-BliveManager* BliveManager::Inst()
-{
-    if (!__Instance)
-        __Instance = new BliveManager();
-    return __Instance;
-}
-
-void BliveManager::Destroy()
-{
-	if (__Instance)
-	{
-		delete __Instance;
-		__Instance = nullptr;
-	}
-}
+DEFINE_SINGLETON(BliveManager)
 
 /*
 * 直播连接------------------------------------------------------------------
@@ -110,7 +95,7 @@ BliveManager::~BliveManager()
 
 void BliveManager::OnReceiveStartResponse(const std::string& response)
 {
-    LOG_DEBUG(TEXT("OnStartResponse: %s"), ProtoUtils::Decode(response).c_str());
+    LOG_INFO(TEXT("OnStartResponse: %s"), ProtoUtils::Decode(response).c_str());
     DWORD code = -1;
     json jsonResponse;
 	try {
@@ -257,8 +242,7 @@ void BliveManager::HandleWSMessage()
             }
             break;
         case OP_SEND_SMS_REPLY:
-            LOG_DEBUG(TEXT("OP_SEND_SMS_REPLY: %s"), ProtoUtils::Decode(packet.body).c_str());
-            ToolsMainHost::Inst()->OnReceiveRawMsg(ProtoUtils::Decode(packet.body));
+            HandleSmsReply(packet.body);
             break;
         case OP_AUTH:
             LOG_ERROR(TEXT("Receive OP_AUTH from server websocket"));
@@ -277,4 +261,38 @@ void BliveManager::HandleWSMessage()
         wsMessages.pop();
     }
     wsMsgLock.unlock();
+}
+
+void BliveManager::HandleSmsReply(const std::string& msg)
+{
+    TString decoded = ProtoUtils::Decode(msg);
+    LOG_INFO(TEXT("OP_SEND_SMS_REPLY: %s"), decoded.c_str());
+
+    json jsonResponse;
+    try {
+        jsonResponse = json::parse(msg);
+    }
+    catch (const json::parse_error& e) {
+        LOG_ERROR(TEXT("[HandleSmsReply] JSON parse error: %s"), msg.c_str());
+        return;
+    }
+    const std::string& cmd = jsonResponse["cmd"].get<std::string>();
+    if (GET_CONFIG(ENABLE_VOICE))
+    {
+        // 一般弹幕
+        if (cmd == "LIVE_OPEN_PLATFORM_DM")
+            TTSManager::Inst()->HandleSpeekDm(jsonResponse["data"]);
+        // 送礼
+        else if (cmd == "LIVE_OPEN_PLATFORM_SEND_GIFT")
+            TTSManager::Inst()->HandleSpeekSendGift(jsonResponse["data"]);
+        // SC
+        else if (cmd == "LIVE_OPEN_PLATFORM_SUPER_CHAT")
+            TTSManager::Inst()->HandleSpeekSC(jsonResponse["data"]);
+        // 舰长
+        else if (cmd == "LIVE_OPEN_PLATFORM_GUARD")
+            TTSManager::Inst()->HandleSpeekGuard(jsonResponse["data"]);
+    }
+
+    // <TODO> 后续用C++层的解析结果
+    ToolsMainHost::Inst()->OnReceiveRawMsg(decoded);
 }

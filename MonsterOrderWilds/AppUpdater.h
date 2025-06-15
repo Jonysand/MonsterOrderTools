@@ -5,14 +5,13 @@
 
 class AppUpdater
 {
+	DECLARE_SINGLETON(AppUpdater)
 public:
-	static AppUpdater* Inst();
 	void InitModule();
 	void StartFetchAppVersion();
 	void StartFetchMonsterListVersion();
 
 	void Tick();
-	void Destroy();
 private:
 	void InitWorkSpace();
 	void CheckUseUpdated();
@@ -38,6 +37,4 @@ private:
 
 	TString workSpace{ TEXT("\\") };
 	bool isInTemp{ false };
-
-	static AppUpdater* __Instance;
 };
