@@ -42,7 +42,7 @@ public:
 		return std::move(ConvertUtils::StringToStdString(toolsMainInstance->GetCommand())); 
 	}
 
-	inline MonsterOrderWindows::MainConfig^ GetConfig() { return toolsMainInstance->GetConfig(); }
+	inline MonsterOrderWindows::MainConfig^ GetConfig() { return toolsMainInstance->GetConfigService()->Config; }
 
 	inline bool RefreshMonsterList() { return toolsMainInstance->RefreshMonsterList(); }
 

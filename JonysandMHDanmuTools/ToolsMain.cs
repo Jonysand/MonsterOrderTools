@@ -9,7 +9,7 @@ namespace MonsterOrderWindows
     {
         private ConfigWindow _ConfigWindow = null;
         private OrderedMonsterWindow _OrderedMonsterWindow = null;
-        private ConfigService _Config = null;
+        static private ConfigService _Config = null;
         /*
             this.PluginAuth = "鬼酒时雨;Hey_Coder";
             this.PluginName = "点怪姬";
@@ -114,6 +114,20 @@ namespace MonsterOrderWindows
                     _Config.Config.SPEECH_RATE = speechRate;
                 }
             }
+            else if (parts[0] == "SPEECH_PITCH")
+            {
+                if (int.TryParse(parts[1], out int speechPitch))
+                {
+                    _Config.Config.SPEECH_PITCH = speechPitch;
+                }
+            }
+            else if (parts[0] == "SPEECH_VOLUME")
+            {
+                if (int.TryParse(parts[1], out int speechVolume))
+                {
+                    _Config.Config.SPEECH_VOLUME = speechVolume;
+                }
+            }
             else if (parts[0] == "ONLY_SPEEK_WEARING_MEDAL")
             {
                 _Config.Config.ONLY_SPEEK_WEARING_MEDAL = parts[1] == "1";
@@ -139,18 +153,6 @@ namespace MonsterOrderWindows
         // New interface from MonsterOrderWilds ------------------------------------------------------------------------------------------
         public void OpenConfigWindow()
         {
-            if (_Config == null)
-            {
-                try
-                {
-                    _Config = new ConfigService();
-                    _Config.LoadConfig();
-                }
-                catch (Exception e)
-                {
-                    MessageBox.Show($"加载配置文件失败,请将桌面上的错误报告发送给作者（/TДT)/\n{e}", "零食小插件", 0, MessageBoxImage.Error);
-                }
-            }
             if (_ConfigWindow == null)
                 _ConfigWindow = new ConfigWindow();
             _ConfigWindow.FillConfig(_Config.GetConfig());
@@ -224,9 +226,9 @@ namespace MonsterOrderWindows
             return MonsterData.GetInst().LoadJsonData();
         }
 
-        public MainConfig GetConfig()
+        static public ConfigService GetConfigService()
         {
-            return _Config.GetConfig();
+            return _Config;
         }
     }
 }

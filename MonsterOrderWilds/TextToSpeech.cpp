@@ -24,6 +24,7 @@ TTSManager::TTSManager()
         return; // Failed to initialize COM
     }
     hr = CoCreateInstance(CLSID_SpVoice, NULL, CLSCTX_ALL, IID_ISpVoice, (void**)&pVoice);
+    LastTickTime = std::chrono::steady_clock::now();
 }
 
 TTSManager::~TTSManager()
@@ -36,8 +37,48 @@ TTSManager::~TTSManager()
     CoUninitialize();
 }
 
+void TTSManager::Tick()
+{
+    auto now = std::chrono::steady_clock::now();
+    float deltaTime = std::chrono::duration<float>(now - LastTickTime).count();
+    LastTickTime = now;
+
+    if (!GET_CONFIG(ENABLE_VOICE))
+    {
+        NormalMsgQueue.clear();
+        GiftMsgQueue.clear();
+        ComboGiftMsgPrepareMap.clear();
+        return;
+    }
+    if (!NormalMsgQueue.empty())
+    {
+        Speak(NormalMsgQueue.front());
+        NormalMsgQueue.pop_front();
+    }
+    if (!GiftMsgQueue.empty())
+    {
+        Speak(GiftMsgQueue.front());
+        GiftMsgQueue.pop_front();
+    }
+    
+    for (auto it = ComboGiftMsgPrepareMap.begin(); it != ComboGiftMsgPrepareMap.end(); )
+    {
+        it->second.combo_timeout -= deltaTime;
+        if (it->second.combo_timeout <= 0.0f)
+        {
+            TString msg = TEXT("感谢 ") + utf8_to_wstring(it->second.uname) + TEXT(" 赠送的") + std::to_wstring(it->second.gift_num) + TEXT("个") + utf8_to_wstring(it->second.gift_name);
+            RECORD_HISTORY(msg.c_str());
+            GiftMsgQueue.push_back(msg);
+            it = ComboGiftMsgPrepareMap.erase(it);
+        }
+        else
+            ++it;
+    }
+}
+
 void TTSManager::HandleSpeekDm(const json& data)
 {
+    if (!GET_CONFIG(ENABLE_VOICE)) return;
     const auto& wearing_medal = data["fans_medal_wearing_status"].get<bool>();
     const auto& guard_level = data["guard_level"].get<int>();
     if (GET_CONFIG(ONLY_SPEEK_WEARING_MEDAL) && !wearing_medal)
@@ -46,30 +87,56 @@ void TTSManager::HandleSpeekDm(const json& data)
         return;
     const auto& uname = data["uname"].get<std::string>();
     const auto& msg = data["msg"].get<std::string>();
-    Speak(utf8_to_wstring(uname) + TEXT("说：") + utf8_to_wstring(msg));
+    TString msgTString = utf8_to_wstring(uname) + TEXT(" 说：") + utf8_to_wstring(msg);
+    RECORD_HISTORY(msgTString.c_str());
+    NormalMsgQueue.push_back(msgTString);
 }
 
 void TTSManager::HandleSpeekSendGift(const json& data)
 {
-    const auto& uname = data["uname"].get<std::string>();
-    const auto& gift_name = data["gift_name"].get<std::string>();
-    const auto& gift_num = data["gift_num"].get<int>();
+    if (!GET_CONFIG(ENABLE_VOICE)) return;
     const auto& paid = data["paid"].get<bool>();
     if (GET_CONFIG(ONLY_SPEEK_PAID_GIFT) && !paid)
         return;
-    Speak(TEXT("感谢苍蓝星") + utf8_to_wstring(uname) + TEXT("赠送的") + std::to_wstring(gift_num) + TEXT("个") + utf8_to_wstring(gift_name));
+    const auto& uname = data["uname"].get<std::string>();
+    const auto& gift_name = data["gift_name"].get<std::string>();
+    int gift_num = data["gift_num"].get<int>();
+    if (data.contains("combo_info") && data["combo_info"].contains("combo_id"))
+    {
+        const auto& combo_id = data["combo_info"]["combo_id"].get<std::string>();
+        const auto& combo_timeout = data["combo_info"]["combo_timeout"].get<int>();
+        gift_num = data["combo_info"]["combo_base_num"].get<int>() * data["combo_info"]["combo_count"].get<int>();
+        if (ComboGiftMsgPrepareMap.contains(combo_id))
+        {
+            ComboGiftMsgPrepareMap[combo_id].combo_timeout = combo_timeout;
+            ComboGiftMsgPrepareMap[combo_id].gift_num = gift_num;
+        }
+        else
+            ComboGiftMsgPrepareMap[combo_id] = ComboGiftMsgEntry(combo_timeout, gift_num, uname, gift_name);
+        
+    }
+    else
+    {
+        TString msg = TEXT("感谢 ") + utf8_to_wstring(uname) + TEXT(" 赠送的") + std::to_wstring(gift_num) + TEXT("个") + utf8_to_wstring(gift_name);
+        RECORD_HISTORY(msg.c_str());
+        GiftMsgQueue.push_back(msg);
+    }
 }
 
 void TTSManager::HandleSpeekSC(const json& data)
 {
+    if (!GET_CONFIG(ENABLE_VOICE)) return;
     const auto& uname = data["uname"].get<std::string>();
     const auto& rmb = data["rmb"].get<int>();
     const auto& message = data["message"].get<std::string>();
-    Speak(TEXT("感谢苍蓝星") + utf8_to_wstring(uname) + TEXT("赠送的") + std::to_wstring(rmb) + TEXT("元SC：") + utf8_to_wstring(message));
+    TString msg = TEXT("感谢 ") + utf8_to_wstring(uname) + TEXT(" 赠送的") + std::to_wstring(rmb) + TEXT("元SC：") + utf8_to_wstring(message);
+    RECORD_HISTORY(msg.c_str());
+    GiftMsgQueue.push_back(msg);
 }
 
 void TTSManager::HandleSpeekGuard(const json& data)
 {
+    if (!GET_CONFIG(ENABLE_VOICE)) return;
     const auto& uname = data["uname"].get<std::string>();
     const auto& guard_level = data["guard_level"].get<int>();
     const auto& guard_num = data["guard_num"].get<int>();
@@ -88,11 +155,24 @@ void TTSManager::HandleSpeekGuard(const json& data)
         LOG_ERROR(TEXT("Unknown guard level: %d"), guard_level);
         return;
     }
-    Speak(TEXT("感谢苍蓝星") + utf8_to_wstring(uname) + TEXT("上船") + std::to_wstring(guard_num) + utf8_to_wstring(guard_unit) + TEXT("的") + guard_name);
+    TString msg = TEXT("感谢 ") + utf8_to_wstring(uname) + TEXT(" 上船") + std::to_wstring(guard_num) + utf8_to_wstring(guard_unit) + TEXT("的") + guard_name;
+    RECORD_HISTORY(msg.c_str());
+    GiftMsgQueue.push_back(msg);
+}
+
+void TTSManager::HandleSpeekEnter(const json& data)
+{
+    const auto& uname = data["uname"].get<std::string>();
+    TString msg = utf8_to_wstring(uname) + TEXT(" 进入直播间");
+    RECORD_HISTORY(msg.c_str());
 }
 
 bool TTSManager::Speak(const TString& text)
 {
     pVoice->SetRate(GET_CONFIG(SPEECH_RATE));
-    return SUCCEEDED(pVoice->Speak(text.c_str(), SPF_ASYNC, NULL));
+    pVoice->SetVolume(GET_CONFIG(SPEECH_VOLUME));
+    int pitch = GET_CONFIG(SPEECH_PITCH);
+    std::wstring pitchStr = (pitch >= 0 ? L"+" : L"") + std::to_wstring(pitch) + L"st";
+    std::wstring ssml = L"<speak version='1.0' xml:lang='zh-CN'><prosody pitch='" + pitchStr + L"'>" + text + L"</prosody></speak>";
+    return SUCCEEDED(pVoice->Speak(ssml.c_str(), SPF_IS_XML | SPF_ASYNC, NULL));
 }

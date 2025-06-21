@@ -124,6 +124,16 @@ namespace MonsterOrderWindows
         private int _speechRate = 0;
 
         [JsonProperty]
+        public int SPEECH_PITCH { get => _speechPitch; set { if (_speechPitch != value) { _speechPitch = value; OnPropertyChanged(); } } }
+        // 语音播报：语调
+        private int _speechPitch = 0;
+
+        [JsonProperty]
+        public int SPEECH_VOLUME { get => _speechVolume; set { if (_speechVolume != value) { _speechVolume = value; OnPropertyChanged(); } } }
+        // 语音播报：音量
+        private int _speechVolume = 0;
+
+        [JsonProperty]
         public bool ONLY_SPEEK_WEARING_MEDAL { get => _onlySpeekWearingMedal; set { if (_onlySpeekWearingMedal != value) { _onlySpeekWearingMedal = value; OnPropertyChanged(); } } }
         // 语音播报：只播报佩戴牌子
         private bool _onlySpeekWearingMedal = false;
@@ -156,8 +166,6 @@ namespace MonsterOrderWindows
         {
             _configDirectory = Path.Combine(Environment.CurrentDirectory, @"MonsterOrderWilds_configs");
             _configFileName = "MainConfig.cfg";
-            _config = new MainConfig();
-            _config.PropertyChanged += OnConfigChanged;
         }
 
         public bool LoadConfig()
@@ -167,6 +175,7 @@ namespace MonsterOrderWindows
             {
                 string json = File.ReadAllText(configPath);
                 _config = JsonConvert.DeserializeObject<MainConfig>(json);
+                _config.PropertyChanged += OnConfigChanged;
                 return true;
             }
             return false;

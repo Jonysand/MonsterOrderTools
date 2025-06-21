@@ -66,6 +66,8 @@ void MonsterOrderWilds::Tick()
 	BliveManager::Inst()->Tick();
 	// AppUpdater tick
 	AppUpdater::Inst()->Tick();
+	// TTSManager tick
+	TTSManager::Inst()->Tick();
 	// Commands from WPF
 	tickWPFCommand();
 }
@@ -107,12 +109,6 @@ void MonsterOrderWilds::tickWPFCommand()
 		BliveManager::Inst()->Destroy();
 		PostQuitMessage(0);
 	}
-	// ÉèÖÃTTSÓïËÙ
-	if (strcmp(command[0].c_str(), "SetSpeechRate") == 0)
-	{
-		
-	}
-	
 }
 
 void MonsterOrderWilds::OnBliveConnected()

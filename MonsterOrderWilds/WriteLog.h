@@ -12,7 +12,7 @@ namespace WriteLog
 		LogLevel_DEBUG = 3,			// µ˜ ‘»’÷æ
 	};
 	void WriteLog(LogLevel level, const TCHAR* msg, ...);
-	void ClearLog(void);
+	void RecordHistory(const TCHAR* msg);
 }
 TString GetLastErrorAsTString();
 
@@ -24,3 +24,5 @@ TString GetLastErrorAsTString();
 #else
 #define LOG_DEBUG(EXPR, ...)
 #endif
+
+#define RECORD_HISTORY(msg)			WriteLog::RecordHistory(msg);

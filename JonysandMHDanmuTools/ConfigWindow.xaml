@@ -1,9 +1,9 @@
-﻿<Window  
+﻿<Window
     x:Name="ConfigWindow_main" x:Class="MonsterOrderWindows.ConfigWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-    xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="clr-namespace:MonsterOrderWindows"
     mc:Ignorable="d"
     Title="Monster Order - Wilds (beta)"
@@ -19,48 +19,52 @@
         Effect="{DynamicResource DropShadowEffect}">
         <Grid>
             <Grid.Resources>
-                <DropShadowEffect x:Key="DropShadowEffect" BlurRadius="16" ShadowDepth="0" Color="#33000000"/>
+                <DropShadowEffect x:Key="DropShadowEffect" BlurRadius="16" ShadowDepth="0"
+                    Color="#33000000" />
                 <Style TargetType="TextBox">
-                    <Setter Property="FontFamily" Value="Segoe UI Variable"/>
-                    <Setter Property="FontSize" Value="14"/>
-                    <Setter Property="Background" Value="#ddd"/>
-                    <Setter Property="BorderThickness" Value="0"/>
-                    <Setter Property="Foreground" Value="#222"/>
-                    <Setter Property="SnapsToDevicePixels" Value="True"/>
+                    <Setter Property="FontFamily" Value="Segoe UI Variable" />
+                    <Setter Property="FontSize" Value="14" />
+                    <Setter Property="Background" Value="#ddd" />
+                    <Setter Property="BorderThickness" Value="0" />
+                    <Setter Property="Foreground" Value="#222" />
+                    <Setter Property="SnapsToDevicePixels" Value="True" />
                 </Style>
                 <Style TargetType="PasswordBox">
-                    <Setter Property="FontFamily" Value="Segoe UI Variable"/>
-                    <Setter Property="FontSize" Value="14"/>
-                    <Setter Property="Background" Value="#ddd"/>
-                    <Setter Property="BorderThickness" Value="0"/>
-                    <Setter Property="Foreground" Value="#222"/>
-                    <Setter Property="SnapsToDevicePixels" Value="True"/>
+                    <Setter Property="FontFamily" Value="Segoe UI Variable" />
+                    <Setter Property="FontSize" Value="14" />
+                    <Setter Property="Background" Value="#ddd" />
+                    <Setter Property="BorderThickness" Value="0" />
+                    <Setter Property="Foreground" Value="#222" />
+                    <Setter Property="SnapsToDevicePixels" Value="True" />
                 </Style>
                 <Style TargetType="Button">
-                    <Setter Property="FontFamily" Value="Segoe UI Variable"/>
-                    <Setter Property="FontSize" Value="14"/>
-                    <Setter Property="Background" Value="#0078D4"/>
-                    <Setter Property="Foreground" Value="White"/>
-                    <Setter Property="BorderBrush" Value="#0078D4"/>
-                    <Setter Property="BorderThickness" Value="0"/>
-                    <Setter Property="Padding" Value="0"/>
-                    <Setter Property="Width" Value="80"/>
-                    <Setter Property="Height" Value="32"/>
-                    <Setter Property="SnapsToDevicePixels" Value="True"/>
+                    <Setter Property="FontFamily" Value="Segoe UI Variable" />
+                    <Setter Property="FontSize" Value="14" />
+                    <Setter Property="Background" Value="#0078D4" />
+                    <Setter Property="Foreground" Value="White" />
+                    <Setter Property="BorderBrush" Value="#0078D4" />
+                    <Setter Property="BorderThickness" Value="0" />
+                    <Setter Property="Padding" Value="0" />
+                    <Setter Property="Width" Value="80" />
+                    <Setter Property="Height" Value="32" />
+                    <Setter Property="SnapsToDevicePixels" Value="True" />
                     <Setter Property="Template">
                         <Setter.Value>
                             <ControlTemplate TargetType="Button">
                                 <Border x:Name="border"
-                                    Background="{TemplateBinding Background}" 
+                                    Background="{TemplateBinding Background}"
                                     CornerRadius="6"
                                     BorderBrush="{TemplateBinding BorderBrush}"
                                     BorderThickness="{TemplateBinding BorderThickness}">
-                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <ContentPresenter HorizontalAlignment="Center"
+                                        VerticalAlignment="Center" />
                                 </Border>
                                 <ControlTemplate.Triggers>
                                     <Trigger Property="IsPressed" Value="True">
-                                        <Setter TargetName="border" Property="Background" Value="#005A9E"/>
-                                        <Setter TargetName="border" Property="BorderBrush" Value="#005A9E"/>
+                                        <Setter TargetName="border" Property="Background"
+                                            Value="#005A9E" />
+                                        <Setter TargetName="border" Property="BorderBrush"
+                                            Value="#005A9E" />
                                     </Trigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>
@@ -69,7 +73,7 @@
                 </Style>
             </Grid.Resources>
             <Border
-                Background="#ddd" 
+                Background="#ddd"
                 CornerRadius="6"
                 Padding="6,2"
                 HorizontalAlignment="Left"
@@ -82,47 +86,28 @@
                         VerticalAlignment="Center"
                         Width="250"
                         Height="28"
-                        PasswordChanged="IdentityCodeTextBox_PasswordChanged"/>
-                        <TextBlock
-                            Name="IdentityCodePlaceholder"
-                            Text="输入身份码"
-                            Foreground="#888"
-                            VerticalAlignment="Center"
-                            Margin="8,0,0,0"
-                            IsHitTestVisible="False"
-                            FontSize="14"
-                            FontFamily="Segoe UI Variable"
-                            Visibility="Visible"/>
+                        PasswordChanged="IdentityCodeTextBox_PasswordChanged" />
+                    <TextBlock
+                        Name="IdentityCodePlaceholder"
+                        Text="输入身份码"
+                        Foreground="#888"
+                        VerticalAlignment="Center"
+                        Margin="8,0,0,0"
+                        IsHitTestVisible="False"
+                        FontSize="14"
+                        FontFamily="Segoe UI Variable"
+                        Visibility="Visible" />
                 </Grid>
             </Border>
-            <!-- <Border
-                Background="#ddd" 
-                CornerRadius="6"
-                Padding="6,2"
-                HorizontalAlignment="Left"
-                Margin="20,72,0,0"
-                Height="34"
-                VerticalAlignment="Top">
-                <TextBox
-                    Name="MedalNameTextBox"
-                    Width="150"
-                    Height="32"
-                    VerticalAlignment="Top"
-                    HorizontalAlignment="Left"
-                    Text="输入粉丝牌名称"
-                    Foreground="#888"
-                    GotFocus="MedalNameTextBox_GotFocus"
-                    LostFocus="MedalNameTextBox_LostFocus"/>
-            </Border> -->
             <Button
                 Content="连接"
                 HorizontalAlignment="Right"
                 Margin="0,24,20,0"
                 VerticalAlignment="Top"
-                Click="OnConfirmIDCode"/>
+                Click="OnConfirmIDCode" />
             <Border
                 Name="StatusBG"
-                Background="#FFFDE7" 
+                Background="#FFFDE7"
                 CornerRadius="6"
                 Padding="6,2"
                 HorizontalAlignment="Left"
@@ -137,92 +122,159 @@
                     FontWeight="SemiBold"
                     Foreground="#333"
                     FontFamily="Segoe UI Variable"
-                    FontSize="14"/>
+                    FontSize="14" />
             </Border>
-            <GroupBox
-                Header="语音播报"
+            <TabControl
                 Margin="20,130,20,0"
                 VerticalAlignment="Top"
                 HorizontalAlignment="Left"
                 FontFamily="Segoe UI Variable"
                 FontSize="14"
                 Foreground="#222"
-                Height="186"
+                Height="200"
                 Width="340">
-                    <StackPanel>
-                        <CheckBox
-                            Name="EnableVoiceCheckBox"
-                            Content="开启语音播报"
-                            Margin="8,8,0,0"
-                            FontFamily="Segoe UI Variable"
-                            FontSize="14"
-                            Foreground="#222"
-                            Checked="EnableVoiceCheckBox_Changed"/>
-                    <StackPanel Orientation="Horizontal" Margin="8,8,0,0" VerticalAlignment="Center">
-                        <Label
-                        Content="语音速率"
-                        VerticalAlignment="Center"
-                        FontFamily="Segoe UI Variable"
-                        FontSize="14"
-                        Foreground="#222"
-                        Margin="0,0,8,0"/>
-                        <Slider
-                        Name="VoiceRateSlider"
-                        Minimum="-10"
-                        Maximum="10"
-                        Value="0"
-                        TickFrequency="1"
-                        IsSnapToTickEnabled="True"
-                        Width="150"
-                        VerticalAlignment="Center"
-                        Margin="0,0,8,0"
-                        ValueChanged="VoiceRateSlider_ValueChanged"/>
-                        <TextBlock
-                        Text="{Binding ElementName=VoiceRateSlider, Path=Value, StringFormat=F0}"
-                        VerticalAlignment="Center"
-                        FontFamily="Segoe UI Variable"
-                        FontSize="14"
-                        Foreground="#222"
-                        Width="30"/>
-                    </StackPanel>
-                    <CheckBox
-                            Name="OnlyMedalCheckBox"
-                            Content="仅播报佩戴粉丝牌的弹幕"
-                            Margin="8,8,0,0"
-                            FontFamily="Segoe UI Variable"
-                            FontSize="14"
-                            Foreground="#222"
-                            Checked="OnlyMedalCheckBox_Changed"/>
-                    <StackPanel Orientation="Horizontal" Margin="8,8,0,0" VerticalAlignment="Center">
-                        <Label
-                            Content="播报至少等级"
-                            VerticalAlignment="Center"
-                            FontFamily="Segoe UI Variable"
-                            FontSize="14"
-                            Foreground="#222"
-                            Margin="0,0,8,0"/>
-                        <ComboBox
-                            Name="OnlyGuardLevel"
-                            Width="120"
-                            FontFamily="Segoe UI Variable"
-                            FontSize="14"
-                            SelectionChanged="OnlyGuardLevel_SelectionChanged">
-                            <ComboBoxItem Content="所有人" IsSelected="True" />
-                            <ComboBoxItem Content="舰长" />
-                            <ComboBoxItem Content="提督" />
-                            <ComboBoxItem Content="总督" />
-                        </ComboBox>
-                    </StackPanel>
-                    <CheckBox
-                        Name="OnlyPaidGitfCheckBox"
-                        Content="仅播报付费礼物"
-                        Margin="8,8,0,0"
-                        FontFamily="Segoe UI Variable"
-                        FontSize="14"
-                        Foreground="#222"
-                        Checked="OnlyPaidGitfCheckBox_Changed"/>
-                </StackPanel>
-            </GroupBox>
+                <TabItem Header="语音播报">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <CheckBox
+                                Name="EnableVoiceCheckBox"
+                                Content="开启语音播报"
+                                Margin="8,8,0,0"
+                                FontFamily="Segoe UI Variable"
+                                FontSize="14"
+                                Foreground="#222"
+                                Checked="EnableVoiceCheckBox_Changed"
+                                Unchecked="EnableVoiceCheckBox_Changed" />
+                            <StackPanel Orientation="Horizontal" Margin="8,8,0,0"
+                                VerticalAlignment="Center">
+                                <Label
+                                    Content="语音速率"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe UI Variable"
+                                    FontSize="14"
+                                    Foreground="#222"
+                                    Margin="0,0,8,0" />
+                                <Slider
+                                    Name="VoiceRateSlider"
+                                    Minimum="-10"
+                                    Maximum="10"
+                                    Value="0"
+                                    TickFrequency="1"
+                                    IsSnapToTickEnabled="True"
+                                    Width="150"
+                                    VerticalAlignment="Center"
+                                    Margin="0,0,8,0"
+                                    ValueChanged="VoiceRateSlider_ValueChanged" />
+                                <TextBlock
+                                    Text="{Binding ElementName=VoiceRateSlider, Path=Value, StringFormat=F0}"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe UI Variable"
+                                    FontSize="14"
+                                    Foreground="#222"
+                                    Width="30" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="8,8,0,0"
+                                VerticalAlignment="Center">
+                                <Label
+                                    Content="语音音调"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe UI Variable"
+                                    FontSize="14"
+                                    Foreground="#222"
+                                    Margin="0,0,8,0" />
+                                <Slider
+                                    Name="VoicePitchSlider"
+                                    Minimum="-10"
+                                    Maximum="10"
+                                    Value="0"
+                                    TickFrequency="1"
+                                    IsSnapToTickEnabled="True"
+                                    Width="150"
+                                    VerticalAlignment="Center"
+                                    Margin="0,0,8,0"
+                                    ValueChanged="VoicePitchSlider_ValueChanged" />
+                                <TextBlock
+                                    Text="{Binding ElementName=VoicePitchSlider, Path=Value, StringFormat=F0}"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe UI Variable"
+                                    FontSize="14"
+                                    Foreground="#222"
+                                    Width="30" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="8,8,0,0"
+                                VerticalAlignment="Center">
+                                <Label
+                                    Content="语音音量"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe UI Variable"
+                                    FontSize="14"
+                                    Foreground="#222"
+                                    Margin="0,0,8,0" />
+                                <Slider
+                                    Name="VoiceVolumeSlider"
+                                    Minimum="0"
+                                    Maximum="100"
+                                    Value="80"
+                                    TickFrequency="1"
+                                    IsSnapToTickEnabled="True"
+                                    Width="150"
+                                    VerticalAlignment="Center"
+                                    Margin="0,0,8,0"
+                                    ValueChanged="VoiceVolumeSlider_ValueChanged" />
+                                <TextBlock
+                                    Text="{Binding ElementName=VoiceVolumeSlider, Path=Value, StringFormat=F0}"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe UI Variable"
+                                    FontSize="14"
+                                    Foreground="#222"
+                                    Width="30" />
+                            </StackPanel>
+                            <CheckBox
+                                Name="OnlyMedalCheckBox"
+                                Content="仅播报佩戴粉丝牌的弹幕"
+                                Margin="8,8,0,0"
+                                FontFamily="Segoe UI Variable"
+                                FontSize="14"
+                                Foreground="#222"
+                                Checked="OnlyMedalCheckBox_Changed"
+                                Unchecked="OnlyMedalCheckBox_Changed" />
+                            <StackPanel Orientation="Horizontal" Margin="8,8,0,0"
+                                VerticalAlignment="Center">
+                                <Label
+                                    Content="播报至少等级"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe UI Variable"
+                                    FontSize="14"
+                                    Foreground="#222"
+                                    Margin="0,0,8,0" />
+                                <ComboBox
+                                    Name="OnlyGuardLevel"
+                                    Width="120"
+                                    FontFamily="Segoe UI Variable"
+                                    FontSize="14"
+                                    SelectionChanged="OnlyGuardLevel_SelectionChanged">
+                                    <ComboBoxItem Content="所有人" IsSelected="True" />
+                                    <ComboBoxItem Content="舰长" />
+                                    <ComboBoxItem Content="提督" />
+                                    <ComboBoxItem Content="总督" />
+                                </ComboBox>
+                            </StackPanel>
+                            <CheckBox
+                                Name="OnlyPaidGitfCheckBox"
+                                Content="仅播报付费礼物"
+                                Margin="8,8,0,0"
+                                FontFamily="Segoe UI Variable"
+                                FontSize="14"
+                                Foreground="#222"
+                                Checked="OnlyPaidGitfCheckBox_Changed"
+                                Unchecked="OnlyPaidGitfCheckBox_Changed" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+                <TabItem Header="分段更新">
+                    <TextBlock Text="关于下一次更新，只能透露这么多了" Margin="12" />
+                </TabItem>
+            </TabControl>
             <Button
                 Name="UpdateButton"
                 Content="更新app"
@@ -234,7 +286,7 @@
                 Background="#888"
                 Foreground="White"
                 BorderBrush="#888"
-                Click="UpdateButton_Click"/>
+                Click="UpdateButton_Click" />
             <Button
                 Name="UpdateListButton"
                 Content="更新怪物列表"
@@ -246,7 +298,19 @@
                 Background="#888"
                 Foreground="White"
                 BorderBrush="#888"
-                Click="UpdateListButton_Click"/>
+                Click="UpdateListButton_Click" />
+            <Button
+                Name="SaveSettingsButton"
+                Content="保存设置"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Bottom"
+                Margin="20,0,0,20"
+                Width="100"
+                Height="32"
+                Background="#888"
+                Foreground="White"
+                BorderBrush="#888"
+                Click="SaveSettingsButton_Click" />
         </Grid>
     </Border>
 </Window>

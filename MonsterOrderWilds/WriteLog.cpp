@@ -99,4 +99,44 @@ namespace WriteLog
 			writtingLock.unlock();
 		}
 	}
+
+	Lock  historyWrittingLock;
+	void RecordHistory(const TCHAR* msg)
+	{
+		writtingLock.lock();
+		__try {
+			// Get executable directory
+			const TCHAR* exeDir = GetExeDirectory();
+
+			// Build History directory path
+			TCHAR historyDir[MAX_PATH] = { 0 };
+			_tcscpy_s(historyDir, exeDir);
+			_tcscat_s(historyDir, TEXT("History\\"));
+
+			// Create History directory if it doesn't exist
+			CreateDirectory(historyDir, NULL);
+
+			// Get current date and time
+			SYSTEMTIME st;
+			GetLocalTime(&st);
+
+			// Build file name: YYYY.M.D.txt
+			TCHAR fileName[MAX_PATH] = { 0 };
+			_stprintf_s(fileName, TEXT("%s%d.%d.%d.txt"), historyDir, st.wYear, st.wMonth, st.wDay);
+
+			// Open file for appending in UTF-8
+			FILE* fp = NULL;
+			_tfopen_s(&fp, fileName, TEXT("a, ccs=UTF-8"));
+			if (fp)
+			{
+				// Write line: [HH:MM:SS] msg
+				_ftprintf(fp, TEXT("[%02d:%02d:%02d] %s\n"), st.wHour, st.wMinute, st.wSecond, msg);
+				fflush(fp);
+				fclose(fp);
+			}
+		}
+		__finally {
+			writtingLock.unlock();
+		}
+	}
 }

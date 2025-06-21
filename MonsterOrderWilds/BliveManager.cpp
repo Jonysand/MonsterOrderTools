@@ -291,6 +291,9 @@ void BliveManager::HandleSmsReply(const std::string& msg)
         // 舰长
         else if (cmd == "LIVE_OPEN_PLATFORM_GUARD")
             TTSManager::Inst()->HandleSpeekGuard(jsonResponse["data"]);
+        // 进入房间
+        else if (cmd == "LIVE_OPEN_PLATFORM_LIVE_ROOM_ENTER")
+            TTSManager::Inst()->HandleSpeekEnter(jsonResponse["data"]);
     }
 
     // <TODO> 后续用C++层的解析结果

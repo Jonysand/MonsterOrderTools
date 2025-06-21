@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿using System;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Media;
 
@@ -20,6 +21,9 @@ namespace MonsterOrderWindows
             IdentityCodeTextBox.Password = config.ID_CODE;
             if (config.ENABLE_VOICE)
                 EnableVoiceCheckBox.IsChecked = true;
+            VoiceRateSlider.Value = config.SPEECH_RATE;
+            VoicePitchSlider.Value = config.SPEECH_PITCH;
+            VoiceVolumeSlider.Value = config.SPEECH_VOLUME;
             if (config.ONLY_SPEEK_WEARING_MEDAL)
                 OnlyMedalCheckBox.IsChecked = true;
             switch (config.ONLY_SPEEK_GUARD_LEVEL)
@@ -88,8 +92,15 @@ namespace MonsterOrderWindows
 
         private void VoiceRateSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            // int rate = (int)e.NewValue;
             GlobalEventListener.Invoke("ConfigChanged", $"SPEECH_RATE:{e.NewValue}");
+        }
+        private void VoicePitchSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            GlobalEventListener.Invoke("ConfigChanged", $"SPEECH_PITCH:{e.NewValue}");
+        }
+        private void VoiceVolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            GlobalEventListener.Invoke("ConfigChanged", $"SPEECH_VOLUME:{e.NewValue}");
         }
 
         private void OnlyMedalCheckBox_Changed(object sender, RoutedEventArgs e)
@@ -144,6 +155,30 @@ namespace MonsterOrderWindows
         private void UpdateListButton_Click(object sender, RoutedEventArgs e)
         {
             ToolsMain.SendCommand("UpdateList:0");
+        }
+
+        private void SaveSettingsButton_Click(object sender, RoutedEventArgs e)
+        {
+            ToolsMain.GetConfigService().SaveConfig();
+
+            var tip = new System.Windows.Controls.ToolTip
+            {
+                Content = "保存设置成功",
+                PlacementTarget = SaveSettingsButton,
+                Placement = System.Windows.Controls.Primitives.PlacementMode.Top,
+                StaysOpen = false,
+                IsOpen = true
+            };
+            var timer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(1.5)
+            };
+            timer.Tick += (s, args) =>
+            {
+                tip.IsOpen = false;
+                timer.Stop();
+            };
+            timer.Start();
         }
     }
 }
