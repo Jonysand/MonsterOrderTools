@@ -36,7 +36,7 @@ namespace MonsterOrderWindows
             try
             {
                 _OrderedMonsterWindow = new OrderedMonsterWindow();
-                if (_Config != null)
+                if (_Config != null && _Config.Config != null)
                 {
                     _OrderedMonsterWindow.WindowStartupLocation = WindowStartupLocation.Manual;
                     _OrderedMonsterWindow.Left = _Config.Config.TopPos.X;
@@ -90,6 +90,7 @@ namespace MonsterOrderWindows
 
         public void ConfigChanged(object msg)
         {
+            if (_Config.Config == null) return;
             var message = msg.ToString();
             var parts = message.Split(':');
             if (message == "WindowPosition")
@@ -229,6 +230,12 @@ namespace MonsterOrderWindows
         static public ConfigService GetConfigService()
         {
             return _Config;
+        }
+
+        public void SetWindowVersion(int version)
+        {
+            if (_ConfigWindow == null) return;
+            _ConfigWindow.SetVersion(version);
         }
     }
 }

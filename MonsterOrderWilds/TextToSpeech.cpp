@@ -86,8 +86,16 @@ void TTSManager::HandleSpeekDm(const json& data)
     if (GET_CONFIG(ONLY_SPEEK_GUARD_LEVEL) != 0 && (guard_level == 0 || guard_level > GET_CONFIG(ONLY_SPEEK_GUARD_LEVEL)))
         return;
     const auto& uname = data["uname"].get<std::string>();
-    const auto& msg = data["msg"].get<std::string>();
-    TString msgTString = utf8_to_wstring(uname) + TEXT(" 说：") + utf8_to_wstring(msg);
+    const auto& msg = utf8_to_wstring(data["msg"].get<std::string>());
+    TString msgTString = utf8_to_wstring(uname) + TEXT(" 说：") + msg;
+    if (msg.rfind(TEXT("点餐"), 0) == 0) {
+        // 以"点餐"开头
+        std::wstring msgWithoutPrefix = msg.substr(2);
+        static std::mt19937 rng(std::random_device{}());
+        std::uniform_int_distribution<int> dist(0, 60);
+        int randomValue = dist(rng);
+        msgTString = utf8_to_wstring(uname) + TEXT(" 下单的 ") + msgWithoutPrefix + TEXT(" 已接单，预计") + std::to_wstring(randomValue) + TEXT("分钟后送达！");
+    }
     RECORD_HISTORY(msgTString.c_str());
     NormalMsgQueue.push_back(msgTString);
 }
@@ -101,26 +109,36 @@ void TTSManager::HandleSpeekSendGift(const json& data)
     const auto& uname = data["uname"].get<std::string>();
     const auto& gift_name = data["gift_name"].get<std::string>();
     int gift_num = data["gift_num"].get<int>();
-    if (data.contains("combo_info") && data["combo_info"].contains("combo_id"))
+
+    std::string combo_id;
+    int combo_timeout = 3;
+    if (paid)
     {
-        const auto& combo_id = data["combo_info"]["combo_id"].get<std::string>();
-        const auto& combo_timeout = data["combo_info"]["combo_timeout"].get<int>();
+        combo_id = data["combo_info"]["combo_id"].get<std::string>();
+        combo_timeout = data["combo_info"]["combo_timeout"].get<int>();
         gift_num = data["combo_info"]["combo_base_num"].get<int>() * data["combo_info"]["combo_count"].get<int>();
-        if (ComboGiftMsgPrepareMap.contains(combo_id))
-        {
-            ComboGiftMsgPrepareMap[combo_id].combo_timeout = combo_timeout;
-            ComboGiftMsgPrepareMap[combo_id].gift_num = gift_num;
-        }
-        else
-            ComboGiftMsgPrepareMap[combo_id] = ComboGiftMsgEntry(combo_timeout, gift_num, uname, gift_name);
-        
     }
     else
     {
-        TString msg = TEXT("感谢 ") + utf8_to_wstring(uname) + TEXT(" 赠送的") + std::to_wstring(gift_num) + TEXT("个") + utf8_to_wstring(gift_name);
-        RECORD_HISTORY(msg.c_str());
-        GiftMsgQueue.push_back(msg);
+        const auto& open_id = data["open_id"].get<std::string>();
+        std::string gift_id = std::to_string(data["gift_id"].get<int>());
+        combo_id = open_id + gift_id;
     }
+    auto it = ComboGiftMsgPrepareMap.find(combo_id);
+    if (it != ComboGiftMsgPrepareMap.end())
+    {
+        it->second.combo_timeout = combo_timeout;
+        if (paid)
+            it->second.gift_num = gift_num;
+        else
+            it->second.gift_num += gift_num;
+    }
+    else
+        ComboGiftMsgPrepareMap.emplace(
+            std::piecewise_construct,
+            std::forward_as_tuple(std::move(combo_id)),
+            std::forward_as_tuple(combo_timeout, gift_num, uname, gift_name)
+        );
 }
 
 void TTSManager::HandleSpeekSC(const json& data)

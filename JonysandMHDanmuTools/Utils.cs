@@ -178,6 +178,8 @@ namespace MonsterOrderWindows
                 _config.PropertyChanged += OnConfigChanged;
                 return true;
             }
+            _config = new MainConfig();
+            _config.PropertyChanged += OnConfigChanged;
             return false;
         }
 

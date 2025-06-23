@@ -59,6 +59,11 @@ namespace MonsterOrderWindows
             }
         }
 
+        public void SetVersion(int version)
+        {
+            this.Title = $"Monster Order - Wilds (v {version})";
+        }
+
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
         }

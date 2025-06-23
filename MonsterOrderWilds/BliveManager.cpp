@@ -167,6 +167,11 @@ void BliveManager::StartAppHeartBeat()
 void BliveManager::OnReceiveAppHeartbeatResponse(const std::string& response)
 {
     LOG_DEBUG(TEXT("OnReceiveAppHeartbeatResponse: %s"), ProtoUtils::Decode(response).c_str());
+    if (response.empty())
+    {
+        delayedTasks.push_back({ [this]() { StartAppHeartBeat(); }, 1000 });
+        return;
+    }
     DWORD code = -1;
     json jsonResponse;
     try {
@@ -190,6 +195,7 @@ void BliveManager::OnReceiveAppHeartbeatResponse(const std::string& response)
         OnBliveDisconnected.Invoke();
         connected.store(false);
         LOG_ERROR(TEXT("Error OnReceiveAppHeartbeatResponse: %s"), ProtoUtils::Decode(response).c_str());
+        delayedTasks.push_back({ [this]() { StartAppHeartBeat(); }, 1000 });
         break;
     }
 }

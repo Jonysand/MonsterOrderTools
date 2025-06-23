@@ -11,7 +11,7 @@ class TTSManager
 	{
 		// Api中的连击时间
 		// 在这里用来作为放入GiftMsgQueue之前需要在GiftMsgPrepareMap中待的时间，为0时结算加入GiftMsgQueue
-		float combo_timeout;
+		float combo_timeout = 3;
 		// 总共送出的礼物数量，combo_base_num * combo_count
 		int gift_num;
 		// 用户名

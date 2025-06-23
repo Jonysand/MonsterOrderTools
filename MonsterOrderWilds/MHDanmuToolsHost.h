@@ -26,7 +26,7 @@ public ref class ToolsMainHost
 public:
 	static ToolsMainHost^ Inst();
 
-	inline void OpenConfigWindow() { toolsMainInstance->OpenConfigWindow(); }
+	inline void OpenConfigWindow() { toolsMainInstance->OpenConfigWindow(); toolsMainInstance->SetWindowVersion(APP_VERSION); }
 
 	inline void OnConnected() { toolsMainInstance->OnConnected(); };
 
