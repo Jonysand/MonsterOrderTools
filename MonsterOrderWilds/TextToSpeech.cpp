@@ -155,7 +155,7 @@ void TTSManager::HandleSpeekSC(const json& data)
 void TTSManager::HandleSpeekGuard(const json& data)
 {
     if (!GET_CONFIG(ENABLE_VOICE)) return;
-    const auto& uname = data["uname"].get<std::string>();
+    const auto& uname = data["user_info"]["uname"].get<std::string>();
     const auto& guard_level = data["guard_level"].get<int>();
     const auto& guard_num = data["guard_num"].get<int>();
     const auto& guard_unit = data["guard_unit"].get<std::string>();

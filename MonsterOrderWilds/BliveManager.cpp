@@ -271,20 +271,19 @@ void BliveManager::HandleWSMessage()
 
 void BliveManager::HandleSmsReply(const std::string& msg)
 {
-    TString decoded = ProtoUtils::Decode(msg);
-    LOG_INFO(TEXT("OP_SEND_SMS_REPLY: %s"), decoded.c_str());
-
-    json jsonResponse;
     try {
-        jsonResponse = json::parse(msg);
-    }
-    catch (const json::parse_error& e) {
-        LOG_ERROR(TEXT("[HandleSmsReply] JSON parse error: %s"), msg.c_str());
-        return;
-    }
-    const std::string& cmd = jsonResponse["cmd"].get<std::string>();
-    if (GET_CONFIG(ENABLE_VOICE))
-    {
+        TString decoded = ProtoUtils::Decode(msg);
+        LOG_INFO(TEXT("OP_SEND_SMS_REPLY: %s"), decoded.c_str());
+
+        json jsonResponse;
+        try {
+            jsonResponse = json::parse(msg);
+        }
+        catch (const json::parse_error& e) {
+            LOG_ERROR(TEXT("[HandleSmsReply] JSON parse error: %s"), msg.c_str());
+            return;
+        }
+        const std::string& cmd = jsonResponse["cmd"].get<std::string>();
         // 一般弹幕
         if (cmd == "LIVE_OPEN_PLATFORM_DM")
             TTSManager::Inst()->HandleSpeekDm(jsonResponse["data"]);
@@ -300,8 +299,14 @@ void BliveManager::HandleSmsReply(const std::string& msg)
         // 进入房间
         else if (cmd == "LIVE_OPEN_PLATFORM_LIVE_ROOM_ENTER")
             TTSManager::Inst()->HandleSpeekEnter(jsonResponse["data"]);
-    }
 
-    // <TODO> 后续用C++层的解析结果
-    ToolsMainHost::Inst()->OnReceiveRawMsg(decoded);
+        // <TODO> 后续用C++层的解析结果
+        ToolsMainHost::Inst()->OnReceiveRawMsg(decoded);
+    }
+    catch (const std::exception& e) {
+        LOG_ERROR(TEXT("[HandleSmsReply] Exception: %s"), ProtoUtils::Decode(e.what()).c_str());
+    }
+    catch (...) {
+        LOG_ERROR(TEXT("[HandleSmsReply] Unknown exception occurred"), TEXT(""));
+    }
 }

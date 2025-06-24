@@ -260,14 +260,14 @@
                                 </ComboBox>
                             </StackPanel>
                             <CheckBox
-                                Name="OnlyPaidGitfCheckBox"
+                                Name="OnlyPaidGiftCheckBox"
                                 Content="仅播报付费礼物"
                                 Margin="8,8,0,0"
                                 FontFamily="Segoe UI Variable"
                                 FontSize="14"
                                 Foreground="#222"
-                                Checked="OnlyPaidGitfCheckBox_Changed"
-                                Unchecked="OnlyPaidGitfCheckBox_Changed" />
+                                Checked="OnlyPaidGiftCheckBox_Changed"
+                                Unchecked="OnlyPaidGiftCheckBox_Changed" />
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

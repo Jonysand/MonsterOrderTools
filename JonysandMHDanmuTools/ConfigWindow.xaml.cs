@@ -42,7 +42,7 @@ namespace MonsterOrderWindows
                     break;
             }
             if (config.ONLY_SPEEK_PAID_GIFT)
-                OnlyPaidGitfCheckBox.IsChecked = true;
+                OnlyPaidGiftCheckBox.IsChecked = true;
         }
 
         public void SetStatus(bool connected)
@@ -144,9 +144,9 @@ namespace MonsterOrderWindows
             GlobalEventListener.Invoke("ConfigChanged", $"ONLY_SPEEK_GUARD_LEVEL:{guardLevelValue}");
         }
 
-        private void OnlyPaidGitfCheckBox_Changed(object sender, RoutedEventArgs e)
+        private void OnlyPaidGiftCheckBox_Changed(object sender, RoutedEventArgs e)
         {
-            if (OnlyPaidGitfCheckBox.IsChecked == true)
+            if (OnlyPaidGiftCheckBox.IsChecked == true)
                 GlobalEventListener.Invoke("ConfigChanged", "ONLY_SPEEK_PAID_GIFT:1");
             else
                 GlobalEventListener.Invoke("ConfigChanged", "ONLY_SPEEK_PAID_GIFT:0");
