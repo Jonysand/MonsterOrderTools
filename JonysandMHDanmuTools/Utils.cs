@@ -71,6 +71,7 @@ namespace MonsterOrderWindows
         private static Dictionary<string, List<Action<object>>> EventMap= new Dictionary<string, List<Action<object>>>();
         public static void Invoke(string event_name, object args)
         {
+            if (!EventMap.ContainsKey(event_name)) return;
             foreach (var action in EventMap[event_name])
             {
                 action(args);

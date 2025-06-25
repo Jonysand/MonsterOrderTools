@@ -165,10 +165,13 @@ void TTSManager::HandleSpeekGuard(const json& data)
     {
     case 1:
         guard_name = TEXT("×Ü¶½");
+        break;
     case 2:
         guard_name = TEXT("Ìá¶½");
+        break;
     case 3:
         guard_name = TEXT("½¢³¤");
+        break;
     default:
         LOG_ERROR(TEXT("Unknown guard level: %d"), guard_level);
         return;

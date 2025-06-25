@@ -61,7 +61,6 @@ namespace MonsterOrderWindows
 
             // 事件注册
             GlobalEventListener.AddListener("LOG", (object msg) => SendCommand("LOG:" + msg.ToString()));
-            GlobalEventListener.AddListener("ConfigChanged", (object msg) => ConfigChanged(msg));
             GlobalEventListener.AddListener("OrderWindowLocked", (object msg) => OnOrderWindowLocked());
             GlobalEventListener.AddListener("Message", (object msg) => OnOrderWindowLocked());
         }
@@ -155,8 +154,11 @@ namespace MonsterOrderWindows
         public void OpenConfigWindow()
         {
             if (_ConfigWindow == null)
+            {
                 _ConfigWindow = new ConfigWindow();
-            _ConfigWindow.FillConfig(_Config.GetConfig());
+                _ConfigWindow.FillConfig(_Config.GetConfig());
+                GlobalEventListener.AddListener("ConfigChanged", (object msg) => ConfigChanged(msg));
+            }
             _ConfigWindow.Show();
         }
 
