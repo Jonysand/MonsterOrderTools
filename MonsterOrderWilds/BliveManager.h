@@ -44,7 +44,6 @@ private:
     // 处理一般的弹幕、送礼等消息
     void HandleSmsReply(const std::string& msg);
 private:
-    std::atomic<bool> connected{ false };
     // 直播身份码
     std::string idCode{ "" };
     // 本场次gameID
@@ -92,7 +91,7 @@ private:
     // websocket 信息
     std::queue<ProtoUtils::Packet> wsMessages;
     Lock wsMsgLock;
-    
+    std::atomic<bool> connected{ false };
 
     /*
     * 事件监听 ----------------------------------------------------------------------------------------

@@ -105,6 +105,7 @@ void BliveManager::OnReceiveStartResponse(const std::string& response)
     }
 	catch (const json::parse_error& e) {
 		LOG_ERROR(TEXT("JSON parse error: %s"), ProtoUtils::Decode(e.what()).c_str());
+        delayedTasks.push_back({ [this]() { Start(); }, 1000 });
         return;
 	}
     switch (code)
@@ -135,7 +136,7 @@ void BliveManager::OnReceiveStartResponse(const std::string& response)
             [this](HINTERNET hWebsocket, ProtoUtils::Packet packet) { OnReceiveWSMessage(hWebsocket, std::move(packet)); }
         )));
         // ¿ªÊ¼appÐÄÌø
-        delayedTasks.push_back({ [this]() { StartAppHeartBeat(); }, 3000 });
+        delayedTasks.push_back({ [this]() { StartAppHeartBeat(); }, 5000 });
         break;
     }
     case 7001:
@@ -143,6 +144,7 @@ void BliveManager::OnReceiveStartResponse(const std::string& response)
         break;
     default:
         LOG_ERROR(TEXT("Error OnStartResponse: %s"), ProtoUtils::Decode(response).c_str());
+        delayedTasks.push_back({ [this]() { Start(); }, 1000 });
         break;
     }
 }
@@ -169,7 +171,8 @@ void BliveManager::OnReceiveAppHeartbeatResponse(const std::string& response)
     LOG_DEBUG(TEXT("OnReceiveAppHeartbeatResponse: %s"), ProtoUtils::Decode(response).c_str());
     if (response.empty())
     {
-        delayedTasks.push_back({ [this]() { StartAppHeartBeat(); }, 1000 });
+        LOG_ERROR(TEXT("Error OnReceiveAppHeartbeatResponse: empty response"));
+        delayedTasks.push_back({ [this]() { StartAppHeartBeat(); }, HEARBEAT_INTERVAL_MINISECONDS });
         return;
     }
     DWORD code = -1;
@@ -195,7 +198,7 @@ void BliveManager::OnReceiveAppHeartbeatResponse(const std::string& response)
         OnBliveDisconnected.Invoke();
         connected.store(false);
         LOG_ERROR(TEXT("Error OnReceiveAppHeartbeatResponse: %s"), ProtoUtils::Decode(response).c_str());
-        delayedTasks.push_back({ [this]() { StartAppHeartBeat(); }, 1000 });
+        delayedTasks.push_back({ [this]() { Start(); }, 1000 });
         break;
     }
 }
