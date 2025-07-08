@@ -115,6 +115,11 @@ namespace MonsterOrderWindows
         private String _IDCode = "";
 
         [JsonProperty]
+        public bool ONLY_MEDAL_ORDER { get => _onlyMedalOrder; set { if (_onlyMedalOrder != value) { _onlyMedalOrder = value; OnPropertyChanged(); } } }
+        // 是否仅粉丝牌可点怪
+        private bool _onlyMedalOrder = true;
+        
+        [JsonProperty]
         public bool ENABLE_VOICE { get => _enableVoice; set { if (_enableVoice != value) { _enableVoice = value; OnPropertyChanged(); } } }
         // 语音播报：是否开启
         private bool _enableVoice = false;

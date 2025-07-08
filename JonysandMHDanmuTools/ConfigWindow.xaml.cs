@@ -87,6 +87,14 @@ namespace MonsterOrderWindows
                 string.IsNullOrEmpty(IdentityCodeTextBox.Password) ? Visibility.Visible : Visibility.Collapsed;
         }
 
+        private void OnlyMedalOrderCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (OnlyMedalOrderCheckBox.IsChecked == true)
+                GlobalEventListener.Invoke("ConfigChanged", "ONLY_MEDAL_ORDER:1");
+            else
+                GlobalEventListener.Invoke("ConfigChanged", "ONLY_MEDAL_ORDER:0");
+        }
+
         private void EnableVoiceCheckBox_Changed(object sender, RoutedEventArgs e)
         {
             if (EnableVoiceCheckBox.IsChecked == true)

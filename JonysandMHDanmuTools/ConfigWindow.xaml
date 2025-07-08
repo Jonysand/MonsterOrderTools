@@ -137,6 +137,15 @@
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel>
                             <CheckBox
+                                Name="OnlyMedalOrderCheckBox"
+                                Content="仅粉丝牌可点怪"
+                                Margin="8,8,0,0"
+                                FontFamily="Segoe UI Variable"
+                                FontSize="14"
+                                Foreground="#222"
+                                Checked="OnlyMedalOrderCheckBox_Changed"
+                                Unchecked="OnlyMedalOrderCheckBox_Changed" />
+                            <CheckBox
                                 Name="EnableVoiceCheckBox"
                                 Content="开启语音播报"
                                 Margin="8,8,0,0"

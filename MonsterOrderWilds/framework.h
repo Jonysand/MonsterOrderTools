@@ -40,7 +40,7 @@ using json = nlohmann::json;
 // md5 & sha256
 #include "hashpp.h"
 
-#define APP_VERSION 7
+#define APP_VERSION 8
 
 #ifdef UNICODE
 typedef std::wstring TString;

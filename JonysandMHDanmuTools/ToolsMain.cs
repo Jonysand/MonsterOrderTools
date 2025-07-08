@@ -103,6 +103,10 @@ namespace MonsterOrderWindows
                 _Config.Config.ID_CODE = parts[1];
                 _Config.SaveConfig();
             }
+            else if (parts[0] == "ONLY_MEDAL_ORDER")
+            {
+                _Config.Config.ONLY_MEDAL_ORDER = parts[1] == "1";
+            }
             else if (parts[0] == "ENABLE_VOICE")
             {
                 _Config.Config.ENABLE_VOICE = parts[1] == "1";

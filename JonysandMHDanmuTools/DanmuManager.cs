@@ -210,6 +210,8 @@ namespace MonsterOrderWindows
             // if (data.fans_medal_name.Length > 0)
             //     return data.fans_medal_name.Equals(medalName) && data.fans_medal_level > 0;
             // return false;
+            if (!ToolsMain.GetConfigService().Config.ONLY_MEDAL_ORDER)
+                return true;
             return data.fans_medal_wearing_status;
         }
 
