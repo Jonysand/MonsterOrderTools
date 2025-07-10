@@ -24,6 +24,13 @@ void BliveManager::Start(const std::string& IdCode)
         idCode = IdCode;
     if (idCode.empty())
         return;
+    // 先把上一个结束了
+    if (!gameId.empty())
+    {
+        End(gameId, false, true);
+        gameId.clear();
+        return;
+    }
     std::string params = "{\"code\":\"" + idCode + "\",\"app_id\":" + credentials::APP_ID + "}";
     std::string signedHeader = ProtoUtils::Sign(params);
     networkCoroutines.push_front(std::move(Network::MakeHttpsRequest(
@@ -38,7 +45,7 @@ void BliveManager::Start(const std::string& IdCode)
     )));
 }
 
-void BliveManager::End(const std::string& GameId, bool instantly)
+void BliveManager::End(const std::string& GameId, bool instantly, bool restart)
 {
     std::string params = "{\"game_id\":\"" + (GameId.empty() ? gameId : GameId) + "\",\"app_id\":" + credentials::APP_ID + "}";
     std::string signedHeader = ProtoUtils::Sign(params);
@@ -50,8 +57,10 @@ void BliveManager::End(const std::string& GameId, bool instantly)
         signedHeader,
         params,
         true,
-        [](const std::string& response) {
+        [this, restart](const std::string& response) {
             LOG_DEBUG(TEXT("Stop response: %s"), ProtoUtils::Decode(response).c_str());
+            if (restart)
+                Start();
         });
     if (instantly)
     {

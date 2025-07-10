@@ -19,7 +19,7 @@ public:
 	// 关闭弹幕服务器
 	// GameId: 为空则使用当前场次
 	// instantly: 是否立即关闭
-	void End(const std::string& GameId = "", bool instantly = false);
+	void End(const std::string& GameId = "", bool instantly = false, bool restart = false);
 	// Tick
     void Tick();
     // IsConnected
