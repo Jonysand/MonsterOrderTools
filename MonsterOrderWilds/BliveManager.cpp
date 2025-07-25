@@ -98,8 +98,8 @@ void BliveManager::Tick() {
 
 BliveManager::~BliveManager()
 {
-    if (!gameId.empty())
-        End("", true);
+    // if (!gameId.empty())
+    //     End("", true);
 }
 
 void BliveManager::OnReceiveStartResponse(const std::string& response)
@@ -311,6 +311,12 @@ void BliveManager::HandleSmsReply(const std::string& msg)
         // 进入房间
         else if (cmd == "LIVE_OPEN_PLATFORM_LIVE_ROOM_ENTER")
             TTSManager::Inst()->HandleSpeekEnter(jsonResponse["data"]);
+        // 断连，直接重连
+        else if (cmd == "LIVE_OPEN_PLATFORM_INTERACTION_END")
+        {
+            gameId.clear();
+            Start();
+        }
 
         // <TODO> 后续用C++层的解析结果
         ToolsMainHost::Inst()->OnReceiveRawMsg(decoded);

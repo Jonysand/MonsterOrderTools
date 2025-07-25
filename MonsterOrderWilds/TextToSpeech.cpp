@@ -43,22 +43,22 @@ void TTSManager::Tick()
     float deltaTime = std::chrono::duration<float>(now - LastTickTime).count();
     LastTickTime = now;
 
-    if (!GET_CONFIG(ENABLE_VOICE))
-    {
-        NormalMsgQueue.clear();
-        GiftMsgQueue.clear();
-        ComboGiftMsgPrepareMap.clear();
-        return;
-    }
     if (!NormalMsgQueue.empty())
     {
-        Speak(NormalMsgQueue.front());
+        if (GET_CONFIG(ENABLE_VOICE))
+            Speak(NormalMsgQueue.front());
         NormalMsgQueue.pop_front();
     }
     if (!GiftMsgQueue.empty())
     {
-        Speak(GiftMsgQueue.front());
+        if (GET_CONFIG(ENABLE_VOICE))
+            Speak(GiftMsgQueue.front());
         GiftMsgQueue.pop_front();
+    }
+    if (!HistoryLogMsgQueue.empty())
+    {
+        RECORD_HISTORY(HistoryLogMsgQueue.front().c_str());
+        HistoryLogMsgQueue.pop_front();
     }
     
     for (auto it = ComboGiftMsgPrepareMap.begin(); it != ComboGiftMsgPrepareMap.end(); )
@@ -67,8 +67,9 @@ void TTSManager::Tick()
         if (it->second.combo_timeout <= 0.0f)
         {
             TString msg = TEXT("感谢 ") + utf8_to_wstring(it->second.uname) + TEXT(" 赠送的") + std::to_wstring(it->second.gift_num) + TEXT("个") + utf8_to_wstring(it->second.gift_name);
-            RECORD_HISTORY(msg.c_str());
-            GiftMsgQueue.push_back(msg);
+            if (GET_CONFIG(ENABLE_VOICE))
+                GiftMsgQueue.push_back(msg);
+            HistoryLogMsgQueue.push_back(msg);
             it = ComboGiftMsgPrepareMap.erase(it);
         }
         else
@@ -78,16 +79,12 @@ void TTSManager::Tick()
 
 void TTSManager::HandleSpeekDm(const json& data)
 {
-    if (!GET_CONFIG(ENABLE_VOICE)) return;
     const auto& wearing_medal = data["fans_medal_wearing_status"].get<bool>();
     const auto& guard_level = data["guard_level"].get<int>();
-    if (GET_CONFIG(ONLY_SPEEK_WEARING_MEDAL) && !wearing_medal)
-        return;
-    if (GET_CONFIG(ONLY_SPEEK_GUARD_LEVEL) != 0 && (guard_level == 0 || guard_level > GET_CONFIG(ONLY_SPEEK_GUARD_LEVEL)))
-        return;
     const auto& uname = data["uname"].get<std::string>();
     const auto& msg = utf8_to_wstring(data["msg"].get<std::string>());
     TString msgTString = utf8_to_wstring(uname) + TEXT(" 说：") + msg;
+    HistoryLogMsgQueue.push_back(msgTString);
     if (msg.rfind(TEXT("点餐"), 0) == 0) {
         // 以"点餐"开头
         std::wstring msgWithoutPrefix = msg.substr(2);
@@ -96,13 +93,15 @@ void TTSManager::HandleSpeekDm(const json& data)
         int randomValue = dist(rng);
         msgTString = utf8_to_wstring(uname) + TEXT(" 下单的 ") + msgWithoutPrefix + TEXT(" 已接单，预计") + std::to_wstring(randomValue) + TEXT("分钟后送达！");
     }
-    RECORD_HISTORY(msgTString.c_str());
     NormalMsgQueue.push_back(msgTString);
+    if (GET_CONFIG(ONLY_SPEEK_WEARING_MEDAL) && !wearing_medal)
+        return;
+    if (GET_CONFIG(ONLY_SPEEK_GUARD_LEVEL) != 0 && (guard_level == 0 || guard_level > GET_CONFIG(ONLY_SPEEK_GUARD_LEVEL)))
+        return;
 }
 
 void TTSManager::HandleSpeekSendGift(const json& data)
 {
-    if (!GET_CONFIG(ENABLE_VOICE)) return;
     const auto& paid = data["paid"].get<bool>();
     if (GET_CONFIG(ONLY_SPEEK_PAID_GIFT) && !paid)
         return;
@@ -143,18 +142,16 @@ void TTSManager::HandleSpeekSendGift(const json& data)
 
 void TTSManager::HandleSpeekSC(const json& data)
 {
-    if (!GET_CONFIG(ENABLE_VOICE)) return;
     const auto& uname = data["uname"].get<std::string>();
     const auto& rmb = data["rmb"].get<int>();
     const auto& message = data["message"].get<std::string>();
     TString msg = TEXT("感谢 ") + utf8_to_wstring(uname) + TEXT(" 赠送的") + std::to_wstring(rmb) + TEXT("元SC：") + utf8_to_wstring(message);
-    RECORD_HISTORY(msg.c_str());
+    HistoryLogMsgQueue.push_back(msg);
     GiftMsgQueue.push_back(msg);
 }
 
 void TTSManager::HandleSpeekGuard(const json& data)
 {
-    if (!GET_CONFIG(ENABLE_VOICE)) return;
     const auto& uname = data["user_info"]["uname"].get<std::string>();
     const auto& guard_level = data["guard_level"].get<int>();
     const auto& guard_num = data["guard_num"].get<int>();
@@ -177,7 +174,7 @@ void TTSManager::HandleSpeekGuard(const json& data)
         return;
     }
     TString msg = TEXT("感谢 ") + utf8_to_wstring(uname) + TEXT(" 上船") + std::to_wstring(guard_num) + utf8_to_wstring(guard_unit) + TEXT("的") + guard_name;
-    RECORD_HISTORY(msg.c_str());
+    HistoryLogMsgQueue.push_back(msg);
     GiftMsgQueue.push_back(msg);
 }
 
@@ -185,7 +182,7 @@ void TTSManager::HandleSpeekEnter(const json& data)
 {
     const auto& uname = data["uname"].get<std::string>();
     TString msg = utf8_to_wstring(uname) + TEXT(" 进入直播间");
-    RECORD_HISTORY(msg.c_str());
+    HistoryLogMsgQueue.push_back(msg);
 }
 
 bool TTSManager::Speak(const TString& text)

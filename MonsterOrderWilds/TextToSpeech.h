@@ -45,6 +45,8 @@ private:
 	std::list<TString> GiftMsgQueue;
 	// 送礼弹幕播报准备队列，处理连击送礼
 	std::map<std::string, ComboGiftMsgEntry> ComboGiftMsgPrepareMap;
+	// 历史记录队列
+	std::list<TString> HistoryLogMsgQueue;
 
 	// 每次tick更新时间戳
 	std::chrono::steady_clock::time_point LastTickTime;
