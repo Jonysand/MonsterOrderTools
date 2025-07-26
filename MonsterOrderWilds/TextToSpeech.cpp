@@ -67,7 +67,7 @@ void TTSManager::Tick()
         if (it->second.combo_timeout <= 0.0f)
         {
             TString msg = TEXT("感谢 ") + utf8_to_wstring(it->second.uname) + TEXT(" 赠送的") + std::to_wstring(it->second.gift_num) + TEXT("个") + utf8_to_wstring(it->second.gift_name);
-            if (GET_CONFIG(ENABLE_VOICE))
+            if (GET_CONFIG(ENABLE_VOICE) && (!GET_CONFIG(ONLY_SPEEK_PAID_GIFT) || it->second.paid))
                 GiftMsgQueue.push_back(msg);
             HistoryLogMsgQueue.push_back(msg);
             it = ComboGiftMsgPrepareMap.erase(it);
@@ -85,6 +85,10 @@ void TTSManager::HandleSpeekDm(const json& data)
     const auto& msg = utf8_to_wstring(data["msg"].get<std::string>());
     TString msgTString = utf8_to_wstring(uname) + TEXT(" 说：") + msg;
     HistoryLogMsgQueue.push_back(msgTString);
+    if (GET_CONFIG(ONLY_SPEEK_WEARING_MEDAL) && !wearing_medal)
+        return;
+    if (GET_CONFIG(ONLY_SPEEK_GUARD_LEVEL) != 0 && (guard_level == 0 || guard_level > GET_CONFIG(ONLY_SPEEK_GUARD_LEVEL)))
+        return;
     if (msg.rfind(TEXT("点餐"), 0) == 0) {
         // 以"点餐"开头
         std::wstring msgWithoutPrefix = msg.substr(2);
@@ -94,17 +98,11 @@ void TTSManager::HandleSpeekDm(const json& data)
         msgTString = utf8_to_wstring(uname) + TEXT(" 下单的 ") + msgWithoutPrefix + TEXT(" 已接单，预计") + std::to_wstring(randomValue) + TEXT("分钟后送达！");
     }
     NormalMsgQueue.push_back(msgTString);
-    if (GET_CONFIG(ONLY_SPEEK_WEARING_MEDAL) && !wearing_medal)
-        return;
-    if (GET_CONFIG(ONLY_SPEEK_GUARD_LEVEL) != 0 && (guard_level == 0 || guard_level > GET_CONFIG(ONLY_SPEEK_GUARD_LEVEL)))
-        return;
 }
 
 void TTSManager::HandleSpeekSendGift(const json& data)
 {
     const auto& paid = data["paid"].get<bool>();
-    if (GET_CONFIG(ONLY_SPEEK_PAID_GIFT) && !paid)
-        return;
     const auto& uname = data["uname"].get<std::string>();
     const auto& gift_name = data["gift_name"].get<std::string>();
     int gift_num = data["gift_num"].get<int>();
@@ -136,7 +134,7 @@ void TTSManager::HandleSpeekSendGift(const json& data)
         ComboGiftMsgPrepareMap.emplace(
             std::piecewise_construct,
             std::forward_as_tuple(std::move(combo_id)),
-            std::forward_as_tuple(combo_timeout, gift_num, uname, gift_name)
+            std::forward_as_tuple(combo_timeout, gift_num, uname, gift_name, paid)
         );
 }
 

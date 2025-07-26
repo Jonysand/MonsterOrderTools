@@ -156,6 +156,7 @@
     <ClInclude Include="AppUpdater.h" />
     <ClInclude Include="BliveManager.h" />
     <ClInclude Include="CredentialsConsts.h" />
+    <ClInclude Include="DumpHelper.h" />
     <ClInclude Include="EventSystem.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="MonsterOrderWilds.h" />
@@ -169,6 +170,7 @@
   <ItemGroup>
     <ClCompile Include="AppUpdater.cpp" />
     <ClCompile Include="BliveManager.cpp" />
+    <ClCompile Include="DumpHelper.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MonsterOrderWilds.cpp" />
     <ClCompile Include="MHDanmuToolsHost.cpp" />

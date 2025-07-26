@@ -51,6 +51,9 @@
     <ClInclude Include="TextToSpeech.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="DumpHelper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -75,6 +78,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="TextToSpeech.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="DumpHelper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -2,6 +2,7 @@
 //
 
 #include "framework.h"
+#include "DumpHelper.h"
 #include "MonsterOrderWilds.h"
 #include <ShellScalingApi.h>
 #pragma comment(lib, "Shcore.lib")
@@ -27,6 +28,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 {
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
+
+    DumpHelper::Init("MonsterOrderWilds.dmp", DumpHelper::FULL_DUMP);
 
     SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
 

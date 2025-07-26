@@ -88,13 +88,13 @@ void MonsterOrderWilds::tickWPFCommand()
 	const auto& command = SplitCommand(ToolsMainHost::Inst()->GetCommand(), ':');
 	if (command.empty()) return;
 	// 确认身份码，连接弹幕服务器
-	if (strcmp(command[0].c_str(), "ConfirmIDCode") == 0)
+	if (strcmp(command[0].c_str(), "ConfirmIDCode") == 0 && command.size() == 2)
 	{
 		if (!BliveManager::Inst()->IsConnected())
 			BliveManager::Inst()->Start(command[1]);
 	}
 	// LOG
-	if (strcmp(command[0].c_str(), "Log") == 0)
+	if (strcmp(command[0].c_str(), "Log") == 0 && command.size() == 2)
 		LOG_INFO(TEXT("[GUI] %s"), command[1].c_str());
 	// Update
 	if (strcmp(command[0].c_str(), "Update") == 0)

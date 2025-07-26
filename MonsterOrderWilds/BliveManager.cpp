@@ -98,8 +98,8 @@ void BliveManager::Tick() {
 
 BliveManager::~BliveManager()
 {
-    // if (!gameId.empty())
-    //     End("", true);
+    if (!gameId.empty())
+        End("", true);
 }
 
 void BliveManager::OnReceiveStartResponse(const std::string& response)
@@ -314,8 +314,12 @@ void BliveManager::HandleSmsReply(const std::string& msg)
         // 断连，直接重连
         else if (cmd == "LIVE_OPEN_PLATFORM_INTERACTION_END")
         {
-            gameId.clear();
-            Start();
+            const std::string& disconnectedGameId = jsonResponse["cmd"]["game_id"].get<std::string>();
+            if (disconnectedGameId == gameId)
+            {
+                gameId.clear();
+                Start();
+            }
         }
 
         // <TODO> 后续用C++层的解析结果

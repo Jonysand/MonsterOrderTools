@@ -21,6 +21,8 @@ namespace MonsterOrderWindows
             IdentityCodeTextBox.Password = config.ID_CODE;
             if (config.ENABLE_VOICE)
                 EnableVoiceCheckBox.IsChecked = true;
+            if (config.ONLY_MEDAL_ORDER)
+                OnlyMedalOrderCheckBox.IsChecked = true;
             VoiceRateSlider.Value = config.SPEECH_RATE;
             VoicePitchSlider.Value = config.SPEECH_PITCH;
             VoiceVolumeSlider.Value = config.SPEECH_VOLUME;

@@ -18,6 +18,8 @@ class TTSManager
 		std::string uname;
 		// 礼物名
 		std::string gift_name;
+		// 是否收费
+		bool paid;
 	};
 
 public:
