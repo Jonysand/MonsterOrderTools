@@ -41,6 +41,8 @@ public:
 private:
 	bool Speak(const TString& text);
 
+	void HandleDmOrderFood(const std::wstring& text, const std::wstring& uname);
+
 	// 一般弹幕播报队列
 	std::list<TString> NormalMsgQueue;
 	// 送礼弹幕播报队列

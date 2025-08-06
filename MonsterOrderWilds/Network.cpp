@@ -235,7 +235,7 @@ namespace Network {
                         continue;
                 }
                 auto bodyLength = onePacket.packetLen - 16;
-                if (bodyLength == 0)
+                if (bodyLength <= 0)
                     continue;
                 onePacket.body.resize(bodyLength);
                 result = WinHttpWebSocketReceive(hWebSocket, onePacket.body.data(), bodyLength, &bytesTransferred, &bufferType);

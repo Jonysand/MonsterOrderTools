@@ -91,13 +91,10 @@ void TTSManager::HandleSpeekDm(const json& data)
         return;
     if (msg.rfind(TEXT("点餐"), 0) == 0) {
         // 以"点餐"开头
-        std::wstring msgWithoutPrefix = msg.substr(2);
-        static std::mt19937 rng(std::random_device{}());
-        std::uniform_int_distribution<int> dist(0, 60);
-        int randomValue = dist(rng);
-        msgTString = utf8_to_wstring(uname) + TEXT(" 下单的 ") + msgWithoutPrefix + TEXT(" 已接单，预计") + std::to_wstring(randomValue) + TEXT("分钟后送达！");
+        HandleDmOrderFood(msg, utf8_to_wstring(uname));
     }
-    NormalMsgQueue.push_back(msgTString);
+    else
+        NormalMsgQueue.push_back(msgTString);
 }
 
 void TTSManager::HandleSpeekSendGift(const json& data)
@@ -191,4 +188,13 @@ bool TTSManager::Speak(const TString& text)
     std::wstring pitchStr = (pitch >= 0 ? L"+" : L"") + std::to_wstring(pitch) + L"st";
     std::wstring ssml = L"<speak version='1.0' xml:lang='zh-CN'><prosody pitch='" + pitchStr + L"'>" + text + L"</prosody></speak>";
     return SUCCEEDED(pVoice->Speak(ssml.c_str(), SPF_IS_XML | SPF_ASYNC, NULL));
+}
+
+void TTSManager::HandleDmOrderFood(const std::wstring& msg, const std::wstring& uname)
+{
+    std::wstring msgWithoutPrefix = msg.substr(2);
+    static std::mt19937 rng(std::random_device{}());
+    std::uniform_int_distribution<int> dist(0, 60);
+    int randomValue = dist(rng);
+    NormalMsgQueue.push_back(uname + TEXT(" 下单的 ") + msgWithoutPrefix + TEXT(" 已接单，预计") + std::to_wstring(randomValue) + TEXT("分钟后送达！"));
 }
