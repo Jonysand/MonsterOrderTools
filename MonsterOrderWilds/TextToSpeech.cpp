@@ -186,7 +186,26 @@ bool TTSManager::Speak(const TString& text)
     pVoice->SetVolume(GET_CONFIG(SPEECH_VOLUME));
     int pitch = GET_CONFIG(SPEECH_PITCH);
     std::wstring pitchStr = (pitch >= 0 ? L"+" : L"") + std::to_wstring(pitch) + L"st";
-    std::wstring ssml = L"<speak version='1.0' xml:lang='zh-CN'><prosody pitch='" + pitchStr + L"'>" + text + L"</prosody></speak>";
+
+    // Escape '<' and '&' in text to prevent SSML/XML parsing issues
+    std::wstring safeText;
+    safeText.reserve(text.size());
+    for (wchar_t ch : text) {
+        if (ch == L'<') {
+            safeText += L"&lt;";
+        }
+        else if (ch == L'&') {
+            safeText += L"&amp;";
+        }
+        else if (ch == L'>') {
+            safeText += L"&gt;";
+        }
+        else {
+            safeText += ch;
+        }
+    }
+
+    std::wstring ssml = L"<speak version='1.0' xml:lang='zh-CN'><prosody pitch='" + pitchStr + L"'>" + safeText + L"</prosody></speak>";
     return SUCCEEDED(pVoice->Speak(ssml.c_str(), SPF_IS_XML | SPF_ASYNC, NULL));
 }
 
