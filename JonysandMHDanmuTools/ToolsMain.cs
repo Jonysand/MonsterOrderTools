@@ -147,6 +147,17 @@ namespace MonsterOrderWindows
             {
                 _Config.Config.ONLY_SPEEK_PAID_GIFT = parts[1] == "1";
             }
+            else if (parts[0] == "OPACITY")
+            {
+                if (int.TryParse(parts[1], out int opacity))
+                {
+                    _Config.Config.OPACITY = opacity;
+                    if (_OrderedMonsterWindow != null)
+                    {
+                        _OrderedMonsterWindow.RefreshWindow();
+                    }
+                }
+            }
         }
 
         public void OnOrderWindowLocked()

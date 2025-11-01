@@ -45,6 +45,7 @@ namespace MonsterOrderWindows
             }
             if (config.ONLY_SPEEK_PAID_GIFT)
                 OnlyPaidGiftCheckBox.IsChecked = true;
+            OpacitySlider.Value = config.OPACITY;
         }
 
         public void SetStatus(bool connected)
@@ -160,6 +161,11 @@ namespace MonsterOrderWindows
                 GlobalEventListener.Invoke("ConfigChanged", "ONLY_SPEEK_PAID_GIFT:1");
             else
                 GlobalEventListener.Invoke("ConfigChanged", "ONLY_SPEEK_PAID_GIFT:0");
+        }
+
+        private void OpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            GlobalEventListener.Invoke("ConfigChanged", $"OPACITY:{e.NewValue}");
         }
 
         private void UpdateButton_Click(object sender, RoutedEventArgs e)

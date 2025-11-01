@@ -154,6 +154,11 @@ namespace MonsterOrderWindows
         // 语音播报：只播报付费礼物
         private bool _onlySpeekPaidGift = false;
 
+        [JsonProperty]
+        public int OPACITY { get => _opacity; set { if (_opacity != value) { _opacity = value; OnPropertyChanged(); } } }
+        // 背景透明度
+        private int _opacity = 100;
+
         public event PropertyChangedEventHandler PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {

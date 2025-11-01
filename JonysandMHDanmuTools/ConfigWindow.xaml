@@ -277,6 +277,34 @@
                                 Foreground="#222"
                                 Checked="OnlyPaidGiftCheckBox_Changed"
                                 Unchecked="OnlyPaidGiftCheckBox_Changed" />
+                            <StackPanel Orientation="Horizontal" Margin="8,8,0,0"
+                                VerticalAlignment="Center">
+                                <Label
+                                    Content="点怪窗口透明度"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe UI Variable"
+                                    FontSize="14"
+                                    Foreground="#222"
+                                    Margin="0,0,8,0" />
+                                <Slider
+                                    Name="OpacitySlider"
+                                    Minimum="0"
+                                    Maximum="100"
+                                    Value="80"
+                                    TickFrequency="1"
+                                    IsSnapToTickEnabled="True"
+                                    Width="150"
+                                    VerticalAlignment="Center"
+                                    Margin="0,0,8,0"
+                                    ValueChanged="OpacitySlider_ValueChanged" />
+                                <TextBlock
+                                    Text="{Binding ElementName=OpacitySlider, Path=Value, StringFormat=F0}"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe UI Variable"
+                                    FontSize="14"
+                                    Foreground="#222"
+                                    Width="30" />
+                            </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

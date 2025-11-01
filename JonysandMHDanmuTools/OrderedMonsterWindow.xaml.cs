@@ -54,7 +54,49 @@ namespace MonsterOrderWindows
 
             DanmuManager.GetInst().LoadHistoryOrder();
 
+            RefreshWindow();
             // Hotkey.Regist(this, HotkeyModifiers.Alt, Key.Decimal, OnHotKeyLock);
+        }
+
+        public void RefreshWindow()
+        {
+            float opacity = ToolsMain.GetConfigService().Config.OPACITY / 100f;
+            int alphaInt = mIsLocked ? (int)(170f * opacity + 0.5f): (int)(255f * opacity + 0.5f);
+            alphaInt = Math.Max(0, Math.Min(255, alphaInt));
+            byte alpha = (byte)alphaInt;
+            var grayBrush = new SolidColorBrush(Color.FromArgb(alpha, 0, 0, 0));
+            grayBrush.Freeze();
+            MainGrid.Background = grayBrush;
+
+            if (mIsLocked)
+            {
+                // 背景透明，且可以穿透
+                //MainWindow.Background = Brushes.Transparent;
+                var bgBrush = new SolidColorBrush(Color.FromArgb(alpha, 0xff, 0xff, 0xff));
+                bgBrush.Freeze();
+                MainWindow.Background = bgBrush;
+
+                IntPtr hwnd = new WindowInteropHelper(this).Handle;
+                uint extendedStyle = GetWindowLong(hwnd, -20);
+                SetWindowLong(hwnd, -20, extendedStyle | 0x20);
+                Topmost = true;
+                GlobalEventListener.Invoke("OrderWindowLocked", "");
+                if (MainList.Items.Count > 0)
+                    MainList.ScrollIntoView(MainList.Items[0]);
+            }
+            else
+            {
+                // 背景调黑，且可以操作窗口
+                //MainWindow.Background = Brushes.Gray;
+                var bgBrush = new SolidColorBrush(Color.FromArgb(alpha, 0x80, 0x80, 0x80));
+                bgBrush.Freeze();
+                MainWindow.Background = bgBrush;
+
+                IntPtr hwnd = new WindowInteropHelper(this).Handle;
+                uint extendedStyle = GetWindowLong(hwnd, -20);
+                SetWindowLong(hwnd, -20, extendedStyle ^ 0x20);
+                Topmost = false;
+            }
         }
 
         private void OnClosing(object sender, CancelEventArgs e)
@@ -71,27 +113,7 @@ namespace MonsterOrderWindows
         public void OnHotKeyLock()
         {
             mIsLocked = !mIsLocked;
-            if (mIsLocked)
-            {
-                // 背景透明，且可以穿透
-                MainWindow.Background = Brushes.Transparent;
-                IntPtr hwnd = new WindowInteropHelper(this).Handle;
-                uint extendedStyle = GetWindowLong(hwnd, -20);
-                SetWindowLong(hwnd, -20, extendedStyle | 0x20);
-                Topmost = true;
-                GlobalEventListener.Invoke("OrderWindowLocked", "");
-                if (MainList.Items.Count > 0)
-                    MainList.ScrollIntoView(MainList.Items[0]);
-            }
-            else
-            {
-                // 背景调黑，且可以操作窗口
-                MainWindow.Background = Brushes.Gray;
-                IntPtr hwnd = new WindowInteropHelper(this).Handle;
-                uint extendedStyle = GetWindowLong(hwnd, -20);
-                SetWindowLong(hwnd, -20, extendedStyle ^ 0x20);
-                Topmost = false;
-            }
+            RefreshWindow();
         }
 
         // 更新跑马灯消息

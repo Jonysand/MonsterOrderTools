@@ -314,7 +314,7 @@ void BliveManager::HandleSmsReply(const std::string& msg)
         // 断连，直接重连
         else if (cmd == "LIVE_OPEN_PLATFORM_INTERACTION_END")
         {
-            const std::string& disconnectedGameId = jsonResponse["cmd"]["game_id"].get<std::string>();
+            const std::string& disconnectedGameId = jsonResponse["data"]["game_id"].get<std::string>();
             if (disconnectedGameId == gameId)
             {
                 gameId.clear();
