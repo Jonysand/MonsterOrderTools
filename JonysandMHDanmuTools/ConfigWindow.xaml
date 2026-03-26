@@ -313,30 +313,6 @@
                 </TabItem>
             </TabControl>
             <Button
-                Name="UpdateButton"
-                Content="更新app"
-                HorizontalAlignment="Right"
-                VerticalAlignment="Bottom"
-                Margin="0,0,20,70"
-                Width="80"
-                Height="32"
-                Background="#888"
-                Foreground="White"
-                BorderBrush="#888"
-                Click="UpdateButton_Click" />
-            <Button
-                Name="UpdateListButton"
-                Content="更新怪物列表"
-                HorizontalAlignment="Right"
-                VerticalAlignment="Bottom"
-                Margin="0,0,20,20"
-                Width="100"
-                Height="32"
-                Background="#888"
-                Foreground="White"
-                BorderBrush="#888"
-                Click="UpdateListButton_Click" />
-            <Button
                 Name="SaveSettingsButton"
                 Content="保存设置"
                 HorizontalAlignment="Left"

@@ -1,4 +1,4 @@
-// DumpHelper.h
+﻿// DumpHelper.h
 //------------------------------------------------------------------------------
 #pragma once
 #include "framework.h"

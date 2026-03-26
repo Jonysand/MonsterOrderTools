@@ -1,4 +1,4 @@
-#include "MHDanmuToolsHost.h"
+﻿#include "MHDanmuToolsHost.h"
 #include "WriteLog.h"
 
 using namespace System;

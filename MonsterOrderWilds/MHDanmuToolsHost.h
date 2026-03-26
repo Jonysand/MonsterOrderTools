@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 
 #include "framework.h"
 #include <msclr/marshal_cppstd.h>
@@ -20,7 +20,7 @@ namespace ConvertUtils
 	}
 }
 
-// ToolsMain°ü×°Àà
+// ToolsMainåŒ…è£…ç±»
 public ref class ToolsMainHost
 {
 public:

@@ -168,16 +168,6 @@ namespace MonsterOrderWindows
             GlobalEventListener.Invoke("ConfigChanged", $"OPACITY:{e.NewValue}");
         }
 
-        private void UpdateButton_Click(object sender, RoutedEventArgs e)
-        {
-            ToolsMain.SendCommand("Update:0");
-        }
-
-        private void UpdateListButton_Click(object sender, RoutedEventArgs e)
-        {
-            ToolsMain.SendCommand("UpdateList:0");
-        }
-
         private void SaveSettingsButton_Click(object sender, RoutedEventArgs e)
         {
             ToolsMain.GetConfigService().SaveConfig();

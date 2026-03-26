@@ -153,7 +153,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="AppUpdater.h" />
     <ClInclude Include="BliveManager.h" />
     <ClInclude Include="CredentialsConsts.h" />
     <ClInclude Include="DumpHelper.h" />
@@ -168,7 +167,6 @@
     <ClInclude Include="WriteLog.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="AppUpdater.cpp" />
     <ClCompile Include="BliveManager.cpp" />
     <ClCompile Include="DumpHelper.cpp" />
     <ClCompile Include="main.cpp" />

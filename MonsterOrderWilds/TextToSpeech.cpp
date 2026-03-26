@@ -1,4 +1,4 @@
-#include "TextToSpeech.h"
+ï»¿#include "TextToSpeech.h"
 #include "Network.h"
 #include "MHDanmuToolsHost.h"
 #include "WriteLog.h"
@@ -66,7 +66,7 @@ void TTSManager::Tick()
         it->second.combo_timeout -= deltaTime;
         if (it->second.combo_timeout <= 0.0f)
         {
-            TString msg = TEXT("¸ĞĞ» ") + utf8_to_wstring(it->second.uname) + TEXT(" ÔùËÍµÄ") + std::to_wstring(it->second.gift_num) + TEXT("¸ö") + utf8_to_wstring(it->second.gift_name);
+            TString msg = TEXT("æ„Ÿè°¢ ") + utf8_to_wstring(it->second.uname) + TEXT(" èµ é€çš„") + std::to_wstring(it->second.gift_num) + TEXT("ä¸ª") + utf8_to_wstring(it->second.gift_name);
             if (GET_CONFIG(ENABLE_VOICE) && (!GET_CONFIG(ONLY_SPEEK_PAID_GIFT) || it->second.paid))
                 GiftMsgQueue.push_back(msg);
             HistoryLogMsgQueue.push_back(msg);
@@ -83,14 +83,14 @@ void TTSManager::HandleSpeekDm(const json& data)
     const auto& guard_level = data["guard_level"].get<int>();
     const auto& uname = data["uname"].get<std::string>();
     const auto& msg = utf8_to_wstring(data["msg"].get<std::string>());
-    TString msgTString = utf8_to_wstring(uname) + TEXT(" Ëµ£º") + msg;
+    TString msgTString = utf8_to_wstring(uname) + TEXT(" è¯´ï¼š") + msg;
     HistoryLogMsgQueue.push_back(msgTString);
     if (GET_CONFIG(ONLY_SPEEK_WEARING_MEDAL) && !wearing_medal)
         return;
     if (GET_CONFIG(ONLY_SPEEK_GUARD_LEVEL) != 0 && (guard_level == 0 || guard_level > GET_CONFIG(ONLY_SPEEK_GUARD_LEVEL)))
         return;
-    if (msg.rfind(TEXT("µã²Í"), 0) == 0) {
-        // ÒÔ"µã²Í"¿ªÍ·
+    if (msg.rfind(TEXT("ç‚¹é¤"), 0) == 0) {
+        // ä»¥"ç‚¹é¤"å¼€å¤´
         HandleDmOrderFood(msg, utf8_to_wstring(uname));
     }
     else
@@ -140,7 +140,7 @@ void TTSManager::HandleSpeekSC(const json& data)
     const auto& uname = data["uname"].get<std::string>();
     const auto& rmb = data["rmb"].get<int>();
     const auto& message = data["message"].get<std::string>();
-    TString msg = TEXT("¸ĞĞ» ") + utf8_to_wstring(uname) + TEXT(" ÔùËÍµÄ") + std::to_wstring(rmb) + TEXT("ÔªSC£º") + utf8_to_wstring(message);
+    TString msg = TEXT("æ„Ÿè°¢ ") + utf8_to_wstring(uname) + TEXT(" èµ é€çš„") + std::to_wstring(rmb) + TEXT("å…ƒSCï¼š") + utf8_to_wstring(message);
     HistoryLogMsgQueue.push_back(msg);
     GiftMsgQueue.push_back(msg);
 }
@@ -156,19 +156,19 @@ void TTSManager::HandleSpeekGuard(const json& data)
     switch (guard_level)
     {
     case 1:
-        guard_name = TEXT("×Ü¶½");
+        guard_name = TEXT("æ€»ç£");
         break;
     case 2:
-        guard_name = TEXT("Ìá¶½");
+        guard_name = TEXT("æç£");
         break;
     case 3:
-        guard_name = TEXT("½¢³¤");
+        guard_name = TEXT("èˆ°é•¿");
         break;
     default:
         LOG_ERROR(TEXT("Unknown guard level: %d"), guard_level);
         return;
     }
-    TString msg = TEXT("¸ĞĞ» ") + utf8_to_wstring(uname) + TEXT(" ÉÏ´¬") + std::to_wstring(guard_num) + utf8_to_wstring(guard_unit) + TEXT("µÄ") + guard_name;
+    TString msg = TEXT("æ„Ÿè°¢ ") + utf8_to_wstring(uname) + TEXT(" ä¸Šèˆ¹") + std::to_wstring(guard_num) + utf8_to_wstring(guard_unit) + TEXT("çš„") + guard_name;
     HistoryLogMsgQueue.push_back(msg);
     GiftMsgQueue.push_back(msg);
 }
@@ -176,7 +176,7 @@ void TTSManager::HandleSpeekGuard(const json& data)
 void TTSManager::HandleSpeekEnter(const json& data)
 {
     const auto& uname = data["uname"].get<std::string>();
-    TString msg = utf8_to_wstring(uname) + TEXT(" ½øÈëÖ±²¥¼ä");
+    TString msg = utf8_to_wstring(uname) + TEXT(" è¿›å…¥ç›´æ’­é—´");
     HistoryLogMsgQueue.push_back(msg);
 }
 
@@ -215,5 +215,5 @@ void TTSManager::HandleDmOrderFood(const std::wstring& msg, const std::wstring& 
     static std::mt19937 rng(std::random_device{}());
     std::uniform_int_distribution<int> dist(0, 60);
     int randomValue = dist(rng);
-    NormalMsgQueue.push_back(uname + TEXT(" ÏÂµ¥µÄ ") + msgWithoutPrefix + TEXT(" ÒÑ½Óµ¥£¬Ô¤¼Æ") + std::to_wstring(randomValue) + TEXT("·ÖÖÓºóËÍ´ï£¡"));
+    NormalMsgQueue.push_back(uname + TEXT(" ä¸‹å•çš„ ") + msgWithoutPrefix + TEXT(" å·²æ¥å•ï¼Œé¢„è®¡") + std::to_wstring(randomValue) + TEXT("åˆ†é’Ÿåé€è¾¾ï¼"));
 }

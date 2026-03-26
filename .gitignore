@@ -1,1 +1,91 @@
-*.vs
+# Visual Studio build files
+*.obj
+*.exe
+*.dll
+*.lib
+*.pdb
+*.ipch
+*.aps
+*.ncb
+*.sdf
+*.opensdf
+*.cachefile
+*.ilk
+*.log
+*.tlog
+*.vspscc
+*.vssscc
+*.user
+*.suo
+*.sdf
+*.VC.db
+*.VC.VC.opendb
+*.dbmdl
+
+# Visual Studio folders
+.vs/
+Debug/
+Release/
+x64/
+x86/
+ipch/
+[Bb]in/
+[Oo]bj/
+
+# NuGet packages
+*.nupkg
+*.snupkg
+packages/
+*.nuspec
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CMakeSettings.json
+CTestTestfile.cmake
+Makefile
+
+# Others
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+*.sln.docstates
+
+# User-specific files
+*.user
+*.userosscache
+*.suo
+*.sln.docstates
+
+# Windows image file caches
+Thumbs.db
+ehthumbs.db
+
+# Compiled source #
+*.com
+*.class
+
+# Installer logs
+*.msi
+*.msm
+*.msp
+
+# DotCover
+.idea/
+*.dotCover
+
+# Rider
+.idea/
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+
+# Sensitive credentials
+MonsterOrderWilds/CredentialsConsts.h

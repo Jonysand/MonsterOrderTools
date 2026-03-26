@@ -1,7 +1,6 @@
-#include "MonsterOrderWilds.h"
+ï»¿#include "MonsterOrderWilds.h"
 #include "MHDanmuToolsHost.h"
 #include "BliveManager.h"
-#include "AppUpdater.h"
 #include "CredentialsConsts.h"
 #include "TextToSpeech.h"
 #include "Network.h"
@@ -23,7 +22,6 @@ UINT MonsterOrderWilds::HandleHwndMsg(HWND hWnd, UINT message, WPARAM wParam, LP
 	{
 	case WM_NCCREATE:
 	{
-		AppUpdater::Inst()->InitModule();
 		ToolsMainHost::Inst()->OpenConfigWindow();
 		break;
 	}
@@ -49,7 +47,7 @@ UINT MonsterOrderWilds::HandleHwndMsg(HWND hWnd, UINT message, WPARAM wParam, LP
 	}
 	case WM_DESTROY:
 	{
-		// ¹Ø±Õµ¯Ä»·þÎñÆ÷
+		// å…³é—­å¼¹å¹•æœåŠ¡å™¨
 		BliveManager::Inst()->SetConnected(false);
 		BliveManager::Inst()->Destroy();
 		break;
@@ -64,8 +62,6 @@ void MonsterOrderWilds::Tick()
 {
 	// BliveManager tick
 	BliveManager::Inst()->Tick();
-	// AppUpdater tick
-	AppUpdater::Inst()->Tick();
 	// TTSManager tick
 	TTSManager::Inst()->Tick();
 	// Commands from WPF
@@ -87,7 +83,7 @@ void MonsterOrderWilds::tickWPFCommand()
 {
 	const auto& command = SplitCommand(ToolsMainHost::Inst()->GetCommand(), ':');
 	if (command.empty()) return;
-	// È·ÈÏÉí·ÝÂë£¬Á¬½Óµ¯Ä»·þÎñÆ÷
+	// ç¡®è®¤èº«ä»½ç ï¼Œè¿žæŽ¥å¼¹å¹•æœåŠ¡å™¨
 	if (strcmp(command[0].c_str(), "ConfirmIDCode") == 0 && command.size() == 2)
 	{
 		if (!BliveManager::Inst()->IsConnected())
@@ -96,13 +92,7 @@ void MonsterOrderWilds::tickWPFCommand()
 	// LOG
 	if (strcmp(command[0].c_str(), "Log") == 0 && command.size() == 2)
 		LOG_INFO(TEXT("[GUI] %s"), command[1].c_str());
-	// Update
-	if (strcmp(command[0].c_str(), "Update") == 0)
-		AppUpdater::Inst()->StartFetchAppVersion();
-	// Update
-	if (strcmp(command[0].c_str(), "UpdateList") == 0)
-		AppUpdater::Inst()->StartFetchMonsterListVersion();
-	// ÍË³öÖ÷³ÌÐò
+	// é€€å‡ºä¸»ç¨‹åº
 	if (strcmp(command[0].c_str(), "Exit") == 0)
 	{
 		BliveManager::Inst()->SetConnected(false);

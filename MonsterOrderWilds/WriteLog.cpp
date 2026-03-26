@@ -1,4 +1,4 @@
-#include "WriteLog.h"
+﻿#include "WriteLog.h"
 #include <time.h>
 #include <stdio.h>
 #include <windows.h>

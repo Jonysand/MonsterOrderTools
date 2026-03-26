@@ -1,4 +1,4 @@
-#pragma once
+О╩©#pragma once
 #include "framework.h"
 
 namespace WriteLog
@@ -6,10 +6,10 @@ namespace WriteLog
 	const TCHAR* GetExeDirectory();
 	enum LogLevel
 	{
-		LogLevel_ERROR = 0,			// ╢МнСхуж╬
-		LogLevel_WARNING = 1,		// ╬╞╦Фхуж╬
-		LogLevel_INFO = 2,			// р╩╟Цпео╒хуж╬
-		LogLevel_DEBUG = 3,			// ╣Вйтхуж╬
+		LogLevel_ERROR = 0,			// И■≥Х╞╞Ф≈╔Е©≈
+		LogLevel_WARNING = 1,		// Х╜╕Е▒┼Ф≈╔Е©≈
+		LogLevel_INFO = 2,			// Д╦─Х┬╛Д©║Ф│╞Ф≈╔Е©≈
+		LogLevel_DEBUG = 3,			// Х╟┐Х╞∙Ф≈╔Е©≈
 	};
 	void WriteLog(LogLevel level, const TCHAR* msg, ...);
 	void RecordHistory(const TCHAR* msg);
