@@ -19,8 +19,6 @@ namespace MonsterOrderWindows
     /// </summary>
     public partial class OrderedMonsterWindow : Window
     {
-        // 点击计时
-        private const uint ORDER_FINISH_CLICK_INTERVAL = 100; // in milliseconds
         // 拖曳时的画布
         private AdornerLayer mAdornerLayer = null;
         // 显示info的队列
@@ -52,9 +50,8 @@ namespace MonsterOrderWindows
             mInfoChangeTimer.Tick += new EventHandler(OnTimerTick);
             mInfoChangeTimer.Start();
 
-            DanmuManager.GetInst().LoadHistoryOrder();
-
             RefreshWindow();
+            RefreshOrder();
             // Hotkey.Regist(this, HotkeyModifiers.Alt, Key.Decimal, OnHotKeyLock);
         }
 
@@ -78,7 +75,7 @@ namespace MonsterOrderWindows
 
                 IntPtr hwnd = new WindowInteropHelper(this).Handle;
                 uint extendedStyle = GetWindowLong(hwnd, -20);
-                SetWindowLong(hwnd, -20, extendedStyle | 0x20);
+                SetWindowLong(hwnd, -20, extendedStyle | 0x20u);
                 Topmost = true;
                 GlobalEventListener.Invoke("OrderWindowLocked", "");
                 if (MainList.Items.Count > 0)
@@ -94,7 +91,7 @@ namespace MonsterOrderWindows
 
                 IntPtr hwnd = new WindowInteropHelper(this).Handle;
                 uint extendedStyle = GetWindowLong(hwnd, -20);
-                SetWindowLong(hwnd, -20, extendedStyle ^ 0x20);
+                SetWindowLong(hwnd, -20, extendedStyle & ~0x20u);
                 Topmost = false;
             }
         }

@@ -98,6 +98,10 @@ namespace MonsterOrderWindows
                 double left = _OrderedMonsterWindow.Left;
                 _Config.Config.TopPos = new Point(left, top);
             }
+            else if (parts.Length < 2)
+            {
+                return;
+            }
             else if (parts[0] == "ID_CODE")
             {
                 _Config.Config.ID_CODE = parts[1];
@@ -220,7 +224,7 @@ namespace MonsterOrderWindows
         // 先保留用CSharp的逻辑处理，后面挪到cpp
         public void OnReceivedRawMsg(String rawJsonStr)
         {
-            DanmuManager.GetInst().OnReceicedRawJson(rawJsonStr);
+            DanmuManager.GetInst().OnReceivedRawJson(rawJsonStr);
         }
 
         static public Queue<String> CommandQueue;

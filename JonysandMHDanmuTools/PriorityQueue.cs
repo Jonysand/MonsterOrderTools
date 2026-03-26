@@ -8,6 +8,7 @@ namespace MonsterOrderWindows
     public class PriorityQueue
     {
         private List<PriorityQueueNode> _queue = new List<PriorityQueueNode>();
+        private HashSet<string> _userIds = new HashSet<string>();
 
         public List<PriorityQueueNode> Queue { get { return _queue; } }
 
@@ -15,6 +16,9 @@ namespace MonsterOrderWindows
 
         private string _saveDir = null;
         private string _saveFileName = null;
+
+        private bool _dirty = false;
+        private System.Windows.Threading.DispatcherTimer _saveTimer;
 
         private static PriorityQueue _Inst = null;
 
@@ -31,12 +35,25 @@ namespace MonsterOrderWindows
             _saveDir = Path.Combine(Environment.CurrentDirectory, @"MonsterOrderWilds_configs");
             _saveFileName = "OrderList.list";
             LoadList();
+
+            _saveTimer = new System.Windows.Threading.DispatcherTimer();
+            _saveTimer.Interval = TimeSpan.FromMilliseconds(500);
+            _saveTimer.Tick += (s, e) =>
+            {
+                if (_dirty)
+                {
+                    SaveList();
+                    _dirty = false;
+                }
+            };
+            _saveTimer.Start();
         }
 
         public void Enqueue(PriorityQueueNode node)
         {
             _queue.Add(node);
-            SaveList();
+            _userIds.Add(node.UserId);
+            _dirty = true;
         }
 
         public PriorityQueueNode Dequeue(int index)
@@ -46,8 +63,9 @@ namespace MonsterOrderWindows
                 throw new InvalidOperationException("queue size error");
             }
             PriorityQueueNode node = _queue[index];
-            _queue.Remove(node);
-            SaveList();
+            _queue.RemoveAt(index);
+            _userIds.Remove(node.UserId);
+            _dirty = true;
             return node;
         }
 
@@ -62,14 +80,7 @@ namespace MonsterOrderWindows
 
         public bool Contains(string userId)
         {
-            foreach (var node in _queue)
-            {
-                if (node.UserId == userId)
-                {
-                    return true;
-                }
-            }
-            return false;
+            return _userIds.Contains(userId);
         }
 
         public void SortQueue()
@@ -86,7 +97,14 @@ namespace MonsterOrderWindows
             if (!File.Exists(orderListPath))
                 return false;
             string json = File.ReadAllText(orderListPath);
-            _queue = JsonConvert.DeserializeObject<List<PriorityQueueNode>>(json);
+            var deserialized = JsonConvert.DeserializeObject<List<PriorityQueueNode>>(json);
+            _queue = deserialized ?? new List<PriorityQueueNode>();
+            _userIds.Clear();
+            foreach (var node in _queue)
+            {
+                if (!string.IsNullOrEmpty(node.UserId))
+                    _userIds.Add(node.UserId);
+            }
             return true;
         }
 
@@ -106,6 +124,7 @@ namespace MonsterOrderWindows
         public void Clear()
         {
             Queue.Clear();
+            _userIds.Clear();
             SaveList();
         }
     }
@@ -143,18 +162,15 @@ namespace MonsterOrderWindows
 
         public int CompareTo(PriorityQueueNode other)
         {
-            // 如果一个优先另一个不优先，直接排序
             if (Priority != other.Priority)
-                return Priority ? -1:1;
-            // 如果都优先，按舰长等级
-            else if (Priority && other.Priority)
+                return Priority ? -1 : 1;
+            if (Priority && other.Priority)
             {
-                if (GuardLevel > other.GuardLevel)
-                    return -1;
+                if (GuardLevel != other.GuardLevel)
+                    return GuardLevel > other.GuardLevel ? -1 : 1;
                 return TimeStamp < other.TimeStamp ? -1 : 1;
             }
-            else
-                return TimeStamp < other.TimeStamp ? -1 : 1;
+            return TimeStamp < other.TimeStamp ? -1 : 1;
         }
     }
 

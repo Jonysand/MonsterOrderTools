@@ -69,10 +69,18 @@ namespace MonsterOrderWindows
     public class GlobalEventListener
     {
         private static Dictionary<string, List<Action<object>>> EventMap= new Dictionary<string, List<Action<object>>>();
+        private static readonly object _lock = new object();
+
         public static void Invoke(string event_name, object args)
         {
-            if (!EventMap.ContainsKey(event_name)) return;
-            foreach (var action in EventMap[event_name])
+            List<Action<object>> actions;
+            lock (_lock)
+            {
+                if (!EventMap.TryGetValue(event_name, out actions))
+                    return;
+                actions = new List<Action<object>>(actions);
+            }
+            foreach (var action in actions)
             {
                 action(args);
             }
@@ -80,23 +88,30 @@ namespace MonsterOrderWindows
 
         public static void AddListener(string event_name, Action<object> action)
         {
-            if (!EventMap.ContainsKey(event_name))
+            lock (_lock)
             {
-                EventMap[event_name] = new List<Action<object>>();
+                List<Action<object>> list;
+                if (!EventMap.TryGetValue(event_name, out list))
+                {
+                    list = new List<Action<object>>();
+                    EventMap[event_name] = list;
+                }
+                list.Add(action);
             }
-            EventMap[event_name].Add(action);
         }
 
         public static void RemoveListener(string event_name, Action<object> action)
         {
-            if (!EventMap.ContainsKey(event_name))
+            lock (_lock)
             {
-                return;
-            }
-            EventMap[event_name].Remove(action);
-            if (EventMap[event_name].Count() == 0)
-            {
-                EventMap.Remove(event_name);
+                List<Action<object>> list;
+                if (!EventMap.TryGetValue(event_name, out list))
+                    return;
+                list.Remove(action);
+                if (list.Count == 0)
+                {
+                    EventMap.Remove(event_name);
+                }
             }
         }
     };

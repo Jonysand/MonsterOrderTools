@@ -7,11 +7,13 @@ namespace MonsterOrderWindows
 {
     internal class DanmuManager
     {
-        private string[] order_monster_patterns;
+        private Regex[] order_monster_patterns;
         
-        private string[] priority_patterns_withoutOrder;
+        private Regex[] priority_patterns_withoutOrder;
 
-        private string medalName = "";
+        private static readonly Regex RegexTemperedKing = new Regex(@"^历战王", RegexOptions.Compiled);
+        private static readonly Regex RegexTempered = new Regex(@"^历战", RegexOptions.Compiled);
+        private static readonly Regex RegexKing = new Regex(@"^王", RegexOptions.Compiled);
 
         static DanmuManager _Inst = null;
 
@@ -24,10 +26,21 @@ namespace MonsterOrderWindows
 
         public DanmuManager()
         {
-            order_monster_patterns = new string[6] { @"^点怪", @"^点个", @"^点只", 
-                                                    @"^點怪", @"^點個", @"^點隻" };
+            order_monster_patterns = new Regex[] {
+                new Regex(@"^点怪", RegexOptions.Compiled),
+                new Regex(@"^点个", RegexOptions.Compiled),
+                new Regex(@"^点只", RegexOptions.Compiled),
+                new Regex(@"^點怪", RegexOptions.Compiled),
+                new Regex(@"^點個", RegexOptions.Compiled),
+                new Regex(@"^點隻", RegexOptions.Compiled)
+            };
             
-            priority_patterns_withoutOrder = new string[4] { @"优先", @"插队", @"優先", @"插隊" };
+            priority_patterns_withoutOrder = new Regex[] {
+                new Regex(@"优先", RegexOptions.Compiled),
+                new Regex(@"插队", RegexOptions.Compiled),
+                new Regex(@"優先", RegexOptions.Compiled),
+                new Regex(@"插隊", RegexOptions.Compiled)
+            };
         }
 
         public void LoadHistoryOrder()
@@ -60,7 +73,7 @@ namespace MonsterOrderWindows
             public DanmuData data { get; set; } = new DanmuData();
         }
         // 收到弹幕的处理
-        public void OnReceicedRawJson(String rawJson)
+        public void OnReceivedRawJson(String rawJson)
         {
             Danmu danmu = JsonConvert.DeserializeObject<Danmu>(rawJson);
             if (danmu.cmd != "LIVE_OPEN_PLATFORM_DM")
@@ -78,7 +91,7 @@ namespace MonsterOrderWindows
             int UserGuardLevel = danmu.data.guard_level;
             foreach (var pattern in priority_patterns_withoutOrder)
             {
-                Match match = Regex.Match(CommentText, pattern);
+                Match match = pattern.Match(CommentText);
                 if (match.Success)
                 {
                     isPriority = true;
@@ -114,19 +127,19 @@ namespace MonsterOrderWindows
             foreach (var pattern in order_monster_patterns)
             {
                 // 点怪规则匹配
-                Match match = Regex.Match(CommentText, pattern);
+                Match match = pattern.Match(CommentText);
                 if (match.Success)
                 {
                     // 插队规则匹配
                     var subString = CommentText.Substring(match.Index + 2);
                     foreach (var priority in priority_patterns_withoutOrder)
                     {
-                        var priorityMatch = Regex.Match(subString, priority);
+                        var priorityMatch = priority.Match(subString);
 
                         if (priorityMatch.Success && UserGuardLevel > 0)
                         {
                             isPriority = true;
-                            subString = subString.Replace(subString.Substring(priorityMatch.Index, priority.Length), "");
+                            subString = subString.Replace(subString.Substring(priorityMatch.Index, priorityMatch.Length), "");
                         }
                     }
                     // 在这里判怪物名字库
@@ -198,18 +211,8 @@ namespace MonsterOrderWindows
             CreateOrder(userName, monsterName);
         }
 
-        public void SetMedalName(string name)
-        {
-            medalName = name;
-        }
-
         private bool IsWearingMedal(Danmu.DanmuData data)
         {
-            // if (medalName.Length == 0)
-            //     return true;
-            // if (data.fans_medal_name.Length > 0)
-            //     return data.fans_medal_name.Equals(medalName) && data.fans_medal_level > 0;
-            // return false;
             if (!ToolsMain.GetConfigService().Config.ONLY_MEDAL_ORDER)
                 return true;
             return data.fans_medal_wearing_status;
@@ -226,17 +229,17 @@ namespace MonsterOrderWindows
         {
             int temperedLevel;
             // 历战等级设置
-            if (Regex.Match(monster_name, @"^历战王").Success)
+            if (RegexTemperedKing.Match(monster_name).Success)
             {
                 temperedLevel = 2;
                 monster_name = monster_name.Substring(3);
             }
-            else if ((Regex.Match(monster_name, @"^历战").Success))
+            else if (RegexTempered.Match(monster_name).Success)
             {
                 temperedLevel = 1;
                 monster_name = monster_name.Substring(2);
             }
-            else if ((Regex.Match(monster_name, @"^王").Success))
+            else if (RegexKing.Match(monster_name).Success)
             {
                 temperedLevel = 2;
                 monster_name = monster_name.Substring(1);

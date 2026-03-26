@@ -14,7 +14,7 @@ namespace MonsterOrderWindows
     }
     internal class MonsterData
     {
-        private Dictionary<string, string> ORDERRABLE_MONSTERS;
+        private List<KeyValuePair<Regex, string>> _compiledPatterns;
         private Dictionary<string, OneMonsterData> RawMonsterData;
         private static MonsterData _Inst = null;
 
@@ -29,10 +29,7 @@ namespace MonsterOrderWindows
 
         public bool LoadJsonData()
         {
-            if (ORDERRABLE_MONSTERS != null)
-                ORDERRABLE_MONSTERS.Clear();
-            else
-                ORDERRABLE_MONSTERS = new Dictionary<string, string>();
+            _compiledPatterns = new List<KeyValuePair<Regex, string>>();
             string configPath = Path.Combine(Environment.CurrentDirectory, @"MonsterOrderWilds_configs", "monster_list.json");
             if (!File.Exists(configPath))
             {
@@ -41,11 +38,18 @@ namespace MonsterOrderWindows
             }
             string json_string = File.ReadAllText(configPath);
             RawMonsterData = JsonConvert.DeserializeObject<Dictionary<string, OneMonsterData>>(json_string);
-            ORDERRABLE_MONSTERS = new Dictionary<string, string>();
+            if (RawMonsterData == null)
+            {
+                RawMonsterData = new Dictionary<string, OneMonsterData>();
+                return false;
+            }
             foreach (var item in RawMonsterData)
             {
                 foreach (var nick_name in item.Value.别称)
-                    ORDERRABLE_MONSTERS["\\b" + nick_name.ToString() + "\\b"] = item.Key;
+                {
+                    var regex = new Regex("\\b" + nick_name + "\\b", RegexOptions.Compiled);
+                    _compiledPatterns.Add(new KeyValuePair<Regex, string>(regex, item.Key));
+                }
             }
             return true;
         }
@@ -57,11 +61,11 @@ namespace MonsterOrderWindows
         
         public Tuple<string, int> GetMatchedMonsterName(string inputText)
         {
-            if (ORDERRABLE_MONSTERS == null)
+            if (_compiledPatterns == null)
                 return new Tuple<string, int>("", 0);
-            foreach (var item in ORDERRABLE_MONSTERS)
+            foreach (var item in _compiledPatterns)
             {
-                Match match = Regex.Match(inputText, item.Key);
+                Match match = item.Key.Match(inputText);
                 if (match.Success)
                 {
                     var temperedLevel = RawMonsterData[item.Value].默认历战等级;
