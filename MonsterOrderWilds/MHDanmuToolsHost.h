@@ -54,3 +54,13 @@ private:
 };
 
 #define GET_CONFIG(NAME) ToolsMainHost::Inst()->GetConfig()->NAME
+
+// TTS引擎类型定义
+#define TTS_ENGINE_MIMO "mimo"
+#define TTS_ENGINE_SAPI "sapi"
+#define TTS_ENGINE_AUTO "auto"
+
+// 小米MiMo默认配置
+#define MIMO_DEFAULT_VOICE "mimo_default"
+#define MIMO_DEFAULT_AUDIO_FORMAT "mp3"
+#define MIMO_DEFAULT_SPEED 1.0f

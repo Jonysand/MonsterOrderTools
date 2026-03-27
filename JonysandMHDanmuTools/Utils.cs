@@ -174,6 +174,47 @@ namespace MonsterOrderWindows
         // 背景透明度
         private int _opacity = 100;
 
+        // 小米MiMo TTS 配置项
+        [JsonProperty]
+        public String TTS_ENGINE { get => _ttsEngine; set { if (_ttsEngine != value) { _ttsEngine = value; OnPropertyChanged(); } } }
+        // TTS引擎选择: "mimo" / "sapi" / "auto"
+        private String _ttsEngine = "auto";
+
+        [JsonProperty]
+        public String MIMO_API_KEY { get => _mimoApiKey; set { if (_mimoApiKey != value) { _mimoApiKey = value; OnPropertyChanged(); } } }
+        // 小米MiMo API Key
+        private String _mimoApiKey = "";
+
+        [JsonProperty]
+        public String MIMO_VOICE { get => _mimoVoice; set { if (_mimoVoice != value) { _mimoVoice = value; OnPropertyChanged(); } } }
+        // 小米MiMo 语音角色 (mimo_default, default_zh, default_en)
+        private String _mimoVoice = "mimo_default";
+
+        [JsonProperty]
+        public String MIMO_STYLE { get => _mimoStyle; set { if (_mimoStyle != value) { _mimoStyle = value; OnPropertyChanged(); } } }
+        // 小米MiMo 语音风格描述
+        private String _mimoStyle = "";
+
+        [JsonProperty]
+        public String MIMO_DIALECT { get => _mimoDialect; set { if (_mimoDialect != value) { _mimoDialect = value; OnPropertyChanged(); } } }
+        // 小米MiMo 方言选择
+        private String _mimoDialect = "";
+
+        [JsonProperty]
+        public String MIMO_ROLE { get => _mimoRole; set { if (_mimoRole != value) { _mimoRole = value; OnPropertyChanged(); } } }
+        // 小米MiMo 角色选择
+        private String _mimoRole = "";
+
+        [JsonProperty]
+        public String MIMO_AUDIO_FORMAT { get => _mimoAudioFormat; set { if (_mimoAudioFormat != value) { _mimoAudioFormat = value; OnPropertyChanged(); } } }
+        // 小米MiMo 音频输出格式
+        private String _mimoAudioFormat = "mp3";
+
+        [JsonProperty]
+        public float MIMO_SPEED { get => _mimoSpeed; set { if (_mimoSpeed != value) { _mimoSpeed = value; OnPropertyChanged(); } } }
+        // 小米MiMo 语速倍率 (0.25-4.0)
+        private float _mimoSpeed = 1.0f;
+
         public event PropertyChangedEventHandler PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {

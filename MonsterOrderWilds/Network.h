@@ -190,7 +190,7 @@ namespace Network {
             }
             std::string await_resume() { return result; }
         };
-        HttpsAwaiter SendRequestAsync(HINTERNET hRequest, const TCHAR* body = nullptr);
+        HttpsAwaiter SendRequestAsync(HINTERNET hRequest, const std::string& body = "");
         HttpsAwaiter ReadResponseAsync(HINTERNET hRequest);
     }
 };

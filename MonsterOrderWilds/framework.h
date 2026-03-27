@@ -4,6 +4,9 @@
 
 #pragma once
 
+// Suppress codecvt deprecation warning
+#define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
+
 #include "targetver.h"
 #define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
 // Windows Header Files
@@ -39,6 +42,12 @@ using json = nlohmann::json;
 
 // md5 & sha256
 #include "hashpp.h"
+
+// 小米MiMo TTS 编译时开关
+// 设为 0 可完全排除小米MiMo相关代码（适用于无网络环境或不需要小米MiMo的场景）
+#ifndef USE_MIMO_TTS
+#define USE_MIMO_TTS 1
+#endif
 
 #define APP_VERSION 15
 

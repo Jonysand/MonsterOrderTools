@@ -133,7 +133,7 @@
                 Foreground="#222"
                 Height="200"
                 Width="340">
-                <TabItem Header="语音播报">
+                <TabItem Header="播报规则">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel>
                             <CheckBox
@@ -154,90 +154,6 @@
                                 Foreground="#222"
                                 Checked="EnableVoiceCheckBox_Changed"
                                 Unchecked="EnableVoiceCheckBox_Changed" />
-                            <StackPanel Orientation="Horizontal" Margin="8,8,0,0"
-                                VerticalAlignment="Center">
-                                <Label
-                                    Content="语音速率"
-                                    VerticalAlignment="Center"
-                                    FontFamily="Segoe UI Variable"
-                                    FontSize="14"
-                                    Foreground="#222"
-                                    Margin="0,0,8,0" />
-                                <Slider
-                                    Name="VoiceRateSlider"
-                                    Minimum="-10"
-                                    Maximum="10"
-                                    Value="0"
-                                    TickFrequency="1"
-                                    IsSnapToTickEnabled="True"
-                                    Width="150"
-                                    VerticalAlignment="Center"
-                                    Margin="0,0,8,0"
-                                    ValueChanged="VoiceRateSlider_ValueChanged" />
-                                <TextBlock
-                                    Text="{Binding ElementName=VoiceRateSlider, Path=Value, StringFormat=F0}"
-                                    VerticalAlignment="Center"
-                                    FontFamily="Segoe UI Variable"
-                                    FontSize="14"
-                                    Foreground="#222"
-                                    Width="30" />
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="8,8,0,0"
-                                VerticalAlignment="Center">
-                                <Label
-                                    Content="语音音调"
-                                    VerticalAlignment="Center"
-                                    FontFamily="Segoe UI Variable"
-                                    FontSize="14"
-                                    Foreground="#222"
-                                    Margin="0,0,8,0" />
-                                <Slider
-                                    Name="VoicePitchSlider"
-                                    Minimum="-10"
-                                    Maximum="10"
-                                    Value="0"
-                                    TickFrequency="1"
-                                    IsSnapToTickEnabled="True"
-                                    Width="150"
-                                    VerticalAlignment="Center"
-                                    Margin="0,0,8,0"
-                                    ValueChanged="VoicePitchSlider_ValueChanged" />
-                                <TextBlock
-                                    Text="{Binding ElementName=VoicePitchSlider, Path=Value, StringFormat=F0}"
-                                    VerticalAlignment="Center"
-                                    FontFamily="Segoe UI Variable"
-                                    FontSize="14"
-                                    Foreground="#222"
-                                    Width="30" />
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="8,8,0,0"
-                                VerticalAlignment="Center">
-                                <Label
-                                    Content="语音音量"
-                                    VerticalAlignment="Center"
-                                    FontFamily="Segoe UI Variable"
-                                    FontSize="14"
-                                    Foreground="#222"
-                                    Margin="0,0,8,0" />
-                                <Slider
-                                    Name="VoiceVolumeSlider"
-                                    Minimum="0"
-                                    Maximum="100"
-                                    Value="80"
-                                    TickFrequency="1"
-                                    IsSnapToTickEnabled="True"
-                                    Width="150"
-                                    VerticalAlignment="Center"
-                                    Margin="0,0,8,0"
-                                    ValueChanged="VoiceVolumeSlider_ValueChanged" />
-                                <TextBlock
-                                    Text="{Binding ElementName=VoiceVolumeSlider, Path=Value, StringFormat=F0}"
-                                    VerticalAlignment="Center"
-                                    FontFamily="Segoe UI Variable"
-                                    FontSize="14"
-                                    Foreground="#222"
-                                    Width="30" />
-                            </StackPanel>
                             <CheckBox
                                 Name="OnlyMedalCheckBox"
                                 Content="仅播报佩戴粉丝牌的弹幕"
@@ -277,6 +193,200 @@
                                 Foreground="#222"
                                 Checked="OnlyPaidGiftCheckBox_Changed"
                                 Unchecked="OnlyPaidGiftCheckBox_Changed" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+                <TabItem Header="语音设置">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="8,8,0,0"
+                                VerticalAlignment="Center">
+                                <Label
+                                    Content="TTS引擎"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe UI Variable"
+                                    FontSize="14"
+                                    Foreground="#222"
+                                    Margin="0,0,8,0" />
+                                <ComboBox
+                                    Name="TTSEngineComboBox"
+                                    Width="120"
+                                    FontFamily="Segoe UI Variable"
+                                    FontSize="14"
+                                    SelectionChanged="TTSEngineComboBox_SelectionChanged">
+                                    <ComboBoxItem Content="自动" IsSelected="True" Tag="auto" />
+                                    <ComboBoxItem Content="小米MiMo" Tag="mimo" />
+                                    <ComboBoxItem Content="Windows SAPI" Tag="sapi" />
+                                </ComboBox>
+                            </StackPanel>
+                            <Border Name="MimoConfigPanel" Margin="8,8,0,0" Visibility="Visible">
+                                <StackPanel>
+                                    <Label
+                                        Content="小米MiMo 设置"
+                                        FontFamily="Segoe UI Variable"
+                                        FontSize="14"
+                                        FontWeight="SemiBold"
+                                        Foreground="#0078D4"
+                                        Margin="0,4,0,4" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                        <Label
+                                            Content="语音角色"
+                                            VerticalAlignment="Center"
+                                            FontSize="14"
+                                            Foreground="#222"
+                                            Margin="0,0,8,0" />
+                                        <ComboBox
+                                            Name="MimoVoiceComboBox"
+                                            Width="120"
+                                            FontSize="14"
+                                            SelectionChanged="MimoVoiceComboBox_SelectionChanged">
+                                            <ComboBoxItem Content="默认语音" IsSelected="True" Tag="mimo_default" />
+                                            <ComboBoxItem Content="中文语音" Tag="default_zh" />
+                                            <ComboBoxItem Content="英文语音" Tag="default_en" />
+                                        </ComboBox>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                        <Label
+                                            Content="语音风格"
+                                            VerticalAlignment="Center"
+                                            FontSize="14"
+                                            Foreground="#222"
+                                            Margin="0,0,8,0" />
+                                        <ComboBox
+                                            Name="MimoStyleComboBox"
+                                            Width="150"
+                                            FontSize="14"
+                                            SelectionChanged="MimoStyleComboBox_SelectionChanged">
+                                            <ComboBoxItem Content="默认" IsSelected="True" Tag="" />
+                                            <ComboBoxItem Content="温柔轻声" Tag="温柔轻声" />
+                                            <ComboBoxItem Content="激昂慷慨" Tag="激昂慷慨" />
+                                            <ComboBoxItem Content="新闻播报" Tag="新闻播报" />
+                                            <ComboBoxItem Content="欢乐活泼" Tag="欢乐活泼" />
+                                            <ComboBoxItem Content="沉稳严肃" Tag="沉稳严肃" />
+                                        </ComboBox>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                        <Label
+                                            Content="语速倍率"
+                                            VerticalAlignment="Center"
+                                            FontSize="14"
+                                            Foreground="#222"
+                                            Margin="0,0,8,0" />
+                                        <Slider
+                                            Name="MimoSpeedSlider"
+                                            Minimum="0.25"
+                                            Maximum="4.0"
+                                            Value="1.0"
+                                            TickFrequency="0.25"
+                                            IsSnapToTickEnabled="True"
+                                            Width="120"
+                                            VerticalAlignment="Center"
+                                            Margin="0,0,8,0"
+                                            ValueChanged="MimoSpeedSlider_ValueChanged" />
+                                        <TextBlock
+                                            Text="{Binding ElementName=MimoSpeedSlider, Path=Value, StringFormat=F2}"
+                                            VerticalAlignment="Center"
+                                            FontSize="14"
+                                            Foreground="#222"
+                                            Width="40" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                            <Border Name="SapiConfigPanel" Margin="8,8,0,0">
+                                <StackPanel>
+                                    <Label
+                                        Content="Windows SAPI 设置"
+                                        FontFamily="Segoe UI Variable"
+                                        FontSize="14"
+                                        FontWeight="SemiBold"
+                                        Foreground="#0078D4"
+                                        Margin="0,4,0,4" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4"
+                                        VerticalAlignment="Center">
+                                        <Label
+                                            Content="语音速率"
+                                            VerticalAlignment="Center"
+                                            FontSize="14"
+                                            Foreground="#222"
+                                            Margin="0,0,8,0" />
+                                        <Slider
+                                            Name="VoiceRateSlider"
+                                            Minimum="-10"
+                                            Maximum="10"
+                                            Value="0"
+                                            TickFrequency="1"
+                                            IsSnapToTickEnabled="True"
+                                            Width="120"
+                                            VerticalAlignment="Center"
+                                            Margin="0,0,8,0"
+                                            ValueChanged="VoiceRateSlider_ValueChanged" />
+                                        <TextBlock
+                                            Text="{Binding ElementName=VoiceRateSlider, Path=Value, StringFormat=F0}"
+                                            VerticalAlignment="Center"
+                                            FontSize="14"
+                                            Foreground="#222"
+                                            Width="30" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4"
+                                        VerticalAlignment="Center">
+                                        <Label
+                                            Content="语音音调"
+                                            VerticalAlignment="Center"
+                                            FontSize="14"
+                                            Foreground="#222"
+                                            Margin="0,0,8,0" />
+                                        <Slider
+                                            Name="VoicePitchSlider"
+                                            Minimum="-10"
+                                            Maximum="10"
+                                            Value="0"
+                                            TickFrequency="1"
+                                            IsSnapToTickEnabled="True"
+                                            Width="120"
+                                            VerticalAlignment="Center"
+                                            Margin="0,0,8,0"
+                                            ValueChanged="VoicePitchSlider_ValueChanged" />
+                                        <TextBlock
+                                            Text="{Binding ElementName=VoicePitchSlider, Path=Value, StringFormat=F0}"
+                                            VerticalAlignment="Center"
+                                            FontSize="14"
+                                            Foreground="#222"
+                                            Width="30" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4"
+                                        VerticalAlignment="Center">
+                                        <Label
+                                            Content="语音音量"
+                                            VerticalAlignment="Center"
+                                            FontSize="14"
+                                            Foreground="#222"
+                                            Margin="0,0,8,0" />
+                                        <Slider
+                                            Name="VoiceVolumeSlider"
+                                            Minimum="0"
+                                            Maximum="100"
+                                            Value="80"
+                                            TickFrequency="1"
+                                            IsSnapToTickEnabled="True"
+                                            Width="120"
+                                            VerticalAlignment="Center"
+                                            Margin="0,0,8,0"
+                                            ValueChanged="VoiceVolumeSlider_ValueChanged" />
+                                        <TextBlock
+                                            Text="{Binding ElementName=VoiceVolumeSlider, Path=Value, StringFormat=F0}"
+                                            VerticalAlignment="Center"
+                                            FontSize="14"
+                                            Foreground="#222"
+                                            Width="30" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+                <TabItem Header="其他设置">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="8,8,0,0"
                                 VerticalAlignment="Center">
                                 <Label
@@ -307,9 +417,6 @@
                             </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
-                </TabItem>
-                <TabItem Header="分段更新">
-                    <TextBlock Text="关于下一次更新，只能透露这么多了" Margin="12" />
                 </TabItem>
             </TabControl>
             <Button

@@ -162,6 +162,30 @@ namespace MonsterOrderWindows
                     }
                 }
             }
+            else if (parts[0] == "TTS_ENGINE")
+            {
+                _Config.Config.TTS_ENGINE = parts[1];
+            }
+            else if (parts[0] == "MIMO_VOICE")
+            {
+                _Config.Config.MIMO_VOICE = parts[1];
+            }
+            else if (parts[0] == "MIMO_STYLE")
+            {
+                _Config.Config.MIMO_STYLE = parts[1];
+            }
+            else if (parts[0] == "MIMO_SPEED")
+            {
+                if (float.TryParse(parts[1], out float speed))
+                {
+                    _Config.Config.MIMO_SPEED = speed;
+                }
+            }
+            else if (parts[0] == "MIMO_API_KEY")
+            {
+                _Config.Config.MIMO_API_KEY = parts[1];
+            }
+            _Config.SaveConfig();
         }
 
         public void OnOrderWindowLocked()

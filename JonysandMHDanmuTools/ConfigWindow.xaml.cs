@@ -46,6 +46,45 @@ namespace MonsterOrderWindows
             if (config.ONLY_SPEEK_PAID_GIFT)
                 OnlyPaidGiftCheckBox.IsChecked = true;
             OpacitySlider.Value = config.OPACITY;
+
+            // 小米MiMo TTS配置
+            MimoSpeedSlider.Value = config.MIMO_SPEED;
+
+            // 设置TTS引擎选择
+            switch (config.TTS_ENGINE)
+            {
+                case "mimo":
+                    TTSEngineComboBox.SelectedIndex = 1;
+                    break;
+                case "sapi":
+                    TTSEngineComboBox.SelectedIndex = 2;
+                    break;
+                default:
+                    TTSEngineComboBox.SelectedIndex = 0; // auto
+                    break;
+            }
+
+            // 设置语音角色（使用Tag属性）
+            for (int i = 0; i < MimoVoiceComboBox.Items.Count; i++)
+            {
+                var item = MimoVoiceComboBox.Items[i] as System.Windows.Controls.ComboBoxItem;
+                if (item != null && item.Tag?.ToString() == config.MIMO_VOICE)
+                {
+                    MimoVoiceComboBox.SelectedIndex = i;
+                    break;
+                }
+            }
+
+            // 设置语音风格（使用Tag属性）
+            for (int i = 0; i < MimoStyleComboBox.Items.Count; i++)
+            {
+                var item = MimoStyleComboBox.Items[i] as System.Windows.Controls.ComboBoxItem;
+                if (item != null && item.Tag?.ToString() == config.MIMO_STYLE)
+                {
+                    MimoStyleComboBox.SelectedIndex = i;
+                    break;
+                }
+            }
         }
 
         public void SetStatus(bool connected)
@@ -190,6 +229,57 @@ namespace MonsterOrderWindows
                 timer.Stop();
             };
             timer.Start();
+        }
+
+        private void TTSEngineComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            var comboBox = sender as System.Windows.Controls.ComboBox;
+            if (comboBox == null || comboBox.SelectedItem == null)
+                return;
+            var selectedItem = comboBox.SelectedItem as System.Windows.Controls.ComboBoxItem;
+            if (selectedItem == null)
+                return;
+            string engine = selectedItem.Tag?.ToString() ?? "auto";
+            GlobalEventListener.Invoke("ConfigChanged", $"TTS_ENGINE:{engine}");
+
+            // 根据引擎选择显示/隐藏配置面板
+            if (MimoConfigPanel != null)
+            {
+                MimoConfigPanel.Visibility = engine == "sapi" ? Visibility.Collapsed : Visibility.Visible;
+            }
+            if (SapiConfigPanel != null)
+            {
+                SapiConfigPanel.Visibility = engine == "mimo" ? Visibility.Collapsed : Visibility.Visible;
+            }
+        }
+
+        private void MimoVoiceComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            var comboBox = sender as System.Windows.Controls.ComboBox;
+            if (comboBox == null || comboBox.SelectedItem == null)
+                return;
+            var selectedItem = comboBox.SelectedItem as System.Windows.Controls.ComboBoxItem;
+            if (selectedItem == null)
+                return;
+            string voice = selectedItem.Tag?.ToString() ?? "mimo_default";
+            GlobalEventListener.Invoke("ConfigChanged", $"MIMO_VOICE:{voice}");
+        }
+
+        private void MimoStyleComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            var comboBox = sender as System.Windows.Controls.ComboBox;
+            if (comboBox == null || comboBox.SelectedItem == null)
+                return;
+            var selectedItem = comboBox.SelectedItem as System.Windows.Controls.ComboBoxItem;
+            if (selectedItem == null)
+                return;
+            string style = selectedItem.Tag?.ToString() ?? "";
+            GlobalEventListener.Invoke("ConfigChanged", $"MIMO_STYLE:{style}");
+        }
+
+        private void MimoSpeedSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            GlobalEventListener.Invoke("ConfigChanged", $"MIMO_SPEED:{e.NewValue}");
         }
     }
 }

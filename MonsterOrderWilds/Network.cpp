@@ -195,7 +195,6 @@ namespace Network {
             throw std::runtime_error("HttpOpenRequest failed: " + std::to_string(GetLastError()));
         }
 
-        const TString bodysTString = TString(body.begin(), body.end());
         if (!headers.empty())
         {
             if (!WinHttpAddRequestHeaders(hRequest, ProtoUtils::ConvertToTCHAR(headers.c_str()), (DWORD)headers.size(), WINHTTP_ADDREQ_FLAG_ADD | WINHTTP_ADDREQ_FLAG_REPLACE))
@@ -209,7 +208,8 @@ namespace Network {
             }
         }
         
-        co_await HttpsCorouineUtils::SendRequestAsync(hRequest, body.empty() ? NULL : bodysTString.c_str());
+        // Pass body directly (already UTF-8 encoded)
+        co_await HttpsCorouineUtils::SendRequestAsync(hRequest, body);
         std::string response = co_await HttpsCorouineUtils::ReadResponseAsync(hRequest);
         if (onResponse) onResponse(response);
         WinHttpCloseHandle(hRequest);
@@ -408,16 +408,15 @@ namespace Network {
     // private utils ------------------------------------
     namespace HttpsCorouineUtils
     {
-        // 异步发送请求
-        HttpsAwaiter SendRequestAsync(HINTERNET hRequest, const TCHAR* body) {
+        // Async send request - body is already UTF-8 encoded
+        HttpsAwaiter SendRequestAsync(HINTERNET hRequest, const std::string& body) {
             HttpsAwaiter awaiter{ hRequest };
-            std::string bodyContent = ProtoUtils::ConvertTCharToString(body);
             if (!WinHttpSendRequest(
                 hRequest,
                 WINHTTP_NO_ADDITIONAL_HEADERS, 0,
-                bodyContent.empty() ? WINHTTP_NO_REQUEST_DATA : (LPVOID)bodyContent.data(),
-                (DWORD)bodyContent.size(),
-                (DWORD)bodyContent.size(),
+                body.empty() ? WINHTTP_NO_REQUEST_DATA : (LPVOID)body.data(),
+                (DWORD)body.size(),
+                (DWORD)body.size(),
                 0)) {
                 LOG_ERROR(TEXT("HttpSendRequest failed: %s"), GetLastErrorAsTString().c_str());
             }

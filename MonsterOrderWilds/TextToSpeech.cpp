@@ -2,6 +2,7 @@
 #include "Network.h"
 #include "MHDanmuToolsHost.h"
 #include "WriteLog.h"
+#include "StringUtils.h"
 
 #pragma warning(disable: 4996)
 #include <sapi.h> // Include SAPI header for ISpVoice
@@ -9,11 +10,6 @@
 #include <sphelper.h>
 
 DEFINE_SINGLETON(TTSManager)
-
-inline std::wstring utf8_to_wstring(const std::string& str) {
-    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> conv;
-    return conv.from_bytes(str);
-}
 
 #pragma comment(lib, "sapi.lib")
 TTSManager::TTSManager()
@@ -25,10 +21,28 @@ TTSManager::TTSManager()
     }
     hr = CoCreateInstance(CLSID_SpVoice, NULL, CLSCTX_ALL, IID_ISpVoice, (void**)&pVoice);
     LastTickTime = std::chrono::steady_clock::now();
+    lastFailureTime = std::chrono::steady_clock::now();
+    lastRecoveryAttempt = std::chrono::steady_clock::now();
+
+#if USE_MIMO_TTS
+    mimoClient = new MimoTTSClient();
+    audioPlayer = new AudioPlayer();
+#endif
 }
 
 TTSManager::~TTSManager()
 {
+#if USE_MIMO_TTS
+    if (mimoClient != NULL) {
+        delete mimoClient;
+        mimoClient = NULL;
+    }
+    if (audioPlayer != NULL) {
+        delete audioPlayer;
+        audioPlayer = NULL;
+    }
+#endif
+
     if (pVoice != NULL) {
         pVoice->Release();
         pVoice = NULL;
@@ -42,6 +56,13 @@ void TTSManager::Tick()
     auto now = std::chrono::steady_clock::now();
     float deltaTime = std::chrono::duration<float>(now - LastTickTime).count();
     LastTickTime = now;
+
+    // 检查是否需要尝试恢复MiMo TTS
+#if USE_MIMO_TTS
+    if (ShouldTryRecovery()) {
+        TryRecovery();
+    }
+#endif
 
     if (!NormalMsgQueue.empty())
     {
@@ -182,6 +203,44 @@ void TTSManager::HandleSpeekEnter(const json& data)
 
 bool TTSManager::Speak(const TString& text)
 {
+#if USE_MIMO_TTS
+    TTSEngine engine = GetActiveEngine();
+    
+    LOG_INFO(TEXT("TTS Engine: %d, isFallback: %d"), (int)engine, (int)isFallback);
+    
+    if (engine == TTSEngine::MIMO || (engine == TTSEngine::AUTO && !isFallback)) {
+        LOG_INFO(TEXT("Trying MiMo TTS for: %s"), text.c_str());
+        // 尝试使用小米MiMo TTS
+        if (SpeakWithMimo(text)) {
+            consecutiveFailures = 0;  // 重置失败计数
+            return true;
+        } else {
+            LOG_WARNING(TEXT("MiMo TTS failed, falling back to SAPI"));
+            // MiMo失败
+            consecutiveFailures++;
+            lastFailureTime = std::chrono::steady_clock::now();
+            
+            if (engine == TTSEngine::AUTO && consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+                // 触发降级
+                TriggerFallback();
+            }
+            
+            // 尝试使用SAPI作为备选
+            return SpeakWithSapi(text);
+        }
+    }
+#endif
+    
+    // 使用Windows SAPI
+    return SpeakWithSapi(text);
+}
+
+bool TTSManager::SpeakWithSapi(const TString& text)
+{
+    if (pVoice == NULL) {
+        return false;
+    }
+
     pVoice->SetRate(GET_CONFIG(SPEECH_RATE));
     pVoice->SetVolume(GET_CONFIG(SPEECH_VOLUME));
     int pitch = GET_CONFIG(SPEECH_PITCH);
@@ -207,6 +266,173 @@ bool TTSManager::Speak(const TString& text)
 
     std::wstring ssml = L"<speak version='1.0' xml:lang='zh-CN'><prosody pitch='" + pitchStr + L"'>" + safeText + L"</prosody></speak>";
     return SUCCEEDED(pVoice->Speak(ssml.c_str(), SPF_IS_XML | SPF_ASYNC, NULL));
+}
+
+#if USE_MIMO_TTS
+bool TTSManager::SpeakWithMimo(const TString& text)
+{
+    if (mimoClient == NULL || audioPlayer == NULL) {
+        return false;
+    }
+
+    if (!mimoClient->IsAvailable()) {
+        LOG_WARNING(TEXT("MiMo TTS not available (API Key not configured)"));
+        return false;
+    }
+
+    // 构建请求参数
+    MimoTTSClient::TTSRequest request;
+    
+    // 获取配置参数
+    System::String^ voice = GET_CONFIG(MIMO_VOICE);
+    System::String^ style = GET_CONFIG(MIMO_STYLE);
+    System::String^ dialect = GET_CONFIG(MIMO_DIALECT);
+    System::String^ role = GET_CONFIG(MIMO_ROLE);
+    System::String^ format = GET_CONFIG(MIMO_AUDIO_FORMAT);
+    float speed = GET_CONFIG(MIMO_SPEED);
+
+    if (voice != nullptr && voice->Length > 0) {
+        request.voice = wstring_to_utf8(msclr::interop::marshal_as<std::wstring>(voice));
+    }
+    
+    // 构建文本：将默认风格标签放在"xxx说："前面
+    std::string styleTag;
+    if (style != nullptr && style->Length > 0) {
+        styleTag = "<style>" + wstring_to_utf8(msclr::interop::marshal_as<std::wstring>(style)) + "</style>";
+    }
+    request.text = styleTag + wstring_to_utf8(text);
+    
+    // Debug log
+    LOG_INFO(TEXT("MiMo TTS Request Text: %s"), text.c_str());
+    LOG_INFO(TEXT("MiMo TTS Request Text UTF8: %s"), utf8_to_wstring(request.text).c_str());
+    if (dialect != nullptr && dialect->Length > 0) {
+        request.dialect = wstring_to_utf8(msclr::interop::marshal_as<std::wstring>(dialect));
+    }
+    if (role != nullptr && role->Length > 0) {
+        request.role = wstring_to_utf8(msclr::interop::marshal_as<std::wstring>(role));
+    }
+    if (format != nullptr && format->Length > 0) {
+        request.responseFormat = wstring_to_utf8(msclr::interop::marshal_as<std::wstring>(format));
+    }
+    request.speed = speed;
+
+    // 发送请求（同步等待结果）
+    bool requestCompleted = false;
+    bool requestSuccess = false;
+
+    mimoClient->RequestTTS(request, [&](const MimoTTSClient::TTSResponse& response) {
+        if (response.success && !response.audioData.empty()) {
+            // 播放音频
+            requestSuccess = audioPlayer->Play(response.audioData, request.responseFormat);
+            if (requestSuccess) {
+                // 等待播放完成（带超时）
+                audioPlayer->WaitForCompletion(10000);  // 10秒超时
+            }
+        } else {
+            LOG_ERROR(TEXT("MiMo TTS request failed: %s"), utf8_to_wstring(response.errorMessage).c_str());
+            requestSuccess = false;
+        }
+        requestCompleted = true;
+    });
+
+    // 简单的同步等待（实际应该使用异步机制）
+    // 注意：这会阻塞调用线程，生产环境应该改进为异步
+    int waitCount = 0;
+    while (!requestCompleted && waitCount < 100) {
+        Sleep(50);
+        waitCount++;
+    }
+
+    return requestSuccess;
+}
+#endif
+
+bool TTSManager::IsUsingMimoTTS() const
+{
+#if USE_MIMO_TTS
+    TTSEngine engine = GetActiveEngine();
+    return (engine == TTSEngine::MIMO || (engine == TTSEngine::AUTO && !isFallback));
+#else
+    return false;
+#endif
+}
+
+void TTSManager::RefreshEngineStatus()
+{
+#if USE_MIMO_TTS
+    isFallback = false;
+    consecutiveFailures = 0;
+    LOG_INFO(TEXT("TTS engine status refreshed"));
+#endif
+}
+
+TTSManager::TTSEngine TTSManager::GetActiveEngine() const
+{
+#if USE_MIMO_TTS
+    System::String^ engineConfig = GET_CONFIG(TTS_ENGINE);
+    if (engineConfig == nullptr) {
+        return TTSEngine::AUTO;
+    }
+    
+    std::wstring engineStr = msclr::interop::marshal_as<std::wstring>(engineConfig);
+    if (engineStr == L"mimo") {
+        return TTSEngine::MIMO;
+    } else if (engineStr == L"sapi") {
+        return TTSEngine::SAPI;
+    } else {
+        return TTSEngine::AUTO;
+    }
+#else
+    return TTSEngine::SAPI;
+#endif
+}
+
+void TTSManager::TriggerFallback()
+{
+#if USE_MIMO_TTS
+    if (!isFallback) {
+        isFallback = true;
+        fallbackReason = "Consecutive failures exceeded limit";
+        LOG_WARNING(TEXT("TTS engine fallback triggered: switching to SAPI after %d consecutive failures"),
+            consecutiveFailures);
+    }
+#endif
+}
+
+void TTSManager::TryRecovery()
+{
+#if USE_MIMO_TTS
+    if (mimoClient == NULL) {
+        return;
+    }
+
+    LOG_INFO(TEXT("Attempting MiMo TTS recovery..."));
+    
+    if (mimoClient->IsAvailable()) {
+        isFallback = false;
+        consecutiveFailures = 0;
+        lastRecoveryAttempt = std::chrono::steady_clock::now();
+        LOG_INFO(TEXT("MiMo TTS recovery successful"));
+    } else {
+        lastRecoveryAttempt = std::chrono::steady_clock::now();
+        LOG_WARNING(TEXT("MiMo TTS recovery failed - API still not available"));
+    }
+#endif
+}
+
+bool TTSManager::ShouldTryRecovery() const
+{
+#if USE_MIMO_TTS
+    if (!isFallback) {
+        return false;
+    }
+
+    auto now = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - lastRecoveryAttempt).count();
+    return elapsed >= RECOVERY_INTERVAL_SECONDS;
+#else
+    return false;
+#endif
 }
 
 void TTSManager::HandleDmOrderFood(const std::wstring& msg, const std::wstring& uname)
