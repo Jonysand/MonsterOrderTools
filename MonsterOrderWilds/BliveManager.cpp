@@ -18,13 +18,86 @@ enum WEBSOCKET_OP {
     OP_AUTH = 7,               // 客户端发送的鉴权包(客户端发送的第一个包)
     OP_AUTH_REPLY = 8           // 服务器收到鉴权包后的回复
 };
+
+void BliveManager::SetConnectionState(ConnectionState state, DisconnectReason reason)
+{
+    ConnectionState oldState = connectionState.load();
+    connectionState.store(state);
+    disconnectReason.store(reason);
+    
+    LOG_INFO(TEXT("Connection state changed: %hs -> %hs, reason: %hs"), 
+        ConnectionStateToString(oldState),
+        ConnectionStateToString(state),
+        DisconnectReasonToString(reason));
+    
+    OnConnectionStateChanged.Invoke(state, reason);
+    
+    if (state == ConnectionState::Connected && oldState != ConnectionState::Connected) {
+        OnBliveConnected.Invoke();
+    }
+    else if (oldState == ConnectionState::Connected && state != ConnectionState::Connected) {
+        if (reason != DisconnectReason::None) {
+            OnBliveDisconnected.Invoke();
+        }
+    }
+}
+
+void BliveManager::Disconnect()
+{
+    reconnectAttemptCount.store(0);
+    SetConnectionState(ConnectionState::Disconnected, DisconnectReason::None);
+    
+    if (!gameId.empty())
+    {
+        End(gameId, false, false);
+        gameId.clear();
+    }
+}
+
+void BliveManager::Reconnect()
+{
+    if (connectionState.load() == ConnectionState::ReconnectFailed)
+    {
+        reconnectAttemptCount.store(0);
+        Start();
+    }
+    else if (connectionState.load() == ConnectionState::Disconnected)
+    {
+        Start();
+    }
+}
+
 void BliveManager::Start(const std::string& IdCode)
 {
     if (!IdCode.empty())
         idCode = IdCode;
     if (idCode.empty())
         return;
-    // 先把上一个结束了
+    
+    ConnectionState currentState = connectionState.load();
+    if (currentState == ConnectionState::Connecting || currentState == ConnectionState::Connected)
+    {
+        return;
+    }
+    
+    if (currentState == ConnectionState::Reconnecting || currentState == ConnectionState::ReconnectFailed)
+    {
+        int currentAttempt = reconnectAttemptCount.load();
+        if (currentAttempt >= MAX_RECONNECT_ATTEMPTS)
+        {
+            LOG_ERROR(TEXT("Max reconnect attempts reached"));
+            SetConnectionState(ConnectionState::ReconnectFailed, disconnectReason.load());
+            return;
+        }
+        reconnectAttemptCount.store(currentAttempt + 1);
+    }
+    else
+    {
+        reconnectAttemptCount.store(0);
+    }
+    
+    SetConnectionState(ConnectionState::Connecting, DisconnectReason::None);
+    
     if (!gameId.empty())
     {
         End(gameId, false, true);
@@ -123,9 +196,7 @@ void BliveManager::OnReceiveStartResponse(const std::string& response)
     {
         TString decodedGameID = ProtoUtils::Decode(jsonResponse["data"]["game_info"]["game_id"].get<std::string>());
         LOG_INFO(TEXT("Game ID: %s"), decodedGameID.c_str());
-        // 事件广播
-        OnBliveConnected.Invoke();
-        connected.store(true);
+        SetConnectionState(ConnectionState::Connected, DisconnectReason::None);
         gameId = ProtoUtils::ConvertTCharToString(decodedGameID.c_str());
         // 准备建立websocket
         serverAddresses.clear();
@@ -153,6 +224,7 @@ void BliveManager::OnReceiveStartResponse(const std::string& response)
         break;
     default:
         LOG_ERROR(TEXT("Error OnStartResponse: %s"), ProtoUtils::Decode(response).c_str());
+        SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::NetworkError);
         delayedTasks.push_back({ [this]() { Start(); }, 1000 });
         break;
     }
@@ -199,13 +271,12 @@ void BliveManager::OnReceiveAppHeartbeatResponse(const std::string& response)
     {
     case 0:
     {
-        // everything is ok
+        reconnectAttemptCount.store(0);
         delayedTasks.push_back({ [this]() { StartAppHeartBeat(); }, HEARBEAT_INTERVAL_MINISECONDS });
         break;
     }
     default:
-        OnBliveDisconnected.Invoke();
-        connected.store(false);
+        SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::HeartbeatTimeout);
         LOG_ERROR(TEXT("Error OnReceiveAppHeartbeatResponse: %s"), ProtoUtils::Decode(response).c_str());
         delayedTasks.push_back({ [this]() { Start(); }, 1000 });
         break;
@@ -226,7 +297,7 @@ void BliveManager::StartWebsocketHeartBeat()
 
 void BliveManager::OnReceiveWSMessage(HINTERNET hWebsocket, ProtoUtils::Packet packet)
 {
-    if (!connected.load())
+    if (connectionState.load() != ConnectionState::Connected)
         return;
     // 说有版本有压缩body，这里处理解压缩
     wsMsgLock.lock();
@@ -251,13 +322,8 @@ void BliveManager::HandleWSMessage()
             LOG_ERROR(TEXT("Receive OP_HEARTBEAT from server websocket"));
             break;
         case OP_HEARTBEAT_REPLY:
-            if (heartBeatSuccess)
-                delayedTasks.push_back({ [this]() { StartWebsocketHeartBeat(); }, HEARBEAT_INTERVAL_MINISECONDS });
-            else
-            {
-                OnBliveDisconnected.Invoke();
-                connected.store(false);
-            }
+            reconnectAttemptCount.store(0);
+            delayedTasks.push_back({ [this]() { StartWebsocketHeartBeat(); }, HEARBEAT_INTERVAL_MINISECONDS });
             break;
         case OP_SEND_SMS_REPLY:
             HandleSmsReply(packet.body);
@@ -270,9 +336,9 @@ void BliveManager::HandleWSMessage()
             delayedTasks.push_back({ [this]() { StartWebsocketHeartBeat(); }, 2000 });
             break;
         default:
-            OnBliveConnected.Invoke();
-            connected.store(false);
+            SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::NetworkError);
             LOG_ERROR(TEXT("Receive UNKNOWN from server websocket: %s"), ProtoUtils::Decode(packet.body).c_str());
+            delayedTasks.push_back({ [this]() { Start(); }, 1000 });
             break;
         }
         ++count;
@@ -318,7 +384,8 @@ void BliveManager::HandleSmsReply(const std::string& msg)
             if (disconnectedGameId == gameId)
             {
                 gameId.clear();
-                Start();
+                SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::ServerClose);
+                delayedTasks.push_back({ [this]() { Start(); }, 1000 });
             }
         }
 

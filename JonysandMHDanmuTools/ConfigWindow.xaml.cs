@@ -87,17 +87,53 @@ namespace MonsterOrderWindows
             }
         }
 
-        public void SetStatus(bool connected)
+        public void SetStatus(ConnectionState state, DisconnectReason reason)
         {
-            if (connected)
+            switch (state)
             {
-                StatusBG.Background = new SolidColorBrush(Color.FromRgb(71, 219, 155));
-                Status.Content = "已连接";
+                case ConnectionState.Connected:
+                    StatusBG.Background = new SolidColorBrush(Color.FromRgb(71, 219, 155));
+                    Status.Content = "已连接";
+                    ConnectButton.Content = "断开";
+                    break;
+                case ConnectionState.Connecting:
+                    StatusBG.Background = new SolidColorBrush(Color.FromRgb(255, 253, 231));
+                    Status.Content = "连接中...";
+                    ConnectButton.Content = "取消";
+                    break;
+                case ConnectionState.Reconnecting:
+                    StatusBG.Background = new SolidColorBrush(Color.FromRgb(255, 253, 231));
+                    Status.Content = "正在重连...";
+                    ConnectButton.Content = "取消";
+                    break;
+                case ConnectionState.ReconnectFailed:
+                    StatusBG.Background = new SolidColorBrush(Color.FromRgb(255, 183, 183));
+                    Status.Content = $"重连失败，原因: {GetReasonText(reason)}";
+                    ConnectButton.Content = "连接";
+                    break;
+                case ConnectionState.Disconnected:
+                default:
+                    StatusBG.Background = new SolidColorBrush(Color.FromRgb(255, 253, 231));
+                    Status.Content = "未连接";
+                    ConnectButton.Content = "连接";
+                    break;
             }
-            else
+        }
+
+        private string GetReasonText(DisconnectReason reason)
+        {
+            switch (reason)
             {
-                StatusBG.Background = new SolidColorBrush(Color.FromRgb(255, 253, 231));
-                Status.Content = "未连接";
+                case DisconnectReason.NetworkError:
+                    return "网络错误";
+                case DisconnectReason.HeartbeatTimeout:
+                    return "心跳超时";
+                case DisconnectReason.ServerClose:
+                    return "服务器断开";
+                case DisconnectReason.AuthFailed:
+                    return "鉴权失败";
+                default:
+                    return "未知";
             }
         }
 
@@ -121,6 +157,30 @@ namespace MonsterOrderWindows
             // DanmuManager.GetInst().SetMedalName(MedalNameTextBox.Text);
             GlobalEventListener.Invoke("ConfigChanged", "ID_CODE:" + IdentityCodeTextBox.Password);
             ToolsMain.SendCommand("ConfirmIDCode:" + IdentityCodeTextBox.Password);
+        }
+
+        private void OnConnectButtonClick(object sender, RoutedEventArgs e)
+        {
+            string buttonText = ConnectButton.Content?.ToString();
+            if (buttonText == "断开")
+            {
+                ToolsMain.SendCommand("Disconnect:");
+            }
+            else if (buttonText == "连接")
+            {
+                if (!string.IsNullOrEmpty(IdentityCodeTextBox.Password))
+                {
+                    ToolsMain.SendCommand("ConfirmIDCode:" + IdentityCodeTextBox.Password);
+                }
+                else
+                {
+                    ToolsMain.SendCommand("Reconnect:");
+                }
+            }
+            else if (buttonText == "取消")
+            {
+                ToolsMain.SendCommand("Disconnect:");
+            }
         }
 
         private void IdentityCodeTextBox_PasswordChanged(object sender, RoutedEventArgs e)

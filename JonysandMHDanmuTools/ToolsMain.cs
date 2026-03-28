@@ -5,6 +5,24 @@ using System.Windows;
 
 namespace MonsterOrderWindows
 {
+    public enum ConnectionState
+    {
+        Disconnected = 0,
+        Connecting = 1,
+        Connected = 2,
+        Reconnecting = 3,
+        ReconnectFailed = 4
+    }
+
+    public enum DisconnectReason
+    {
+        None = 0,
+        NetworkError = 1,
+        HeartbeatTimeout = 2,
+        ServerClose = 3,
+        AuthFailed = 4
+    }
+
     public class ToolsMain
     {
         private ConfigWindow _ConfigWindow = null;
@@ -218,7 +236,7 @@ namespace MonsterOrderWindows
             {
                 _ConfigWindow.Dispatcher.Invoke(new Action(delegate
                 {
-                    _ConfigWindow.SetStatus(true);
+                    _ConfigWindow.SetStatus(ConnectionState.Connected, DisconnectReason.None);
                 }));
             }
         }
@@ -229,7 +247,18 @@ namespace MonsterOrderWindows
             {
                 _ConfigWindow.Dispatcher.Invoke(new Action(delegate
                 {
-                    _ConfigWindow.SetStatus(false);
+                    _ConfigWindow.SetStatus(ConnectionState.Disconnected, DisconnectReason.None);
+                }));
+            }
+        }
+
+        public void OnConnectionStateChanged(int state, int reason)
+        {
+            if (_ConfigWindow != null)
+            {
+                _ConfigWindow.Dispatcher.Invoke(new Action(delegate
+                {
+                    _ConfigWindow.SetStatus((ConnectionState)state, (DisconnectReason)reason);
                 }));
             }
         }

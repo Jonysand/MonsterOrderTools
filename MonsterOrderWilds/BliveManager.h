@@ -4,8 +4,48 @@
 #include "EventSystem.h"
 
 
+enum class ConnectionState {
+    Disconnected,
+    Connecting,
+    Connected,
+    Reconnecting,
+    ReconnectFailed
+};
 
-// Manager Class, Singleton
+enum class DisconnectReason {
+    None,
+    NetworkError,
+    HeartbeatTimeout,
+    ServerClose,
+    AuthFailed
+};
+
+inline const char* ConnectionStateToString(ConnectionState state) {
+    switch (state) {
+        case ConnectionState::Disconnected: return "Disconnected";
+        case ConnectionState::Connecting: return "Connecting";
+        case ConnectionState::Connected: return "Connected";
+        case ConnectionState::Reconnecting: return "Reconnecting";
+        case ConnectionState::ReconnectFailed: return "ReconnectFailed";
+        default: return "Unknown";
+    }
+}
+
+inline const char* DisconnectReasonToString(DisconnectReason reason) {
+    switch (reason) {
+        case DisconnectReason::None: return "无";
+        case DisconnectReason::NetworkError: return "网络错误";
+        case DisconnectReason::HeartbeatTimeout: return "心跳超时";
+        case DisconnectReason::ServerClose: return "服务器断开";
+        case DisconnectReason::AuthFailed: return "鉴权失败";
+        default: return "未知";
+    }
+}
+
+
+static constexpr int MAX_RECONNECT_ATTEMPTS = 5;
+
+
 class BliveManager
 {
     DECLARE_SINGLETON(BliveManager)
@@ -23,8 +63,16 @@ public:
 	// Tick
     void Tick();
     // IsConnected
-    inline bool IsConnected() { return connected.load(); };
-    inline void SetConnected(bool val) { connected.store(val); };
+    inline bool IsConnected() { return connectionState.load() == ConnectionState::Connected; };
+    // Get connection state
+    inline ConnectionState GetConnectionState() { return connectionState.load(); };
+    inline DisconnectReason GetDisconnectReason() { return disconnectReason.load(); };
+    inline int GetReconnectAttemptCount() { return reconnectAttemptCount.load(); };
+    // Disconnect / Reconnect
+    void Disconnect();
+    void Reconnect();
+    // Set connection state
+    void SetConnectionState(ConnectionState state, DisconnectReason reason = DisconnectReason::None);
 private:
     BliveManager() = default;
     ~BliveManager();
@@ -91,7 +139,10 @@ private:
     // websocket 信息
     std::queue<ProtoUtils::Packet> wsMessages;
     Lock wsMsgLock;
-    std::atomic<bool> connected{ false };
+    // Connection state
+    std::atomic<ConnectionState> connectionState{ ConnectionState::Disconnected };
+    std::atomic<DisconnectReason> disconnectReason{ DisconnectReason::None };
+    std::atomic<int> reconnectAttemptCount{ 0 };
 
     /*
     * 事件监听 ----------------------------------------------------------------------------------------
@@ -106,5 +157,14 @@ private: \
     REGISTER_EVENT_LISTENER(OnBliveConnected)
     // 弹幕服务器断连
     REGISTER_EVENT_LISTENER(OnBliveDisconnected)
+
+#define REGISTER_EVENT_LISTENER_WITH_PARAMS(NAME, P1, P2)   \
+public: \
+inline void AddListener_##NAME##(const Event<P1, P2>::Handler& handler) { ##NAME##.AddListener(handler); } \
+private: \
+    Event<P1, P2> ##NAME##;
+
+    // 连接状态变化（带原因）
+    REGISTER_EVENT_LISTENER_WITH_PARAMS(OnConnectionStateChanged, ConnectionState, DisconnectReason)
 
 };

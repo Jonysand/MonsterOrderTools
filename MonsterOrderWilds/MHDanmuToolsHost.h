@@ -32,6 +32,10 @@ public:
 
 	inline void OnDisconnected() { toolsMainInstance->OnDisconnected(); };
 
+	inline void OnConnectionStateChanged(int state, int reason) { 
+		toolsMainInstance->OnConnectionStateChanged(state, reason); 
+	}
+
 	inline void OnHotKeyLock() { toolsMainInstance->OnHotKeyLock(); }
 
 	inline void OnReceiveRawMsg(const TString& rawStr) { 

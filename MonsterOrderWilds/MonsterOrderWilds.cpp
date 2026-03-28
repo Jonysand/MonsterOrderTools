@@ -34,6 +34,9 @@ UINT MonsterOrderWilds::HandleHwndMsg(HWND hWnd, UINT message, WPARAM wParam, LP
 	{
 		AddHotKeys(hWnd);
 		BliveManager::Inst()->AddListener_OnBliveConnected([this]() { OnBliveConnected(); });
+		BliveManager::Inst()->AddListener_OnConnectionStateChanged([this](ConnectionState state, DisconnectReason reason) {
+			ToolsMainHost::Inst()->OnConnectionStateChanged(static_cast<int>(state), static_cast<int>(reason));
+		});
 		break;
 	}
 	case WM_HOTKEY:
@@ -48,7 +51,7 @@ UINT MonsterOrderWilds::HandleHwndMsg(HWND hWnd, UINT message, WPARAM wParam, LP
 	case WM_DESTROY:
 	{
 		// 关闭弹幕服务器
-		BliveManager::Inst()->SetConnected(false);
+		BliveManager::Inst()->Disconnect();
 		BliveManager::Inst()->Destroy();
 		break;
 	}
@@ -92,10 +95,20 @@ void MonsterOrderWilds::tickWPFCommand()
 	// LOG
 	if (strcmp(command[0].c_str(), "Log") == 0 && command.size() == 2)
 		LOG_INFO(TEXT("[GUI] %s"), command[1].c_str());
+	// 断开连接
+	if (strcmp(command[0].c_str(), "Disconnect") == 0)
+	{
+		BliveManager::Inst()->Disconnect();
+	}
+	// 重新连接
+	if (strcmp(command[0].c_str(), "Reconnect") == 0)
+	{
+		BliveManager::Inst()->Reconnect();
+	}
 	// 退出主程序
 	if (strcmp(command[0].c_str(), "Exit") == 0)
 	{
-		BliveManager::Inst()->SetConnected(false);
+		BliveManager::Inst()->Disconnect();
 		BliveManager::Inst()->Destroy();
 		PostQuitMessage(0);
 	}
@@ -108,7 +121,6 @@ void MonsterOrderWilds::OnBliveConnected()
 
 void MonsterOrderWilds::OnBliveDisconnected()
 {
-	BliveManager::Inst()->Start();
 	ToolsMainHost::Inst()->OnDisconnected();
 }
 
