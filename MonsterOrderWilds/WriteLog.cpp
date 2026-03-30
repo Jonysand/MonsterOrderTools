@@ -89,7 +89,7 @@ namespace WriteLog
 
 				_sntprintf_s(strLogTag, sizeof(strLogTag) / sizeof(TCHAR), _TRUNCATE, TEXT("[%04d-%02d-%02d %02d:%02d:%02d]:[%s]"),
 					st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, strLogType[level]);
-				_ftprintf(g_fp, TEXT("%s %s\n"), strLogTag, strLogContext);
+				_ftprintf(g_fp, TEXT("%s %ls\n"), strLogTag, strLogContext);
 				fflush(g_fp);
 				fclose(g_fp);
 				g_fp = NULL;
@@ -130,7 +130,7 @@ namespace WriteLog
 			if (fp)
 			{
 				// Write line: [HH:MM:SS] msg
-				_ftprintf(fp, TEXT("[%02d:%02d:%02d] %s\n"), st.wHour, st.wMinute, st.wSecond, msg);
+				_ftprintf(fp, TEXT("[%02d:%02d:%02d] %ls\n"), st.wHour, st.wMinute, st.wSecond, msg);
 				fflush(fp);
 				fclose(fp);
 			}

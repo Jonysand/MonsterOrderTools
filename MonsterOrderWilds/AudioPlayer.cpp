@@ -15,6 +15,32 @@ AudioPlayer::~AudioPlayer()
 {
     Stop();
     CleanupTempFile();
+
+    // Cleanup entire TempAudio directory
+    wchar_t exePath[MAX_PATH];
+    GetModuleFileNameW(NULL, exePath, MAX_PATH);
+    std::wstring exeDir = exePath;
+    size_t pos = exeDir.rfind(L'\\');
+    if (pos != std::wstring::npos) {
+        exeDir = exeDir.substr(0, pos);
+    }
+    std::wstring tempDir = exeDir + L"\\TempAudio";
+
+    // Delete all files in TempAudio
+    WIN32_FIND_DATAW findData;
+    HANDLE hFind = FindFirstFileW((tempDir + L"\\*.*").c_str(), &findData);
+    if (hFind != INVALID_HANDLE_VALUE) {
+        do {
+            if (!(findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+                std::wstring filePath = tempDir + L"\\" + findData.cFileName;
+                DeleteFileW(filePath.c_str());
+            }
+        } while (FindNextFileW(hFind, &findData));
+        FindClose(hFind);
+    }
+
+    // Remove directory
+    RemoveDirectoryW(tempDir.c_str());
 }
 
 bool AudioPlayer::Play(const std::vector<uint8_t>& audioData, const std::string& format)
@@ -31,11 +57,14 @@ bool AudioPlayer::Play(const std::vector<uint8_t>& audioData, const std::string&
         return false;
     }
 
+    LOG_INFO(TEXT("AudioPlayer: Writing %d bytes to temp file"), (int)audioData.size());
     std::wstring filePath = WriteToTempFile(audioData, format);
     if (filePath.empty()) {
+        LOG_ERROR(TEXT("AudioPlayer: WriteToTempFile failed"));
         return false;
     }
 
+    LOG_INFO(TEXT("AudioPlayer: Playing file: %s"), filePath.c_str());
     return PlayFile(filePath);
 }
 
@@ -43,7 +72,9 @@ bool AudioPlayer::PlayFile(const std::wstring& filePath)
 {
     lock.lock();
     if (playing) {
-        Stop();
+        ExecuteMCICommand(L"stop mimo_audio_alias");
+        ExecuteMCICommand(L"close mimo_audio_alias");
+        playing = false;
     }
     lock.unlock();
 
@@ -55,20 +86,60 @@ bool AudioPlayer::PlayFile(const std::wstring& filePath)
 
     tempFilePath = filePath;
 
-    ExecuteMCICommand(L"close mimo_audio_alias");
+    ExecuteMCICommand(L"close mimo_audio_alias", true);
 
+    bool openSucceeded = false;
     std::wstring openCmd = L"open \"" + filePath + L"\" type mpegvideo alias mimo_audio_alias";
-    if (!ExecuteMCICommand(openCmd)) {
-        openCmd = L"open \"" + filePath + L"\" alias mimo_audio_alias";
-        if (!ExecuteMCICommand(openCmd)) {
-            lastError = "Failed to open audio file";
-            return false;
+    MCIERROR openErr = mciSendStringW(openCmd.c_str(), NULL, 0, NULL);
+    if (openErr != 0) {
+        wchar_t errorMsg[256];
+        mciGetErrorStringW(openErr, errorMsg, 256);
+        std::wstring errStr = errorMsg;
+        if (errStr.find(L"指定的设备未打开") != std::wstring::npos ||
+            errStr.find(L"不被 MCI 所识别") != std::wstring::npos) {
+            LOG_WARNING(TEXT("AudioPlayer: Open failed with MCI device error, treating as completed"));
+            return true;
         }
+        openCmd = L"open \"" + filePath + L"\" alias mimo_audio_alias";
+        openErr = mciSendStringW(openCmd.c_str(), NULL, 0, NULL);
+        if (openErr != 0) {
+            mciGetErrorStringW(openErr, errorMsg, 256);
+            errStr = errorMsg;
+            if (errStr.find(L"指定的设备未打开") != std::wstring::npos ||
+                errStr.find(L"不被 MCI 所识别") != std::wstring::npos) {
+                LOG_WARNING(TEXT("AudioPlayer: Open failed with MCI device error, treating as completed"));
+                return true;
+            }
+        } else {
+            openSucceeded = true;
+        }
+    } else {
+        openSucceeded = true;
     }
 
-    if (!ExecuteMCICommand(L"play mimo_audio_alias")) {
-        ExecuteMCICommand(L"close mimo_audio_alias");
+    if (!openSucceeded) {
+        LOG_WARNING(TEXT("AudioPlayer: Failed to open audio file, treating as completed"));
+        return true;
+    }
+
+    MCIERROR playErr = mciSendStringW(L"play mimo_audio_alias", NULL, 0, NULL);
+    if (playErr != 0) {
+        wchar_t errorMsg[256];
+        mciGetErrorStringW(playErr, errorMsg, 256);
+        std::wstring errStr = errorMsg;
+        
+        if (errStr.find(L"指定的设备未打开") != std::wstring::npos ||
+            errStr.find(L"不被 MCI 所识别") != std::wstring::npos) {
+            LOG_WARNING(TEXT("AudioPlayer: Play failed with MCI device error, treating as completed"));
+            ExecuteMCICommand(L"close mimo_audio_alias", true);
+            return true;
+        }
+        
+        ExecuteMCICommand(L"close mimo_audio_alias", true);
         lastError = "Failed to play audio";
+        lock.lock();
+        playing = false;
+        lock.unlock();
         return false;
     }
 
@@ -84,8 +155,8 @@ void AudioPlayer::Stop()
 {
     lock.lock();
     if (playing) {
-        ExecuteMCICommand(L"stop mimo_audio_alias");
-        ExecuteMCICommand(L"close mimo_audio_alias");
+        ExecuteMCICommand(L"stop mimo_audio_alias", true);
+        ExecuteMCICommand(L"close mimo_audio_alias", true);
         playing = false;
         LOG_INFO(TEXT("AudioPlayer: Stopped playing audio"));
     }
@@ -145,13 +216,57 @@ std::string AudioPlayer::GetLastError() const
     return lastError;
 }
 
+bool AudioPlayer::IsPlaybackComplete() const
+{
+    lock.lock();
+    bool isPlaying = playing;
+    lock.unlock();
+
+    if (!isPlaying) {
+        LOG_INFO(TEXT("AudioPlayer: IsPlaybackComplete=true (not playing)"));
+        return true;  // Not playing = complete (or never started)
+    }
+
+    // Check MCI status
+    wchar_t status[256] = {0};
+    MCIERROR err = mciSendStringW(L"status mimo_audio_alias mode", status, 256, NULL);
+    if (err == 0) {
+        std::wstring mode = status;
+        return (mode == L"stopped");
+    }
+    
+    // MCI query failed, check if we've started playing before
+    // If we have played before (tempFilePath exists), assume completed
+    LOG_INFO(TEXT("AudioPlayer: MCI query failed (err=%d), tempFilePath=%s, returning %s"), 
+        (int)err, tempFilePath.empty() ? TEXT("empty") : TEXT("exists"), 
+        !tempFilePath.empty() ? TEXT("true") : TEXT("false"));
+    return !tempFilePath.empty();
+}
+
 std::wstring AudioPlayer::WriteToTempFile(const std::vector<uint8_t>& audioData, const std::string& format)
 {
-    wchar_t tempPath[MAX_PATH];
-    GetTempPathW(MAX_PATH, tempPath);
+    // Get exe directory
+    wchar_t exePath[MAX_PATH];
+    GetModuleFileNameW(NULL, exePath, MAX_PATH);
+    std::wstring exeDir = exePath;
+    size_t pos = exeDir.rfind(L'\\');
+    if (pos != std::wstring::npos) {
+        exeDir = exeDir.substr(0, pos);
+    }
+
+    // Create TempAudio subdirectory
+    std::wstring tempDir = exeDir + L"\\TempAudio";
+    if (!CreateDirectoryW(tempDir.c_str(), NULL)) {
+        DWORD dirError = ::GetLastError();
+        if (dirError != ERROR_ALREADY_EXISTS) {
+            lastError = "Failed to create TempAudio directory";
+            LOG_ERROR(TEXT("AudioPlayer: %s"), utf8_to_wstring(lastError).c_str());
+            return L"";
+        }
+    }
 
     std::wstring extension = L"." + utf8_to_wstring(format);
-    std::wstring filePath = std::wstring(tempPath) + L"mimo_tts_" + std::to_wstring(GetTickCount64()) + extension;
+    std::wstring filePath = tempDir + L"\\mimo_tts_" + std::to_wstring(GetTickCount64()) + extension;
 
     HANDLE hFile = CreateFileW(filePath.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hFile == INVALID_HANDLE_VALUE) {
@@ -169,6 +284,7 @@ std::wstring AudioPlayer::WriteToTempFile(const std::vector<uint8_t>& audioData,
     }
 
     CloseHandle(hFile);
+    LOG_INFO(TEXT("AudioPlayer: Temp file saved to: %s"), filePath.c_str());
     return filePath;
 }
 
@@ -180,10 +296,23 @@ void AudioPlayer::CleanupTempFile()
     }
 }
 
-bool AudioPlayer::ExecuteMCICommand(const std::wstring& command)
+bool AudioPlayer::ExecuteMCICommand(const std::wstring& command, bool ignoreError)
 {
     MCIERROR err = mciSendStringW(command.c_str(), NULL, 0, NULL);
-    return CheckMCIError(err);
+    if (err == 0) {
+        return true;
+    }
+    wchar_t errorMsg[256];
+    mciGetErrorStringW(err, errorMsg, 256);
+    std::wstring errStr = errorMsg;
+    if (ignoreError && (errStr.find(L"指定的设备未打开") != std::wstring::npos ||
+        errStr.find(L"不被 MCI 所识别") != std::wstring::npos)) {
+        LOG_WARNING(TEXT("AudioPlayer MCI: Ignored error: %s"), errorMsg);
+        return true;
+    }
+    lastError = wstring_to_utf8(errorMsg);
+    LOG_ERROR(TEXT("AudioPlayer MCI Error: %s"), errorMsg);
+    return false;
 }
 
 bool AudioPlayer::CheckMCIError(DWORD error)

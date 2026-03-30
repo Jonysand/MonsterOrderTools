@@ -14,12 +14,6 @@ namespace MonsterOrderWindows
 
         public int Count => _queue.Count;
 
-        private string _saveDir = null;
-        private string _saveFileName = null;
-
-        private bool _dirty = false;
-        private System.Windows.Threading.DispatcherTimer _saveTimer;
-
         private static PriorityQueue _Inst = null;
 
         public static PriorityQueue GetInst()
@@ -32,28 +26,62 @@ namespace MonsterOrderWindows
 
         public PriorityQueue()
         {
-            _saveDir = Path.Combine(Environment.CurrentDirectory, @"MonsterOrderWilds_configs");
-            _saveFileName = "OrderList.list";
-            LoadList();
+            RefreshFromNative();
+        }
 
-            _saveTimer = new System.Windows.Threading.DispatcherTimer();
-            _saveTimer.Interval = TimeSpan.FromMilliseconds(500);
-            _saveTimer.Tick += (s, e) =>
+        private void RefreshFromNative()
+        {
+            _queue.Clear();
+            _userIds.Clear();
+            try
             {
-                if (_dirty)
+                var nodes = new List<PriorityQueueNode>();
+                NativeImports.OnQueueNodeCallback callback = (userId, timeStamp, priority, userName, monsterName, guardLevel, temperedLevel, userData) =>
                 {
-                    SaveList();
-                    _dirty = false;
+                    var node = new PriorityQueueNode
+                    {
+                        UserId = userId,
+                        TimeStamp = timeStamp,
+                        Priority = priority,
+                        UserName = userName,
+                        MonsterName = monsterName,
+                        GuardLevel = guardLevel,
+                        TemperedLevel = temperedLevel
+                    };
+                    nodes.Add(node);
+                };
+                NativeImports.PriorityQueue_GetAllNodes(callback, IntPtr.Zero);
+                foreach (var node in nodes)
+                {
+                    _queue.Add(node);
+                    _userIds.Add(node.UserId);
                 }
-            };
-            _saveTimer.Start();
+            }
+            catch (Exception e)
+            {
+                ToolsMain.SendCommand("Log:PriorityQueue_GetAllNodes failed: " + e.Message);
+            }
         }
 
         public void Enqueue(PriorityQueueNode node)
         {
-            _queue.Add(node);
-            _userIds.Add(node.UserId);
-            _dirty = true;
+            try
+            {
+                NativeImports.PriorityQueue_Enqueue(
+                    node.UserId,
+                    node.TimeStamp,
+                    node.Priority,
+                    node.UserName,
+                    node.MonsterName,
+                    node.GuardLevel,
+                    node.TemperedLevel);
+                _queue.Add(node);
+                _userIds.Add(node.UserId);
+            }
+            catch (Exception e)
+            {
+                ToolsMain.SendCommand("Log:PriorityQueue_Enqueue failed: " + e.Message);
+            }
         }
 
         public PriorityQueueNode Dequeue(int index)
@@ -63,9 +91,16 @@ namespace MonsterOrderWindows
                 throw new InvalidOperationException("queue size error");
             }
             PriorityQueueNode node = _queue[index];
-            _queue.RemoveAt(index);
-            _userIds.Remove(node.UserId);
-            _dirty = true;
+            try
+            {
+                NativeImports.PriorityQueue_DequeueByIndex(index);
+                _queue.RemoveAt(index);
+                _userIds.Remove(node.UserId);
+            }
+            catch (Exception e)
+            {
+                ToolsMain.SendCommand("Log:PriorityQueue_DequeueByIndex failed: " + e.Message);
+            }
             return node;
         }
 
@@ -80,52 +115,72 @@ namespace MonsterOrderWindows
 
         public bool Contains(string userId)
         {
-            return _userIds.Contains(userId);
+            try
+            {
+                return NativeImports.PriorityQueue_Contains(userId);
+            }
+            catch (Exception e)
+            {
+                ToolsMain.SendCommand("Log:PriorityQueue_Contains failed: " + e.Message);
+                return _userIds.Contains(userId);
+            }
         }
 
         public void SortQueue()
         {
-            _queue.Sort((a, b) => a.CompareTo(b));
+            try
+            {
+                NativeImports.PriorityQueue_SortQueue();
+                RefreshFromNative();
+            }
+            catch (Exception e)
+            {
+                ToolsMain.SendCommand("Log:PriorityQueue_SortQueue failed: " + e.Message);
+            }
         }
 
         public bool LoadList()
         {
-            if (_saveDir == null || _saveFileName == null)
-                return false;
-
-            string orderListPath = Path.Combine(_saveDir, _saveFileName);
-            if (!File.Exists(orderListPath))
-                return false;
-            string json = File.ReadAllText(orderListPath);
-            var deserialized = JsonConvert.DeserializeObject<List<PriorityQueueNode>>(json);
-            _queue = deserialized ?? new List<PriorityQueueNode>();
-            _userIds.Clear();
-            foreach (var node in _queue)
+            try
             {
-                if (!string.IsNullOrEmpty(node.UserId))
-                    _userIds.Add(node.UserId);
+                bool result = NativeImports.PriorityQueue_LoadList();
+                if (result)
+                {
+                    RefreshFromNative();
+                }
+                return result;
             }
-            return true;
+            catch (Exception e)
+            {
+                ToolsMain.SendCommand("Log:PriorityQueue_LoadList failed: " + e.Message);
+                return false;
+            }
         }
 
         public void SaveList()
         {
-            if (_saveDir == null || _saveFileName == null)
-                return;
-
-            if (!Directory.Exists(_saveDir))
+            try
             {
-                Directory.CreateDirectory(_saveDir);
+                NativeImports.PriorityQueue_SaveList();
             }
-            string configPath = Path.Combine(_saveDir, _saveFileName);
-            File.WriteAllText(configPath, JsonConvert.SerializeObject(Queue));
+            catch (Exception e)
+            {
+                ToolsMain.SendCommand("Log:PriorityQueue_SaveList failed: " + e.Message);
+            }
         }
 
         public void Clear()
         {
-            Queue.Clear();
-            _userIds.Clear();
-            SaveList();
+            try
+            {
+                NativeImports.PriorityQueue_Clear();
+                _queue.Clear();
+                _userIds.Clear();
+            }
+            catch (Exception e)
+            {
+                ToolsMain.SendCommand("Log:PriorityQueue_Clear failed: " + e.Message);
+            }
         }
     }
 

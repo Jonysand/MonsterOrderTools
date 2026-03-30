@@ -1,8 +1,8 @@
 #include "MimoTTSClient.h"
-#include "MHDanmuToolsHost.h"
 #include "WriteLog.h"
 #include "CredentialsConsts.h"
 #include "StringUtils.h"
+#include <mutex>
 
 MimoTTSClient::MimoTTSClient()
 {
@@ -187,12 +187,7 @@ void MimoTTSClient::ExecuteWithRetry(const TTSRequest& request, TTSCallback call
     std::string requestBody = BuildRequestBody(request);
     std::string requestHeaders = BuildRequestHeaders(apiKey);
 
-    // Use SSL only for production server, not for localhost
-#ifdef _DEBUG
-    bool useSSL = false;  // Local mock server uses HTTP
-#else
     bool useSSL = true;   // Production server uses HTTPS
-#endif
 
     int retryCount = 0;
     bool callbackInvoked = false;

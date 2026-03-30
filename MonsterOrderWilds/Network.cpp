@@ -27,24 +27,23 @@ namespace ProtoUtils
         return std::string(tcharStr);
 #endif
     }
-    TCHAR* ConvertToTCHAR(const char* input) {
+    TString ConvertToTCHAR(const char* input) {
         if (!input) {
-            return nullptr;
+            return TString();
         }
 
 #ifdef UNICODE
-        // Convert from char* to wchar_t*
-        size_t len = strlen(input) + 1;
-        size_t converted = 0;
-        wchar_t* wideStr = new wchar_t[len];
-        mbstowcs_s(&converted, wideStr, len, input, _TRUNCATE);
+        // Convert from char* to std::wstring using MultiByteToWideChar
+        int wideLength = MultiByteToWideChar(CP_UTF8, 0, input, -1, nullptr, 0);
+        if (wideLength == 0) {
+            return TString();
+        }
+        std::wstring wideStr(wideLength - 1, L'\0');
+        MultiByteToWideChar(CP_UTF8, 0, input, -1, &wideStr[0], wideLength);
         return wideStr;
 #else
-        // Directly return the char* as TCHAR* in ANSI builds
-        size_t len = strlen(input) + 1;
-        char* ansiStr = new char[len];
-        strcpy_s(ansiStr, len, input);
-        return ansiStr;
+        // Directly return std::string in ANSI builds
+        return std::string(input);
 #endif
     }
     template <typename T>
@@ -197,7 +196,8 @@ namespace Network {
 
         if (!headers.empty())
         {
-            if (!WinHttpAddRequestHeaders(hRequest, ProtoUtils::ConvertToTCHAR(headers.c_str()), (DWORD)headers.size(), WINHTTP_ADDREQ_FLAG_ADD | WINHTTP_ADDREQ_FLAG_REPLACE))
+            TString tcharHeaders = ProtoUtils::ConvertToTCHAR(headers.c_str());
+            if (!WinHttpAddRequestHeaders(hRequest, tcharHeaders.c_str(), (DWORD)tcharHeaders.size(), WINHTTP_ADDREQ_FLAG_ADD | WINHTTP_ADDREQ_FLAG_REPLACE))
             {
                 WinHttpCloseHandle(hRequest);
                 WinHttpCloseHandle(hConnect);
@@ -284,7 +284,7 @@ namespace Network {
                 wideServerAddress.replace(0, 6, L"https://");
             }
             if (!WinHttpCrackUrl(wideServerAddress.c_str(), 0, ICU_DECODE, &urlComponents)) {
-                LOG_ERROR(TEXT("Failed to parse URL: %s, Error: %d"), ProtoUtils::ConvertToTCHAR(serverAddress.c_str()), GetLastError());
+                LOG_ERROR(TEXT("Failed to parse URL: %s, Error: %d"), ProtoUtils::ConvertToTCHAR(serverAddress.c_str()).c_str(), GetLastError());
                 continue;
             }
 
@@ -349,7 +349,7 @@ namespace Network {
             }
             // Check if the status code indicates success
             if (statusCode != 101) { // 101 is the expected status code for WebSocket upgrade
-                LOG_ERROR(TEXT("WebSocket handshake failed with status code: %s, %d"), ProtoUtils::ConvertToTCHAR(serverAddress.c_str()), statusCode);
+                LOG_ERROR(TEXT("WebSocket handshake failed with status code: %s, %d"), ProtoUtils::ConvertToTCHAR(serverAddress.c_str()).c_str(), statusCode);
                 WinHttpCloseHandle(hRequest);
                 WinHttpCloseHandle(hConnect);
                 WinHttpCloseHandle(hSession);

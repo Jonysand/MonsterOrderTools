@@ -25,13 +25,16 @@ public:
     // 等待播放完成
     bool WaitForCompletion(DWORD timeoutMs = 0);
 
+    // 检查播放是否已完成（非阻塞方式）
+    bool IsPlaybackComplete() const;
+
     // 获取最后一次错误信息
     std::string GetLastError() const;
 
 private:
     std::wstring WriteToTempFile(const std::vector<uint8_t>& audioData, const std::string& format);
     void CleanupTempFile();
-    bool ExecuteMCICommand(const std::wstring& command);
+    bool ExecuteMCICommand(const std::wstring& command, bool ignoreError = false);
     bool CheckMCIError(DWORD error);
 
     std::wstring tempFilePath;

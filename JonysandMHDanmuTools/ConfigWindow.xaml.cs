@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
 
@@ -18,6 +19,10 @@ namespace MonsterOrderWindows
         public void FillConfig(MainConfig config)
         {
             if (config == null) return;
+
+            // 同步到ConfigProxy
+            ConfigProxy.Instance.RefreshFromConfig(config);
+
             IdentityCodeTextBox.Password = config.ID_CODE;
             if (config.ENABLE_VOICE)
                 EnableVoiceCheckBox.IsChecked = true;
@@ -267,9 +272,18 @@ namespace MonsterOrderWindows
             GlobalEventListener.Invoke("ConfigChanged", $"OPACITY:{e.NewValue}");
         }
 
-        private void SaveSettingsButton_Click(object sender, RoutedEventArgs e)
+        private async void SaveSettingsButton_Click(object sender, RoutedEventArgs e)
         {
-            ToolsMain.GetConfigService().SaveConfig();
+            SaveSettingsButton.IsEnabled = false;
+            SaveSettingsButton.Content = "保存中...";
+
+            await Task.Run(() =>
+            {
+                ToolsMain.GetConfigService().SaveConfig();
+            });
+
+            SaveSettingsButton.Content = "保存设置";
+            SaveSettingsButton.IsEnabled = true;
 
             var tip = new System.Windows.Controls.ToolTip
             {
@@ -340,6 +354,22 @@ namespace MonsterOrderWindows
         private void MimoSpeedSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             GlobalEventListener.Invoke("ConfigChanged", $"MIMO_SPEED:{e.NewValue}");
+        }
+
+        private void LockWindowButton_Click(object sender, RoutedEventArgs e)
+        {
+            // 触发锁定/解锁点怪窗口
+            GlobalEventListener.Invoke("OrderWindowLocked", null);
+
+            // 更新按钮文本
+            if (LockWindowButton.Content?.ToString() == "锁定窗口")
+            {
+                LockWindowButton.Content = "解锁窗口";
+            }
+            else
+            {
+                LockWindowButton.Content = "锁定窗口";
+            }
         }
     }
 }

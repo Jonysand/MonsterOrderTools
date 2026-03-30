@@ -2,7 +2,7 @@
 #include "CredentialsConsts.h"
 #include "WriteLog.h"
 #include "TextToSpeech.h"
-#include "MHDanmuToolsHost.h"
+#include "DataBridge.h"
 
 DEFINE_SINGLETON(BliveManager)
 
@@ -357,7 +357,7 @@ void BliveManager::HandleSmsReply(const std::string& msg)
         try {
             jsonResponse = json::parse(msg);
         }
-        catch (const json::parse_error& e) {
+        catch (const json::parse_error&) {
             LOG_ERROR(TEXT("[HandleSmsReply] JSON parse error: %s"), msg.c_str());
             return;
         }
@@ -389,8 +389,9 @@ void BliveManager::HandleSmsReply(const std::string& msg)
             }
         }
 
-        // <TODO> 后续用C++层的解析结果
-        ToolsMainHost::Inst()->OnReceiveRawMsg(decoded);
+        if (cmd == "LIVE_OPEN_PLATFORM_DM") {
+            DanmuProcessor::Inst()->ProcessDanmu(DanmuProcessor::Inst()->ParseDanmuJson(msg));
+        }
     }
     catch (const std::exception& e) {
         LOG_ERROR(TEXT("[HandleSmsReply] Exception: %s"), ProtoUtils::Decode(e.what()).c_str());

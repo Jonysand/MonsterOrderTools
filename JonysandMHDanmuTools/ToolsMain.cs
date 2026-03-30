@@ -70,6 +70,7 @@ namespace MonsterOrderWindows
             try
             {
                 DanmuManager.GetInst();
+                MonsterData.GetInst().LoadJsonData();
             }
             catch (Exception e)
             {
@@ -87,7 +88,7 @@ namespace MonsterOrderWindows
         {
             if (_OrderedMonsterWindow != null)
             {
-                _OrderedMonsterWindow.Dispatcher.Invoke(new Action(delegate
+                _OrderedMonsterWindow.Dispatcher.InvokeAsync(new Action(delegate
                 {
                     _OrderedMonsterWindow.Hide();
                 }));
@@ -98,7 +99,7 @@ namespace MonsterOrderWindows
         {
             if (_OrderedMonsterWindow != null)
             {
-                _OrderedMonsterWindow.Dispatcher.Invoke(new Action(delegate
+                _OrderedMonsterWindow.Dispatcher.InvokeAsync(new Action(delegate
                 {
                     _OrderedMonsterWindow.Show();
                 }));
@@ -227,14 +228,14 @@ namespace MonsterOrderWindows
         {
             if (_OrderedMonsterWindow != null)
             {
-                _OrderedMonsterWindow.Dispatcher.Invoke(new Action(delegate
+                _OrderedMonsterWindow.Dispatcher.InvokeAsync(new Action(delegate
                 {
                     _OrderedMonsterWindow.Show();
                 }));
             }
             if (_ConfigWindow != null)
             {
-                _ConfigWindow.Dispatcher.Invoke(new Action(delegate
+                _ConfigWindow.Dispatcher.InvokeAsync(new Action(delegate
                 {
                     _ConfigWindow.SetStatus(ConnectionState.Connected, DisconnectReason.None);
                 }));
@@ -245,7 +246,7 @@ namespace MonsterOrderWindows
         {
             if (_ConfigWindow != null)
             {
-                _ConfigWindow.Dispatcher.Invoke(new Action(delegate
+                _ConfigWindow.Dispatcher.InvokeAsync(new Action(delegate
                 {
                     _ConfigWindow.SetStatus(ConnectionState.Disconnected, DisconnectReason.None);
                 }));
@@ -256,7 +257,7 @@ namespace MonsterOrderWindows
         {
             if (_ConfigWindow != null)
             {
-                _ConfigWindow.Dispatcher.Invoke(new Action(delegate
+                _ConfigWindow.Dispatcher.InvokeAsync(new Action(delegate
                 {
                     _ConfigWindow.SetStatus((ConnectionState)state, (DisconnectReason)reason);
                 }));
@@ -267,17 +268,11 @@ namespace MonsterOrderWindows
         {
             if (_OrderedMonsterWindow != null)
             {
-                _OrderedMonsterWindow.Dispatcher.Invoke(new Action(delegate
+                _OrderedMonsterWindow.Dispatcher.InvokeAsync(new Action(delegate
                 {
                     _OrderedMonsterWindow.OnHotKeyLock();
                 }));
             }
-        }
-
-        // 先保留用CSharp的逻辑处理，后面挪到cpp
-        public void OnReceivedRawMsg(String rawJsonStr)
-        {
-            DanmuManager.GetInst().OnReceivedRawJson(rawJsonStr);
         }
 
         static public Queue<String> CommandQueue;

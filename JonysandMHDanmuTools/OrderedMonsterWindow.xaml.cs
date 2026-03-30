@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -36,6 +37,9 @@ namespace MonsterOrderWindows
 
             GlobalEventListener.AddListener("AddRollingInfo", (object rollingInfo) => AddRollingInfo(rollingInfo as RollingInfo));
             GlobalEventListener.AddListener("RefreshOrder", (object _) => RefreshOrder());
+
+            // 注册事件通知
+            EventDispatcher.Instance.OnQueueChanged += () => Dispatcher.InvokeAsync(new Action(() => RefreshOrder()));
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
@@ -171,26 +175,38 @@ namespace MonsterOrderWindows
             mInfoQueue.Enqueue(rollingInfo);
         }
 
-        public void RefreshOrder()
+        public async void RefreshOrder()
         {
-            // 应该不用加锁，每次队列变化时都会调用这里
-            // 也就是说变化过后必定刷新一次
-            Dispatcher.InvokeAsync(new Action(delegate
+            // 后台排序 + 数据准备，然后在UI线程更新列表
+            var sortedItems = await Task.Run(() =>
             {
                 PriorityQueue.GetInst().SortQueue();
-                MainList.Items.Clear();
-                foreach (var items in PriorityQueue.GetInst().Queue)
+
+                // 同步到PriorityQueueProxy
+                PriorityQueueProxy.Instance.RefreshFromQueue(PriorityQueue.GetInst());
+
+                var items = new List<MonsterOrderInfo>();
+                foreach (var node in PriorityQueue.GetInst().Queue)
                 {
-                    MonsterOrderInfo tempData = new MonsterOrderInfo();
-                    tempData.AudienceName = items.UserName;
-                    tempData.MonsterName = items.MonsterName;
-                    tempData.GuardLevel = items.GuardLevel;
-                    tempData.TemperedLevel = items.TemperedLevel;
+                    var tempData = new MonsterOrderInfo();
+                    tempData.AudienceName = node.UserName;
+                    tempData.MonsterName = node.MonsterName;
+                    tempData.GuardLevel = node.GuardLevel;
+                    tempData.TemperedLevel = node.TemperedLevel;
                     string iconUrl = MonsterData.GetInst().GetMatchedMonsterIconUrl(tempData.MonsterName);
-                    // icon 设置
                     if (!string.IsNullOrEmpty(iconUrl))
                         tempData.MonsterIcon = new Uri(iconUrl, UriKind.RelativeOrAbsolute);
-                    MainList.Items.Add(tempData);
+                    items.Add(tempData);
+                }
+                return items;
+            });
+
+            Dispatcher.InvokeAsync(new Action(delegate
+            {
+                MainList.Items.Clear();
+                foreach (var item in sortedItems)
+                {
+                    MainList.Items.Add(item);
                 }
             }));
         }

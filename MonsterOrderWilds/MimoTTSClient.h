@@ -59,15 +59,8 @@ public:
     TTSResponse ParseResponse(const std::string& responseBody, int httpStatusCode) const;
 
     // API endpoint configuration
-    // Debug: use local mock server for testing
-    // Release: use production server
-#ifdef _DEBUG
-    static constexpr const char* API_ENDPOINT = "localhost";
-    static constexpr INTERNET_PORT API_PORT = 4096;
-#else
     static constexpr const char* API_ENDPOINT = "api.xiaomimimo.com";
     static constexpr INTERNET_PORT API_PORT = 443;
-#endif
     static constexpr const char* API_PATH = "/v1/chat/completions";
 
     std::string lastError;

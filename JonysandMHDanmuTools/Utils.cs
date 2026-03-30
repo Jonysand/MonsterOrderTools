@@ -116,104 +116,287 @@ namespace MonsterOrderWindows
         }
     };
 
-    // 配置文件
+    // 配置字段类型
+    public enum ConfigFieldType
+    {
+        String = 0,
+        Bool = 1,
+        Int = 2,
+        Float = 3,
+        Double = 4
+    }
+
+    // 配置字段元数据（反射机制的核心）
+    public class ConfigFieldInfo
+    {
+        public string Name { get; set; }           // C++ 中的字段名
+        public ConfigFieldType Type { get; set; }  // 字段类型
+        public Func<object> Getter { get; set; }  // C# 侧 getter
+        public Action<object> Setter { get; set; } // C# 侧 setter（接受 object 以便统一调用）
+
+        public object Get() => Getter();
+        public void Set(object value) => Setter(value);
+    }
+
+    // 配置字段注册表（简单反射机制）
+    public static class ConfigFieldRegistry
+    {
+        private static readonly Dictionary<string, ConfigFieldInfo> _fields = new Dictionary<string, ConfigFieldInfo>();
+
+        static ConfigFieldRegistry()
+        {
+            Register("idCode", ConfigFieldType.String,
+                () => GetString("idCode"),
+                v => SetValue("idCode", (string)v, ConfigFieldType.String));
+
+            Register("onlyMedalOrder", ConfigFieldType.Bool,
+                () => GetBool("onlyMedalOrder"),
+                v => SetValue("onlyMedalOrder", (bool)v, ConfigFieldType.Bool));
+
+            Register("enableVoice", ConfigFieldType.Bool,
+                () => GetBool("enableVoice"),
+                v => SetValue("enableVoice", (bool)v, ConfigFieldType.Bool));
+
+            Register("speechRate", ConfigFieldType.Int,
+                () => GetInt("speechRate"),
+                v => SetValue("speechRate", (int)v, ConfigFieldType.Int));
+
+            Register("speechPitch", ConfigFieldType.Int,
+                () => GetInt("speechPitch"),
+                v => SetValue("speechPitch", (int)v, ConfigFieldType.Int));
+
+            Register("speechVolume", ConfigFieldType.Int,
+                () => GetInt("speechVolume"),
+                v => SetValue("speechVolume", (int)v, ConfigFieldType.Int));
+
+            Register("onlySpeekWearingMedal", ConfigFieldType.Bool,
+                () => GetBool("onlySpeekWearingMedal"),
+                v => SetValue("onlySpeekWearingMedal", (bool)v, ConfigFieldType.Bool));
+
+            Register("onlySpeekGuardLevel", ConfigFieldType.Int,
+                () => GetInt("onlySpeekGuardLevel"),
+                v => SetValue("onlySpeekGuardLevel", (int)v, ConfigFieldType.Int));
+
+            Register("onlySpeekPaidGift", ConfigFieldType.Bool,
+                () => GetBool("onlySpeekPaidGift"),
+                v => SetValue("onlySpeekPaidGift", (bool)v, ConfigFieldType.Bool));
+
+            Register("opacity", ConfigFieldType.Int,
+                () => GetInt("opacity"),
+                v => SetValue("opacity", (int)v, ConfigFieldType.Int));
+
+            Register("ttsEngine", ConfigFieldType.String,
+                () => GetString("ttsEngine"),
+                v => SetValue("ttsEngine", (string)v, ConfigFieldType.String));
+
+            Register("mimoApiKey", ConfigFieldType.String,
+                () => GetString("mimoApiKey"),
+                v => SetValue("mimoApiKey", (string)v, ConfigFieldType.String));
+
+            Register("mimoVoice", ConfigFieldType.String,
+                () => GetString("mimoVoice"),
+                v => SetValue("mimoVoice", (string)v, ConfigFieldType.String));
+
+            Register("mimoStyle", ConfigFieldType.String,
+                () => GetString("mimoStyle"),
+                v => SetValue("mimoStyle", (string)v, ConfigFieldType.String));
+
+            Register("mimoSpeed", ConfigFieldType.Float,
+                () => GetFloat("mimoSpeed"),
+                v => SetValue("mimoSpeed", (float)v, ConfigFieldType.Float));
+
+            Register("topPosX", ConfigFieldType.Double,
+                () => GetDouble("topPosX"),
+                v => SetValue("topPosX", (double)v, ConfigFieldType.Double));
+
+            Register("topPosY", ConfigFieldType.Double,
+                () => GetDouble("topPosY"),
+                v => SetValue("topPosY", (double)v, ConfigFieldType.Double));
+        }
+
+        public static void Register(string name, ConfigFieldType type, Func<object> getter, Action<object> setter)
+        {
+            _fields[name] = new ConfigFieldInfo { Name = name, Type = type, Getter = getter, Setter = setter };
+        }
+
+        public static object Get(string name)
+        {
+            if (_fields.TryGetValue(name, out var field))
+                return field.Get();
+            throw new ArgumentException($"Config field '{name}' not found");
+        }
+
+        public static void Set(string name, object value)
+        {
+            if (_fields.TryGetValue(name, out var field))
+                field.Set(value);
+            else
+                throw new ArgumentException($"Config field '{name}' not found");
+        }
+
+        public static bool Contains(string name) => _fields.ContainsKey(name);
+
+        public static IEnumerable<string> AllFields => _fields.Keys;
+
+        // 内部调用 NativeImports
+        private static string GetString(string key)
+        {
+            var sb = new System.Text.StringBuilder(256);
+            NativeImports.Config_GetString(key, sb, 256);
+            return sb.ToString();
+        }
+
+        private static bool GetBool(string key)
+        {
+            NativeImports.Config_GetBool(key, out bool value);
+            return value;
+        }
+
+        private static int GetInt(string key)
+        {
+            NativeImports.Config_GetInt(key, out int value);
+            return value;
+        }
+
+        private static float GetFloat(string key)
+        {
+            NativeImports.Config_GetFloat(key, out float value);
+            return value;
+        }
+
+        private static double GetDouble(string key)
+        {
+            NativeImports.Config_GetDouble(key, out double value);
+            return value;
+        }
+
+        private static void SetValue(string key, object value, ConfigFieldType type)
+        {
+            string stringValue = value?.ToString() ?? "";
+            NativeImports.Config_SetValue(key, stringValue, (int)type);
+        }
+    }
+
+    // 配置文件（使用反射机制）
     public class MainConfig
     {
+        // 使用 ConfigFieldRegistry 进行反射式访问
         [JsonProperty]
-        public Point TopPos { get => _topLeftPos; set { if (_topLeftPos != value) { _topLeftPos = value; OnPropertyChanged(); } } }
-        // 窗口左上角坐标
-        private Point _topLeftPos = new Point(0, 0);
+        public Point TopPos
+        {
+            get => new Point((double)ConfigFieldRegistry.Get("topPosX"), (double)ConfigFieldRegistry.Get("topPosY"));
+            set
+            {
+                ConfigFieldRegistry.Set("topPosX", value.X);
+                ConfigFieldRegistry.Set("topPosY", value.Y);
+                OnPropertyChanged();
+            }
+        }
 
         [JsonProperty]
-        public String ID_CODE { get => _IDCode; set { if (_IDCode != value) { _IDCode = value; OnPropertyChanged(); } } }
-        // 身份码
-        private String _IDCode = "";
+        public String ID_CODE
+        {
+            get => (string)ConfigFieldRegistry.Get("idCode");
+            set { ConfigFieldRegistry.Set("idCode", value); OnPropertyChanged(); }
+        }
 
         [JsonProperty]
-        public bool ONLY_MEDAL_ORDER { get => _onlyMedalOrder; set { if (_onlyMedalOrder != value) { _onlyMedalOrder = value; OnPropertyChanged(); } } }
-        // 是否仅粉丝牌可点怪
-        private bool _onlyMedalOrder = true;
-        
-        [JsonProperty]
-        public bool ENABLE_VOICE { get => _enableVoice; set { if (_enableVoice != value) { _enableVoice = value; OnPropertyChanged(); } } }
-        // 语音播报：是否开启
-        private bool _enableVoice = false;
+        public bool ONLY_MEDAL_ORDER
+        {
+            get => (bool)ConfigFieldRegistry.Get("onlyMedalOrder");
+            set { ConfigFieldRegistry.Set("onlyMedalOrder", value); OnPropertyChanged(); }
+        }
 
         [JsonProperty]
-        public int SPEECH_RATE { get => _speechRate; set { if (_speechRate != value) { _speechRate = value; OnPropertyChanged(); } } }
-        // 语音播报：语速
-        private int _speechRate = 0;
+        public bool ENABLE_VOICE
+        {
+            get => (bool)ConfigFieldRegistry.Get("enableVoice");
+            set { ConfigFieldRegistry.Set("enableVoice", value); OnPropertyChanged(); }
+        }
 
         [JsonProperty]
-        public int SPEECH_PITCH { get => _speechPitch; set { if (_speechPitch != value) { _speechPitch = value; OnPropertyChanged(); } } }
-        // 语音播报：语调
-        private int _speechPitch = 0;
+        public int SPEECH_RATE
+        {
+            get => (int)ConfigFieldRegistry.Get("speechRate");
+            set { ConfigFieldRegistry.Set("speechRate", value); OnPropertyChanged(); }
+        }
 
         [JsonProperty]
-        public int SPEECH_VOLUME { get => _speechVolume; set { if (_speechVolume != value) { _speechVolume = value; OnPropertyChanged(); } } }
-        // 语音播报：音量
-        private int _speechVolume = 0;
+        public int SPEECH_PITCH
+        {
+            get => (int)ConfigFieldRegistry.Get("speechPitch");
+            set { ConfigFieldRegistry.Set("speechPitch", value); OnPropertyChanged(); }
+        }
 
         [JsonProperty]
-        public bool ONLY_SPEEK_WEARING_MEDAL { get => _onlySpeekWearingMedal; set { if (_onlySpeekWearingMedal != value) { _onlySpeekWearingMedal = value; OnPropertyChanged(); } } }
-        // 语音播报：只播报佩戴牌子
-        private bool _onlySpeekWearingMedal = false;
+        public int SPEECH_VOLUME
+        {
+            get => (int)ConfigFieldRegistry.Get("speechVolume");
+            set { ConfigFieldRegistry.Set("speechVolume", value); OnPropertyChanged(); }
+        }
 
         [JsonProperty]
-        public int ONLY_SPEEK_GUARD_LEVEL { get => _onlySpeekGuardLevel; set { if (_onlySpeekGuardLevel != value) { _onlySpeekGuardLevel = value; OnPropertyChanged(); } } }
-        // 语音播报：只播报对应的舰长等级
-        private int _onlySpeekGuardLevel = 0;
+        public bool ONLY_SPEEK_WEARING_MEDAL
+        {
+            get => (bool)ConfigFieldRegistry.Get("onlySpeekWearingMedal");
+            set { ConfigFieldRegistry.Set("onlySpeekWearingMedal", value); OnPropertyChanged(); }
+        }
 
         [JsonProperty]
-        public bool ONLY_SPEEK_PAID_GIFT { get => _onlySpeekPaidGift; set { if (_onlySpeekPaidGift != value) { _onlySpeekPaidGift = value; OnPropertyChanged(); } } }
-        // 语音播报：只播报付费礼物
-        private bool _onlySpeekPaidGift = false;
+        public int ONLY_SPEEK_GUARD_LEVEL
+        {
+            get => (int)ConfigFieldRegistry.Get("onlySpeekGuardLevel");
+            set { ConfigFieldRegistry.Set("onlySpeekGuardLevel", value); OnPropertyChanged(); }
+        }
 
         [JsonProperty]
-        public int OPACITY { get => _opacity; set { if (_opacity != value) { _opacity = value; OnPropertyChanged(); } } }
-        // 背景透明度
-        private int _opacity = 100;
-
-        // 小米MiMo TTS 配置项
-        [JsonProperty]
-        public String TTS_ENGINE { get => _ttsEngine; set { if (_ttsEngine != value) { _ttsEngine = value; OnPropertyChanged(); } } }
-        // TTS引擎选择: "mimo" / "sapi" / "auto"
-        private String _ttsEngine = "auto";
+        public bool ONLY_SPEEK_PAID_GIFT
+        {
+            get => (bool)ConfigFieldRegistry.Get("onlySpeekPaidGift");
+            set { ConfigFieldRegistry.Set("onlySpeekPaidGift", value); OnPropertyChanged(); }
+        }
 
         [JsonProperty]
-        public String MIMO_API_KEY { get => _mimoApiKey; set { if (_mimoApiKey != value) { _mimoApiKey = value; OnPropertyChanged(); } } }
-        // 小米MiMo API Key
-        private String _mimoApiKey = "";
+        public int OPACITY
+        {
+            get => (int)ConfigFieldRegistry.Get("opacity");
+            set { ConfigFieldRegistry.Set("opacity", value); OnPropertyChanged(); }
+        }
 
         [JsonProperty]
-        public String MIMO_VOICE { get => _mimoVoice; set { if (_mimoVoice != value) { _mimoVoice = value; OnPropertyChanged(); } } }
-        // 小米MiMo 语音角色 (mimo_default, default_zh, default_en)
-        private String _mimoVoice = "mimo_default";
+        public String TTS_ENGINE
+        {
+            get => (string)ConfigFieldRegistry.Get("ttsEngine");
+            set { ConfigFieldRegistry.Set("ttsEngine", value); OnPropertyChanged(); }
+        }
 
         [JsonProperty]
-        public String MIMO_STYLE { get => _mimoStyle; set { if (_mimoStyle != value) { _mimoStyle = value; OnPropertyChanged(); } } }
-        // 小米MiMo 语音风格描述
-        private String _mimoStyle = "";
+        public String MIMO_API_KEY
+        {
+            get => (string)ConfigFieldRegistry.Get("mimoApiKey");
+            set { ConfigFieldRegistry.Set("mimoApiKey", value); OnPropertyChanged(); }
+        }
 
         [JsonProperty]
-        public String MIMO_DIALECT { get => _mimoDialect; set { if (_mimoDialect != value) { _mimoDialect = value; OnPropertyChanged(); } } }
-        // 小米MiMo 方言选择
-        private String _mimoDialect = "";
+        public String MIMO_VOICE
+        {
+            get => (string)ConfigFieldRegistry.Get("mimoVoice");
+            set { ConfigFieldRegistry.Set("mimoVoice", value); OnPropertyChanged(); }
+        }
 
         [JsonProperty]
-        public String MIMO_ROLE { get => _mimoRole; set { if (_mimoRole != value) { _mimoRole = value; OnPropertyChanged(); } } }
-        // 小米MiMo 角色选择
-        private String _mimoRole = "";
+        public String MIMO_STYLE
+        {
+            get => (string)ConfigFieldRegistry.Get("mimoStyle");
+            set { ConfigFieldRegistry.Set("mimoStyle", value); OnPropertyChanged(); }
+        }
 
         [JsonProperty]
-        public String MIMO_AUDIO_FORMAT { get => _mimoAudioFormat; set { if (_mimoAudioFormat != value) { _mimoAudioFormat = value; OnPropertyChanged(); } } }
-        // 小米MiMo 音频输出格式
-        private String _mimoAudioFormat = "mp3";
-
-        [JsonProperty]
-        public float MIMO_SPEED { get => _mimoSpeed; set { if (_mimoSpeed != value) { _mimoSpeed = value; OnPropertyChanged(); } } }
-        // 小米MiMo 语速倍率 (0.25-4.0)
-        private float _mimoSpeed = 1.0f;
+        public float MIMO_SPEED
+        {
+            get => (float)ConfigFieldRegistry.Get("mimoSpeed");
+            set { ConfigFieldRegistry.Set("mimoSpeed", value); OnPropertyChanged(); }
+        }
 
         public event PropertyChangedEventHandler PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
@@ -225,50 +408,15 @@ namespace MonsterOrderWindows
     {
         public MainConfig Config => _config;
         private MainConfig _config;
-        private readonly string _configDirectory;
-        private readonly string _configFileName;
-        private bool _configChanged = false;
 
-        public ConfigService()
+        public void LoadConfig()
         {
-            _configDirectory = Path.Combine(Environment.CurrentDirectory, @"MonsterOrderWilds_configs");
-            _configFileName = "MainConfig.cfg";
-        }
-
-        public bool LoadConfig()
-        {
-            string configPath = Path.Combine(_configDirectory, _configFileName);
-            if (File.Exists(configPath))
-            {
-                string json = File.ReadAllText(configPath);
-                _config = JsonConvert.DeserializeObject<MainConfig>(json);
-                _config.PropertyChanged += OnConfigChanged;
-                return true;
-            }
             _config = new MainConfig();
-            _config.PropertyChanged += OnConfigChanged;
-            return false;
         }
 
-        public void SaveConfig(bool force=false)
+        public void SaveConfig()
         {
-            if (_config == null)
-            {
-                return;
-            }
-            if (!Directory.Exists(_configDirectory))
-            {
-                Directory.CreateDirectory(_configDirectory);
-            }
-            if (!force && !_configChanged)
-                return;
-            string configPath = Path.Combine(_configDirectory, _configFileName);
-            File.WriteAllText(configPath, JsonConvert.SerializeObject(_config));
-        }
-
-        public void OnConfigChanged(object sender, PropertyChangedEventArgs e)
-        {
-            _configChanged = true;
+            NativeImports.Config_Save();
         }
 
         public MainConfig GetConfig()

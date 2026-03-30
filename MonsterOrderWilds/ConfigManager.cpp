@@ -1,0 +1,352 @@
+﻿#include "framework.h"
+#include "ConfigManager.h"
+#include "WriteLog.h"
+#include <fstream>
+#include <sstream>
+#include <filesystem>
+
+DEFINE_SINGLETON(ConfigManager)
+
+std::string ConfigManager::GetConfigDirectory() const
+{
+    return "MonsterOrderWilds_configs";
+}
+
+std::string ConfigManager::GetConfigPath() const
+{
+    return GetConfigDirectory() + "/MainConfig.cfg";
+}
+
+bool ConfigManager::LoadConfig()
+{
+    try
+    {
+        std::string path = GetConfigPath();
+        std::ifstream file(path);
+        if (!file.is_open())
+        {
+            LOG_ERROR(TEXT("ConfigManager: Cannot open config file: %s"), path.c_str());
+            return false;
+        }
+
+        std::stringstream buffer;
+        buffer << file.rdbuf();
+        std::string content = buffer.str();
+        file.close();
+
+        // 跳过BOM（如果存在）
+        if (content.size() >= 3 &&
+            (unsigned char)content[0] == 0xEF &&
+            (unsigned char)content[1] == 0xBB &&
+            (unsigned char)content[2] == 0xBF)
+        {
+            content = content.substr(3);
+        }
+
+        json j = json::parse(content);
+
+        // 基本配置
+        if (j.contains("ID_CODE")) config_.idCode = j["ID_CODE"].get<std::string>();
+        if (j.contains("ONLY_MEDAL_ORDER")) config_.onlyMedalOrder = j["ONLY_MEDAL_ORDER"].get<bool>();
+        if (j.contains("ENABLE_VOICE")) config_.enableVoice = j["ENABLE_VOICE"].get<bool>();
+        if (j.contains("SPEECH_RATE")) config_.speechRate = j["SPEECH_RATE"].get<int>();
+        if (j.contains("SPEECH_PITCH")) config_.speechPitch = j["SPEECH_PITCH"].get<int>();
+        if (j.contains("SPEECH_VOLUME")) config_.speechVolume = j["SPEECH_VOLUME"].get<int>();
+        if (j.contains("ONLY_SPEEK_WEARING_MEDAL")) config_.onlySpeekWearingMedal = j["ONLY_SPEEK_WEARING_MEDAL"].get<bool>();
+        if (j.contains("ONLY_SPEEK_GUARD_LEVEL")) config_.onlySpeekGuardLevel = j["ONLY_SPEEK_GUARD_LEVEL"].get<int>();
+        if (j.contains("ONLY_SPEEK_PAID_GIFT")) config_.onlySpeekPaidGift = j["ONLY_SPEEK_PAID_GIFT"].get<bool>();
+        if (j.contains("OPACITY")) config_.opacity = j["OPACITY"].get<int>();
+
+        // 窗口位置
+        if (j.contains("TopPos"))
+        {
+            auto& pos = j["TopPos"];
+            if (pos.contains("X")) config_.topPosX = pos["X"].get<double>();
+            if (pos.contains("Y")) config_.topPosY = pos["Y"].get<double>();
+        }
+
+        // MiMo TTS 配置
+        if (j.contains("TTS_ENGINE")) config_.ttsEngine = j["TTS_ENGINE"].get<std::string>();
+        if (j.contains("MIMO_API_KEY")) config_.mimoApiKey = j["MIMO_API_KEY"].get<std::string>();
+        if (j.contains("MIMO_VOICE")) config_.mimoVoice = j["MIMO_VOICE"].get<std::string>();
+        if (j.contains("MIMO_STYLE")) config_.mimoStyle = j["MIMO_STYLE"].get<std::string>();
+        if (j.contains("MIMO_DIALECT")) config_.mimoDialect = j["MIMO_DIALECT"].get<std::string>();
+        if (j.contains("MIMO_ROLE")) config_.mimoRole = j["MIMO_ROLE"].get<std::string>();
+        if (j.contains("MIMO_AUDIO_FORMAT")) config_.mimoAudioFormat = j["MIMO_AUDIO_FORMAT"].get<std::string>();
+        if (j.contains("MIMO_SPEED")) config_.mimoSpeed = j["MIMO_SPEED"].get<float>();
+
+        dirty_ = false;
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR(TEXT("ConfigManager: LoadConfig failed: %s"), e.what());
+        return false;
+    }
+}
+
+bool ConfigManager::SaveConfig(bool force)
+{
+    if (!force && !dirty_)
+        return true;
+
+    try
+    {
+        std::string dir = GetConfigDirectory();
+        if (!std::filesystem::exists(dir))
+        {
+            std::filesystem::create_directories(dir);
+        }
+
+        json j;
+        // 基本配置
+        j["ID_CODE"] = config_.idCode;
+        j["ONLY_MEDAL_ORDER"] = config_.onlyMedalOrder;
+        j["ENABLE_VOICE"] = config_.enableVoice;
+        j["SPEECH_RATE"] = config_.speechRate;
+        j["SPEECH_PITCH"] = config_.speechPitch;
+        j["SPEECH_VOLUME"] = config_.speechVolume;
+        j["ONLY_SPEEK_WEARING_MEDAL"] = config_.onlySpeekWearingMedal;
+        j["ONLY_SPEEK_GUARD_LEVEL"] = config_.onlySpeekGuardLevel;
+        j["ONLY_SPEEK_PAID_GIFT"] = config_.onlySpeekPaidGift;
+        j["OPACITY"] = config_.opacity;
+
+        // 窗口位置
+        j["TopPos"] = { {"X", config_.topPosX}, {"Y", config_.topPosY} };
+
+        // MiMo TTS 配置
+        j["TTS_ENGINE"] = config_.ttsEngine;
+        j["MIMO_API_KEY"] = config_.mimoApiKey;
+        j["MIMO_VOICE"] = config_.mimoVoice;
+        j["MIMO_STYLE"] = config_.mimoStyle;
+        j["MIMO_DIALECT"] = config_.mimoDialect;
+        j["MIMO_ROLE"] = config_.mimoRole;
+        j["MIMO_AUDIO_FORMAT"] = config_.mimoAudioFormat;
+        j["MIMO_SPEED"] = config_.mimoSpeed;
+
+        std::string path = GetConfigPath();
+        std::ofstream file(path);
+        if (!file.is_open())
+        {
+            LOG_ERROR(TEXT("ConfigManager: Cannot open config file for writing: %s"), path.c_str());
+            return false;
+        }
+
+        file << j.dump(4);
+        file.close();
+        dirty_ = false;
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR(TEXT("ConfigManager: SaveConfig failed: %s"), e.what());
+        return false;
+    }
+}
+
+void ConfigManager::MarkDirty()
+{
+    dirty_ = true;
+}
+
+const ConfigData& ConfigManager::GetConfig() const
+{
+    lock_.lock();
+    cachedConfig_ = config_;  // 拷贝到缓存
+    lock_.unlock();
+    return cachedConfig_;
+}
+
+void ConfigManager::UpdateConfig(const ConfigData& newData)
+{
+    lock_.lock();
+    config_ = newData;
+    dirty_ = true;
+    lock_.unlock();
+    NotifyConfigChanged();
+}
+
+void ConfigManager::SetIdCode(const std::string& value)
+{
+    lock_.lock();
+    bool changed = config_.idCode != value;
+    if (changed) { config_.idCode = value; dirty_ = true; }
+    lock_.unlock();
+    if (changed) NotifyConfigChanged();
+}
+
+void ConfigManager::SetOnlyMedalOrder(bool value)
+{
+    lock_.lock();
+    bool changed = config_.onlyMedalOrder != value;
+    if (changed) { config_.onlyMedalOrder = value; dirty_ = true; }
+    lock_.unlock();
+    if (changed) NotifyConfigChanged();
+}
+
+void ConfigManager::SetEnableVoice(bool value)
+{
+    lock_.lock();
+    bool changed = config_.enableVoice != value;
+    if (changed) { config_.enableVoice = value; dirty_ = true; }
+    lock_.unlock();
+    if (changed) NotifyConfigChanged();
+}
+
+void ConfigManager::SetSpeechRate(int value)
+{
+    lock_.lock();
+    bool changed = config_.speechRate != value;
+    if (changed) { config_.speechRate = value; dirty_ = true; }
+    lock_.unlock();
+    if (changed) NotifyConfigChanged();
+}
+
+void ConfigManager::SetSpeechPitch(int value)
+{
+    if (config_.speechPitch != value) { config_.speechPitch = value; dirty_ = true; NotifyConfigChanged(); }
+}
+
+void ConfigManager::SetSpeechVolume(int value)
+{
+    lock_.lock();
+    bool changed = config_.speechVolume != value;
+    if (changed) { config_.speechVolume = value; dirty_ = true; }
+    lock_.unlock();
+    if (changed) NotifyConfigChanged();
+}
+
+void ConfigManager::SetOnlySpeekWearingMedal(bool value)
+{
+    lock_.lock();
+    bool changed = config_.onlySpeekWearingMedal != value;
+    if (changed) { config_.onlySpeekWearingMedal = value; dirty_ = true; }
+    lock_.unlock();
+    if (changed) NotifyConfigChanged();
+}
+
+void ConfigManager::SetOnlySpeekGuardLevel(int value)
+{
+    lock_.lock();
+    bool changed = config_.onlySpeekGuardLevel != value;
+    if (changed) { config_.onlySpeekGuardLevel = value; dirty_ = true; }
+    lock_.unlock();
+    if (changed) NotifyConfigChanged();
+}
+
+void ConfigManager::SetOnlySpeekPaidGift(bool value)
+{
+    lock_.lock();
+    bool changed = config_.onlySpeekPaidGift != value;
+    if (changed) { config_.onlySpeekPaidGift = value; dirty_ = true; }
+    lock_.unlock();
+    if (changed) NotifyConfigChanged();
+}
+
+void ConfigManager::SetOpacity(int value)
+{
+    lock_.lock();
+    bool changed = config_.opacity != value;
+    if (changed) { config_.opacity = value; dirty_ = true; }
+    lock_.unlock();
+    if (changed) NotifyConfigChanged();
+}
+
+void ConfigManager::SetTtsEngine(const std::string& value)
+{
+    lock_.lock();
+    bool changed = config_.ttsEngine != value;
+    if (changed) { config_.ttsEngine = value; dirty_ = true; }
+    lock_.unlock();
+    if (changed) NotifyConfigChanged();
+}
+
+void ConfigManager::SetMimoApiKey(const std::string& value)
+{
+    lock_.lock();
+    bool changed = config_.mimoApiKey != value;
+    if (changed) { config_.mimoApiKey = value; dirty_ = true; }
+    lock_.unlock();
+    if (changed) NotifyConfigChanged();
+}
+
+void ConfigManager::SetMimoVoice(const std::string& value)
+{
+    lock_.lock();
+    bool changed = config_.mimoVoice != value;
+    if (changed) { config_.mimoVoice = value; dirty_ = true; }
+    lock_.unlock();
+    if (changed) NotifyConfigChanged();
+}
+
+void ConfigManager::SetMimoStyle(const std::string& value)
+{
+    lock_.lock();
+    bool changed = config_.mimoStyle != value;
+    if (changed) { config_.mimoStyle = value; dirty_ = true; }
+    lock_.unlock();
+    if (changed) NotifyConfigChanged();
+}
+
+void ConfigManager::SetMimoDialect(const std::string& value)
+{
+    lock_.lock();
+    bool changed = config_.mimoDialect != value;
+    if (changed) { config_.mimoDialect = value; dirty_ = true; }
+    lock_.unlock();
+    if (changed) NotifyConfigChanged();
+}
+
+void ConfigManager::SetMimoRole(const std::string& value)
+{
+    lock_.lock();
+    bool changed = config_.mimoRole != value;
+    if (changed) { config_.mimoRole = value; dirty_ = true; }
+    lock_.unlock();
+    if (changed) NotifyConfigChanged();
+}
+
+void ConfigManager::SetMimoAudioFormat(const std::string& value)
+{
+    lock_.lock();
+    bool changed = config_.mimoAudioFormat != value;
+    if (changed) { config_.mimoAudioFormat = value; dirty_ = true; }
+    lock_.unlock();
+    if (changed) NotifyConfigChanged();
+}
+
+void ConfigManager::SetMimoSpeed(float value)
+{
+    lock_.lock();
+    bool changed = config_.mimoSpeed != value;
+    if (changed) { config_.mimoSpeed = value; dirty_ = true; }
+    lock_.unlock();
+    if (changed) NotifyConfigChanged();
+}
+
+void ConfigManager::SetWindowPosition(double x, double y)
+{
+    lock_.lock();
+    bool changed = config_.topPosX != x || config_.topPosY != y;
+    if (changed)
+    {
+        config_.topPosX = x;
+        config_.topPosY = y;
+        dirty_ = true;
+    }
+    lock_.unlock();
+    if (changed) NotifyConfigChanged();
+}
+
+void ConfigManager::AddConfigChangedListener(const ConfigChangedHandler& handler)
+{
+    configChangedListeners_.push_back(handler);
+}
+
+void ConfigManager::NotifyConfigChanged()
+{
+    for (const auto& handler : configChangedListeners_)
+    {
+        handler(config_);
+    }
+}

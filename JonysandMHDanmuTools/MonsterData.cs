@@ -14,11 +14,8 @@ namespace MonsterOrderWindows
     }
     internal class MonsterData
     {
-        private List<KeyValuePair<Regex, string>> _compiledPatterns;
-        private Dictionary<string, OneMonsterData> RawMonsterData;
         private static MonsterData _Inst = null;
 
-        // Singleton
         public static MonsterData GetInst()
         {
             if (_Inst != null)
@@ -29,56 +26,52 @@ namespace MonsterOrderWindows
 
         public bool LoadJsonData()
         {
-            _compiledPatterns = new List<KeyValuePair<Regex, string>>();
-            string configPath = Path.Combine(Environment.CurrentDirectory, @"MonsterOrderWilds_configs", "monster_list.json");
-            if (!File.Exists(configPath))
+            try
             {
-                ToolsMain.SendCommand("Log:Can not find monster list: " + configPath);
+                return NativeImports.DataBridge_Initialize();
+            }
+            catch (Exception e)
+            {
+                ToolsMain.SendCommand("Log:DataBridge_Initialize failed: " + e.Message);
                 return false;
             }
-            string json_string = File.ReadAllText(configPath);
-            RawMonsterData = JsonConvert.DeserializeObject<Dictionary<string, OneMonsterData>>(json_string);
-            if (RawMonsterData == null)
-            {
-                RawMonsterData = new Dictionary<string, OneMonsterData>();
-                return false;
-            }
-            foreach (var item in RawMonsterData)
-            {
-                foreach (var nick_name in item.Value.别称)
-                {
-                    var regex = new Regex("\\b" + nick_name + "\\b", RegexOptions.Compiled);
-                    _compiledPatterns.Add(new KeyValuePair<Regex, string>(regex, item.Key));
-                }
-            }
-            return true;
         }
 
         public MonsterData()
         {
-            LoadJsonData();
         }
-        
+
         public Tuple<string, int> GetMatchedMonsterName(string inputText)
         {
-            if (_compiledPatterns == null)
-                return new Tuple<string, int>("", 0);
-            foreach (var item in _compiledPatterns)
+            var nameBuilder = new System.Text.StringBuilder(256);
+            int temperedLevel = 0;
+            try
             {
-                Match match = item.Key.Match(inputText);
-                if (match.Success)
+                bool matched = NativeImports.DataBridge_MatchMonsterName(inputText, nameBuilder, 256, out temperedLevel);
+                if (matched)
                 {
-                    var temperedLevel = RawMonsterData[item.Value].默认历战等级;
-                    return new Tuple<string, int>(item.Value, temperedLevel);
+                    return new Tuple<string, int>(nameBuilder.ToString(), temperedLevel);
                 }
+            }
+            catch (Exception e)
+            {
+                ToolsMain.SendCommand("Log:DataBridge_MatchMonsterName failed: " + e.Message);
             }
             return new Tuple<string, int>("", 0);
         }
 
         public string GetMatchedMonsterIconUrl(string monsterName)
         {
-            if (RawMonsterData.ContainsKey(monsterName))
-                return RawMonsterData[monsterName].图标地址;
+            var urlBuilder = new System.Text.StringBuilder(512);
+            try
+            {
+                NativeImports.DataBridge_GetMonsterIconUrl(monsterName, urlBuilder, 512);
+                return urlBuilder.ToString();
+            }
+            catch (Exception e)
+            {
+                ToolsMain.SendCommand("Log:DataBridge_GetMonsterIconUrl failed: " + e.Message);
+            }
             return "";
         }
     }

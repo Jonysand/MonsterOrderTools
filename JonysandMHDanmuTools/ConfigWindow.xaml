@@ -415,7 +415,43 @@
                                     FontSize="14"
                                     Foreground="#222"
                                     Width="30" />
-                            </StackPanel>
+                                </StackPanel>
+                            <Border Margin="8,16,8,8" Padding="12"
+                                    Background="#F5F5F5" CornerRadius="4">
+                                <StackPanel>
+                                    <TextBlock Text="快捷键"
+                                               FontFamily="Segoe UI Variable"
+                                               FontSize="14" FontWeight="SemiBold"
+                                               Foreground="#222"
+                                               Margin="0,0,0,8" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                        <Border Background="#E0E0E0" CornerRadius="3"
+                                                Padding="6,3" Margin="0,0,8,0">
+                                            <TextBlock Text="Alt + ,"
+                                                       FontFamily="Consolas"
+                                                       FontSize="13"
+                                                       Foreground="#333" />
+                                        </Border>
+                                        <TextBlock Text="锁定/解锁点怪窗口"
+                                                   FontFamily="Segoe UI Variable"
+                                                   FontSize="13"
+                                                   Foreground="#555"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,12,0" />
+                                        <Button Content="锁定窗口"
+                                                Name="LockWindowButton"
+                                                Click="LockWindowButton_Click"
+                                                Padding="12,4"
+                                                FontSize="13" />
+                                    </StackPanel>
+                                    <TextBlock Text="锁定后窗口透明且可穿透，方便查看游戏画面"
+                                               FontFamily="Segoe UI Variable"
+                                               FontSize="12"
+                                               Foreground="#777"
+                                               Margin="0,4,0,0"
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

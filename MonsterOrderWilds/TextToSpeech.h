@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "framework.h"
+#include <mutex>
 
 #if USE_MIMO_TTS
 #include "MimoTTSClient.h"
@@ -7,6 +8,28 @@
 #endif
 
 struct ISpVoice;
+
+// 异步TTS状态枚举
+enum class AsyncTTSState
+{
+	Pending,        // 等待处理
+	Requesting,     // 正在请求API
+	Playing,        // 正在播放音频
+	Completed,      // 完成
+	Failed          // 失败
+};
+
+// 异步TTS请求结构
+struct AsyncTTSRequest
+{
+	TString text;                           // 播报文本
+	AsyncTTSState state = AsyncTTSState::Pending;  // 当前状态
+	std::vector<uint8_t> audioData;        // API返回的音频数据
+	std::string responseFormat;            // 音频格式
+	std::chrono::steady_clock::time_point startTime;  // 状态开始时间
+	int retryCount = 0;                     // 重试次数
+	std::string errorMessage;               // 错误信息
+};
 
 class TTSManager
 {
@@ -53,7 +76,20 @@ private:
 	bool Speak(const TString& text);
 	bool SpeakWithSapi(const TString& text);
 #if USE_MIMO_TTS
-	bool SpeakWithMimo(const TString& text);
+	// 异步TTS方法
+	void SpeakWithMimoAsync(const TString& text);
+	// 处理异步TTS状态机
+	void ProcessAsyncTTS();
+	// 处理Pending状态 - 发起API请求
+	void ProcessPendingRequest(AsyncTTSRequest& req);
+	// 处理Requesting状态 - 检查API响应
+	void ProcessRequestingState(AsyncTTSRequest& req);
+	// 处理Playing状态 - 检查播放完成
+	void ProcessPlayingState(AsyncTTSRequest& req);
+	// 处理失败/超时
+	void HandleRequestFailure(AsyncTTSRequest& req);
+	// 清理已完成/失败的请求
+	void CleanupCompletedRequests();
 #endif
 
 	void HandleDmOrderFood(const std::wstring& text, const std::wstring& uname);
@@ -81,12 +117,22 @@ private:
 	// 每次tick更新时间戳
 	std::chrono::steady_clock::time_point LastTickTime;
 	ISpVoice* pVoice{ NULL };
+	std::mutex sapiMutex_;
+	std::mutex asyncMutex_;  // 保护异步TTS请求状态
 
 #if USE_MIMO_TTS
 	// 小米MiMo TTS客户端
 	MimoTTSClient* mimoClient{ NULL };
 	// 音频播放器
 	AudioPlayer* audioPlayer{ NULL };
+
+	// 异步TTS请求队列（串行处理，最多1个在处理）
+	std::list<AsyncTTSRequest> asyncPendingQueue_;      // 等待队列
+	bool hasCurrentRequest_{ false };   // 是否有当前请求在处理
+	static constexpr int MAX_ASYNC_QUEUE_SIZE = 0;      // 队列大小限制（0=不限制）
+	static constexpr int MAX_RETRY_COUNT = 0;           // 最大重试次数
+	static constexpr int API_TIMEOUT_SECONDS = 5;       // API请求超时（秒）
+	static constexpr int PLAYBACK_TIMEOUT_SECONDS = 3; // 播放超时（秒）
 #endif
 
 	// 引擎降级相关

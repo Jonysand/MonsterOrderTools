@@ -1,6 +1,6 @@
 ﻿#include "TextToSpeech.h"
 #include "Network.h"
-#include "MHDanmuToolsHost.h"
+#include "ConfigManager.h"
 #include "WriteLog.h"
 #include "StringUtils.h"
 
@@ -62,17 +62,21 @@ void TTSManager::Tick()
     if (ShouldTryRecovery()) {
         TryRecovery();
     }
+
+    // 处理异步TTS状态机
+    ProcessAsyncTTS();
+    CleanupCompletedRequests();
 #endif
 
     if (!NormalMsgQueue.empty())
     {
-        if (GET_CONFIG(ENABLE_VOICE))
+        if (ConfigManager::Inst()->GetConfig().enableVoice)
             Speak(NormalMsgQueue.front());
         NormalMsgQueue.pop_front();
     }
     if (!GiftMsgQueue.empty())
     {
-        if (GET_CONFIG(ENABLE_VOICE))
+        if (ConfigManager::Inst()->GetConfig().enableVoice)
             Speak(GiftMsgQueue.front());
         GiftMsgQueue.pop_front();
     }
@@ -88,7 +92,7 @@ void TTSManager::Tick()
         if (it->second.combo_timeout <= 0.0f)
         {
             TString msg = TEXT("感谢 ") + utf8_to_wstring(it->second.uname) + TEXT(" 赠送的") + std::to_wstring(it->second.gift_num) + TEXT("个") + utf8_to_wstring(it->second.gift_name);
-            if (GET_CONFIG(ENABLE_VOICE) && (!GET_CONFIG(ONLY_SPEEK_PAID_GIFT) || it->second.paid))
+            if (ConfigManager::Inst()->GetConfig().enableVoice && (!ConfigManager::Inst()->GetConfig().onlySpeekPaidGift || it->second.paid))
                 GiftMsgQueue.push_back(msg);
             HistoryLogMsgQueue.push_back(msg);
             it = ComboGiftMsgPrepareMap.erase(it);
@@ -106,9 +110,9 @@ void TTSManager::HandleSpeekDm(const json& data)
     const auto& msg = utf8_to_wstring(data["msg"].get<std::string>());
     TString msgTString = utf8_to_wstring(uname) + TEXT(" 说：") + msg;
     HistoryLogMsgQueue.push_back(msgTString);
-    if (GET_CONFIG(ONLY_SPEEK_WEARING_MEDAL) && !wearing_medal)
+    if (ConfigManager::Inst()->GetConfig().onlySpeekWearingMedal && !wearing_medal)
         return;
-    if (GET_CONFIG(ONLY_SPEEK_GUARD_LEVEL) != 0 && (guard_level == 0 || guard_level > GET_CONFIG(ONLY_SPEEK_GUARD_LEVEL)))
+    if (ConfigManager::Inst()->GetConfig().onlySpeekGuardLevel != 0 && (guard_level == 0 || guard_level > ConfigManager::Inst()->GetConfig().onlySpeekGuardLevel))
         return;
     if (msg.rfind(TEXT("点餐"), 0) == 0) {
         // 以"点餐"开头
@@ -209,25 +213,10 @@ bool TTSManager::Speak(const TString& text)
     LOG_INFO(TEXT("TTS Engine: %d, isFallback: %d"), (int)engine, (int)isFallback);
     
     if (engine == TTSEngine::MIMO || (engine == TTSEngine::AUTO && !isFallback)) {
-        LOG_INFO(TEXT("Trying MiMo TTS for: %s"), text.c_str());
-        // 尝试使用小米MiMo TTS
-        if (SpeakWithMimo(text)) {
-            consecutiveFailures = 0;  // 重置失败计数
-            return true;
-        } else {
-            LOG_WARNING(TEXT("MiMo TTS failed, falling back to SAPI"));
-            // MiMo失败
-            consecutiveFailures++;
-            lastFailureTime = std::chrono::steady_clock::now();
-            
-            if (engine == TTSEngine::AUTO && consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-                // 触发降级
-                TriggerFallback();
-            }
-            
-            // 尝试使用SAPI作为备选
-            return SpeakWithSapi(text);
-        }
+        LOG_INFO(TEXT("Submitting async MiMo TTS for: %s"), text.c_str());
+        // 异步提交到MiMo TTS队列，立即返回（不阻塞调用线程）
+        SpeakWithMimoAsync(text);
+        return true;  // 返回true表示请求已提交（不代表播放完成）
     }
 #endif
     
@@ -237,13 +226,15 @@ bool TTSManager::Speak(const TString& text)
 
 bool TTSManager::SpeakWithSapi(const TString& text)
 {
+    std::lock_guard<std::mutex> lock(sapiMutex_);
+
     if (pVoice == NULL) {
         return false;
     }
 
-    pVoice->SetRate(GET_CONFIG(SPEECH_RATE));
-    pVoice->SetVolume(GET_CONFIG(SPEECH_VOLUME));
-    int pitch = GET_CONFIG(SPEECH_PITCH);
+    pVoice->SetRate(ConfigManager::Inst()->GetConfig().speechRate);
+    pVoice->SetVolume(ConfigManager::Inst()->GetConfig().speechVolume);
+    int pitch = ConfigManager::Inst()->GetConfig().speechPitch;
     std::wstring pitchStr = (pitch >= 0 ? L"+" : L"") + std::to_wstring(pitch) + L"st";
 
     // Escape '<' and '&' in text to prevent SSML/XML parsing issues
@@ -269,81 +260,243 @@ bool TTSManager::SpeakWithSapi(const TString& text)
 }
 
 #if USE_MIMO_TTS
-bool TTSManager::SpeakWithMimo(const TString& text)
+void TTSManager::SpeakWithMimoAsync(const TString& text)
 {
     if (mimoClient == NULL || audioPlayer == NULL) {
-        return false;
+        LOG_ERROR(TEXT("SpeakWithMimoAsync: mimoClient or audioPlayer is NULL"));
+        return;
     }
 
     if (!mimoClient->IsAvailable()) {
         LOG_WARNING(TEXT("MiMo TTS not available (API Key not configured)"));
-        return false;
+        // 降级到SAPI
+        SpeakWithSapi(text);
+        return;
+    }
+
+    // 创建异步请求并加入等待队列
+    AsyncTTSRequest req;
+    req.text = text;
+    req.state = AsyncTTSState::Pending;
+    req.startTime = std::chrono::steady_clock::now();
+
+    // 获取配置参数
+    const auto& config = ConfigManager::Inst()->GetConfig();
+    if (!config.mimoAudioFormat.empty()) {
+        req.responseFormat = config.mimoAudioFormat;
+    } else {
+        req.responseFormat = "mp3";
+    }
+
+    asyncPendingQueue_.push_back(req);
+}
+
+void TTSManager::ProcessAsyncTTS()
+{
+    // 处理当前请求
+    if (hasCurrentRequest_ && !asyncPendingQueue_.empty()) {
+        AsyncTTSRequest& req = asyncPendingQueue_.front();
+        switch (req.state) {
+        case AsyncTTSState::Pending:
+            ProcessPendingRequest(req);
+            break;
+        case AsyncTTSState::Requesting:
+            ProcessRequestingState(req);
+            break;
+        case AsyncTTSState::Playing:
+            ProcessPlayingState(req);
+            break;
+        case AsyncTTSState::Completed:
+        case AsyncTTSState::Failed:
+            LOG_INFO(TEXT("TTS Async: Request %s, cleaning up"),
+                req.state == AsyncTTSState::Completed ? TEXT("completed") : TEXT("failed"));
+            asyncPendingQueue_.pop_front();
+            hasCurrentRequest_ = false;
+            break;
+        }
+    }
+
+    // 如果当前没有请求，从队列取下一个
+    if (!hasCurrentRequest_ && !asyncPendingQueue_.empty()) {
+        asyncPendingQueue_.front().startTime = std::chrono::steady_clock::now();
+        hasCurrentRequest_ = true;
+        LOG_INFO(TEXT("TTS Async: Starting new request for: %s"), asyncPendingQueue_.front().text.c_str());
+    }
+}
+
+void TTSManager::ProcessPendingRequest(AsyncTTSRequest& req)
+{
+    // Pending → Requesting: 发起API请求
+    if (req.text.empty()) {
+        LOG_ERROR(TEXT("TTS Async: req.text is empty!"));
+        req.state = AsyncTTSState::Failed;
+        req.errorMessage = "req.text is empty";
+        return;
+    }
+
+    if (mimoClient == NULL) {
+        req.state = AsyncTTSState::Failed;
+        req.errorMessage = "mimoClient is NULL";
+        return;
     }
 
     // 构建请求参数
-    MimoTTSClient::TTSRequest request;
-    
-    // 获取配置参数
-    System::String^ voice = GET_CONFIG(MIMO_VOICE);
-    System::String^ style = GET_CONFIG(MIMO_STYLE);
-    System::String^ dialect = GET_CONFIG(MIMO_DIALECT);
-    System::String^ role = GET_CONFIG(MIMO_ROLE);
-    System::String^ format = GET_CONFIG(MIMO_AUDIO_FORMAT);
-    float speed = GET_CONFIG(MIMO_SPEED);
+    MimoTTSClient::TTSRequest ttsReq;
 
-    if (voice != nullptr && voice->Length > 0) {
-        request.voice = wstring_to_utf8(msclr::interop::marshal_as<std::wstring>(voice));
+    // 获取配置参数
+    const auto& config = ConfigManager::Inst()->GetConfig();
+
+    if (!config.mimoVoice.empty()) {
+        ttsReq.voice = config.mimoVoice;
     }
-    
+
     // 构建文本：将默认风格标签放在"xxx说："前面
     std::string styleTag;
-    if (style != nullptr && style->Length > 0) {
-        styleTag = "<style>" + wstring_to_utf8(msclr::interop::marshal_as<std::wstring>(style)) + "</style>";
+    if (!config.mimoStyle.empty()) {
+        styleTag = "<style>" + config.mimoStyle + "</style>";
     }
-    request.text = styleTag + wstring_to_utf8(text);
-    
-    // Debug log
-    LOG_INFO(TEXT("MiMo TTS Request Text: %s"), text.c_str());
-    LOG_INFO(TEXT("MiMo TTS Request Text UTF8: %s"), utf8_to_wstring(request.text).c_str());
-    if (dialect != nullptr && dialect->Length > 0) {
-        request.dialect = wstring_to_utf8(msclr::interop::marshal_as<std::wstring>(dialect));
-    }
-    if (role != nullptr && role->Length > 0) {
-        request.role = wstring_to_utf8(msclr::interop::marshal_as<std::wstring>(role));
-    }
-    if (format != nullptr && format->Length > 0) {
-        request.responseFormat = wstring_to_utf8(msclr::interop::marshal_as<std::wstring>(format));
-    }
-    request.speed = speed;
+    ttsReq.text = styleTag + wstring_to_utf8(req.text);
 
-    // 发送请求（同步等待结果）
-    bool requestCompleted = false;
-    bool requestSuccess = false;
+    if (!config.mimoDialect.empty()) {
+        ttsReq.dialect = config.mimoDialect;
+    }
+    if (!config.mimoRole.empty()) {
+        ttsReq.role = config.mimoRole;
+    }
+    ttsReq.responseFormat = req.responseFormat;
+    ttsReq.speed = config.mimoSpeed;
 
-    mimoClient->RequestTTS(request, [&](const MimoTTSClient::TTSResponse& response) {
+    LOG_INFO(TEXT("TTS Async: Sending API request for: %s"), req.text.c_str());
+
+    // 发起异步请求（回调在HTTP线程执行）
+    mimoClient->RequestTTS(ttsReq, [this, &req](const MimoTTSClient::TTSResponse& response) {
+        // 回调在HTTP线程中执行，需要线程安全地修改状态
+        std::lock_guard<std::mutex> lock(asyncMutex_);
         if (response.success && !response.audioData.empty()) {
-            // 播放音频
-            requestSuccess = audioPlayer->Play(response.audioData, request.responseFormat);
-            if (requestSuccess) {
-                // 等待播放完成（带超时）
-                audioPlayer->WaitForCompletion(10000);  // 10秒超时
-            }
+            req.audioData = response.audioData;
+            req.state = AsyncTTSState::Playing;
+            LOG_INFO(TEXT("TTS Async: API request succeeded, starting playback"));
         } else {
-            LOG_ERROR(TEXT("MiMo TTS request failed: %s"), utf8_to_wstring(response.errorMessage).c_str());
-            requestSuccess = false;
+            req.errorMessage = response.errorMessage;
+            req.state = AsyncTTSState::Failed;
+            LOG_ERROR(TEXT("TTS Async: API request failed: %s"), utf8_to_wstring(response.errorMessage).c_str());
         }
-        requestCompleted = true;
     });
 
-    // 简单的同步等待（实际应该使用异步机制）
-    // 注意：这会阻塞调用线程，生产环境应该改进为异步
-    int waitCount = 0;
-    while (!requestCompleted && waitCount < 100) {
-        Sleep(50);
-        waitCount++;
+    req.state = AsyncTTSState::Requesting;
+    req.startTime = std::chrono::steady_clock::now();
+}
+
+void TTSManager::ProcessRequestingState(AsyncTTSRequest& req)
+{
+    // 使用锁检查状态，避免与回调竞态
+    std::lock_guard<std::mutex> lock(asyncMutex_);
+    
+    if (req.state != AsyncTTSState::Requesting) {
+        return;
     }
 
-    return requestSuccess;
+    // 如果已经有音频数据，说明回调已执行，状态改为Playing让下次Tick处理播放
+    if (!req.audioData.empty()) {
+        req.state = AsyncTTSState::Playing;
+        LOG_INFO(TEXT("TTS Async: State changed to Playing"));
+        return;
+    }
+
+    auto now = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - req.startTime).count();
+
+    if (elapsed >= API_TIMEOUT_SECONDS) {
+        LOG_WARNING(TEXT("TTS Async: API request timeout (%d seconds)"), elapsed);
+        HandleRequestFailure(req);
+    }
+}
+
+void TTSManager::ProcessPlayingState(AsyncTTSRequest& req)
+{
+    if (audioPlayer == NULL) {
+        req.state = AsyncTTSState::Failed;
+        req.errorMessage = "audioPlayer is NULL";
+        return;
+    }
+
+    // 播放音频（非阻塞模式）
+    if (!req.audioData.empty()) {
+        bool playSuccess = audioPlayer->Play(req.audioData, req.responseFormat);
+        if (!playSuccess) {
+            LOG_ERROR(TEXT("TTS Async: Audio playback failed"));
+            req.state = AsyncTTSState::Failed;
+            return;
+        }
+        // 清空audioData，避免重复播放
+        req.audioData.clear();
+        req.startTime = std::chrono::steady_clock::now();  // 重置超时计时
+        LOG_INFO(TEXT("TTS Async: Audio playback started"));
+    }
+
+    // 检查播放完成：优先用MCI状态判断，如果MCI错误则用时间判断
+    bool playbackComplete = audioPlayer->IsPlaybackComplete();
+    
+    // 如果MCI报告完成，或者播放时间超过预期（处理MCI设备错误的情况）
+    auto now = std::chrono::steady_clock::now();
+    auto playbackElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - req.startTime).count();
+    
+    // 对于短文本（<500字符），预期播放时间约2-3秒；超过5秒认为有问题
+    bool timedOut = (playbackElapsed > 5000 && !req.audioData.empty());
+    
+    if (playbackComplete || timedOut) {
+        if (playbackComplete) {
+            LOG_INFO(TEXT("TTS Async: Playback completed (MCI reported stop)"));
+        } else {
+            LOG_WARNING(TEXT("TTS Async: Playback timeout (%d ms), treating as completed"), playbackElapsed);
+            if (audioPlayer != NULL) {
+                audioPlayer->Stop();
+            }
+        }
+        req.state = AsyncTTSState::Completed;
+        consecutiveFailures++;
+        lastFailureTime = std::chrono::steady_clock::now();
+        return;
+    }
+}
+
+void TTSManager::HandleRequestFailure(AsyncTTSRequest& req)
+{
+    // 重试逻辑
+    if (req.retryCount < MAX_RETRY_COUNT) {
+        req.retryCount++;
+        req.state = AsyncTTSState::Pending;  // 重置为Pending，重新请求
+        LOG_WARNING(TEXT("TTS Async: Retrying request (%d/%d)"), req.retryCount, MAX_RETRY_COUNT);
+        return;
+    }
+
+    // 重试次数用尽，标记失败
+    req.state = AsyncTTSState::Failed;
+    LOG_ERROR(TEXT("TTS Async: Request failed after %d retries"), req.retryCount);
+
+    // 记录失败，用于降级判断
+    consecutiveFailures++;
+    lastFailureTime = std::chrono::steady_clock::now();
+
+    if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+        TriggerFallback();
+    }
+
+    // 降级到SAPI
+    SpeakWithSapi(req.text);
+}
+
+void TTSManager::CleanupCompletedRequests()
+{
+    // 清理Completed和Failed状态的请求
+    while (!asyncPendingQueue_.empty()) {
+        auto& front = asyncPendingQueue_.front();
+        if (front.state == AsyncTTSState::Completed || front.state == AsyncTTSState::Failed) {
+            asyncPendingQueue_.pop_front();
+        } else {
+            break;  // 队列是FIFO，前面的已完成才清理
+        }
+    }
 }
 #endif
 
@@ -369,15 +522,14 @@ void TTSManager::RefreshEngineStatus()
 TTSManager::TTSEngine TTSManager::GetActiveEngine() const
 {
 #if USE_MIMO_TTS
-    System::String^ engineConfig = GET_CONFIG(TTS_ENGINE);
-    if (engineConfig == nullptr) {
+    const auto& config = ConfigManager::Inst()->GetConfig();
+    if (config.ttsEngine.empty()) {
         return TTSEngine::AUTO;
     }
     
-    std::wstring engineStr = msclr::interop::marshal_as<std::wstring>(engineConfig);
-    if (engineStr == L"mimo") {
+    if (config.ttsEngine == "mimo") {
         return TTSEngine::MIMO;
-    } else if (engineStr == L"sapi") {
+    } else if (config.ttsEngine == "sapi") {
         return TTSEngine::SAPI;
     } else {
         return TTSEngine::AUTO;

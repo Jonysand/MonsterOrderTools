@@ -1,19 +1,11 @@
 ﻿using System;
-using System.Text.RegularExpressions;
 using System.Windows.Media;
-using Newtonsoft.Json;
 
 namespace MonsterOrderWindows
 {
     internal class DanmuManager
     {
-        private Regex[] order_monster_patterns;
-        
-        private Regex[] priority_patterns_withoutOrder;
-
-        private static readonly Regex RegexTemperedKing = new Regex(@"^历战王", RegexOptions.Compiled);
-        private static readonly Regex RegexTempered = new Regex(@"^历战", RegexOptions.Compiled);
-        private static readonly Regex RegexKing = new Regex(@"^王", RegexOptions.Compiled);
+        private static NativeImports.DanmuProcessedCallback danmuProcessedCallback;
 
         static DanmuManager _Inst = null;
 
@@ -26,21 +18,8 @@ namespace MonsterOrderWindows
 
         public DanmuManager()
         {
-            order_monster_patterns = new Regex[] {
-                new Regex(@"^点怪", RegexOptions.Compiled),
-                new Regex(@"^点个", RegexOptions.Compiled),
-                new Regex(@"^点只", RegexOptions.Compiled),
-                new Regex(@"^點怪", RegexOptions.Compiled),
-                new Regex(@"^點個", RegexOptions.Compiled),
-                new Regex(@"^點隻", RegexOptions.Compiled)
-            };
-            
-            priority_patterns_withoutOrder = new Regex[] {
-                new Regex(@"优先", RegexOptions.Compiled),
-                new Regex(@"插队", RegexOptions.Compiled),
-                new Regex(@"優先", RegexOptions.Compiled),
-                new Regex(@"插隊", RegexOptions.Compiled)
-            };
+            danmuProcessedCallback = OnDanmuProcessed;
+            NativeImports.DataBridge_SetDanmuProcessedCallback(danmuProcessedCallback, IntPtr.Zero);
         }
 
         public void LoadHistoryOrder()
@@ -55,207 +34,7 @@ namespace MonsterOrderWindows
             GlobalEventListener.Invoke("RefreshOrder", null);
         }
 
-
-        private class Danmu
-        {
-            public string cmd { get; set; } = "";
-            public class DanmuData
-            {
-                public string open_id { get; set; } = "";
-                public string fans_medal_name { get; set; } = "";
-                public int fans_medal_level { get; set; } = 0;
-                public bool fans_medal_wearing_status { get; set; } = false;
-                public long timestamp { get; set; } = 0;
-                public string msg { get; set; } = "";
-                public int guard_level { get; set; } = 0;
-                public string uname { get; set; } = "";
-            }
-            public DanmuData data { get; set; } = new DanmuData();
-        }
-        // 收到弹幕的处理
-        public void OnReceivedRawJson(String rawJson)
-        {
-            Danmu danmu = JsonConvert.DeserializeObject<Danmu>(rawJson);
-            if (danmu.cmd != "LIVE_OPEN_PLATFORM_DM")
-                return;
-            if (danmu.data.open_id.Length == 0)
-                return;
-            // 是否成功佩戴粉丝牌
-            if (!IsWearingMedal(danmu.data))
-                return;
-            var timeStamp = danmu.data.timestamp;
-            var isPriority = false;
-            //处理优先逻辑
-            var check = false;
-            String CommentText = danmu.data.msg;
-            int UserGuardLevel = danmu.data.guard_level;
-            foreach (var pattern in priority_patterns_withoutOrder)
-            {
-                Match match = pattern.Match(CommentText);
-                if (match.Success)
-                {
-                    isPriority = true;
-                    for (int i = 0; i < PriorityQueue.GetInst().Count; i++)
-                    {
-                        if (PriorityQueue.GetInst().Queue[i].UserId == danmu.data.open_id && UserGuardLevel > 0)
-                        {
-                            // 只插队一次
-                            if (PriorityQueue.GetInst().Queue[i].Priority)
-                                break;
-                            // 插队成功后重置时间戳
-                            PriorityQueue.GetInst().Queue[i].Priority = true;
-                            PriorityQueue.GetInst().Queue[i].TimeStamp = timeStamp;
-                            check = true;
-                            break;
-                        }
-                    }
-                    if (check)
-                    {
-                        GlobalEventListener.Invoke("RefreshOrder", null);
-                        return;
-                    }
-                }
-            }
-
-            // 是否是重复的用户 
-            if (IsRepeatUser(danmu.data.open_id))
-                return;
-
-            var monsterName = string.Empty;
-            int temperedLevel = 0;
-            CommentText = NormalizeString(CommentText);
-            foreach (var pattern in order_monster_patterns)
-            {
-                // 点怪规则匹配
-                Match match = pattern.Match(CommentText);
-                if (match.Success)
-                {
-                    // 插队规则匹配
-                    var subString = CommentText.Substring(match.Index + 2);
-                    foreach (var priority in priority_patterns_withoutOrder)
-                    {
-                        var priorityMatch = priority.Match(subString);
-
-                        if (priorityMatch.Success && UserGuardLevel > 0)
-                        {
-                            isPriority = true;
-                            subString = subString.Replace(subString.Substring(priorityMatch.Index, priorityMatch.Length), "");
-                        }
-                    }
-                    // 在这里判怪物名字库
-                    var real_monster_names = MonsterData.GetInst().GetMatchedMonsterName(subString);
-                    // 如果直接匹配到，直接用，一般是特殊任务
-                    if (!string.IsNullOrEmpty(real_monster_names.Item1))
-                    {
-                        monsterName = real_monster_names.Item1;
-                        temperedLevel = real_monster_names.Item2;
-                    }
-                    else
-                    {
-                        var monster_names = NormalizeMonsterName(subString);
-                        monsterName = monster_names.Item1;
-                        temperedLevel = monster_names.Item2;
-                        real_monster_names = MonsterData.GetInst().GetMatchedMonsterName(monsterName);
-                        if (real_monster_names.Item2 > 0)
-                            temperedLevel = real_monster_names.Item2;
-                        monsterName = real_monster_names.Item1;
-                    }
-                    if (string.IsNullOrEmpty(monsterName))
-                    {
-                        continue;
-                    }
-                    break;
-                }
-            }
-
-            if (string.IsNullOrEmpty(monsterName))
-                return;
-            var userName = danmu.data.uname;
-            if (UserGuardLevel > 0)
-            {
-                switch (UserGuardLevel)
-                {
-                    case 1:
-                        {
-                            userName += "[总督]";
-                            break;
-                        }
-                    case 2:
-                        {
-                            userName += "[提督]";
-                            break;
-                        }
-                    case 3:
-                        {
-                            userName += "[舰长]";
-                            break;
-                        }
-                    default:
-                        break;
-                }
-
-            }
-
-            //记录当前的订单
-            var oneNode = new PriorityQueueNode();
-            oneNode.UserId = danmu.data.open_id;
-            oneNode.TimeStamp = timeStamp;
-            oneNode.Priority = isPriority;
-            oneNode.UserName = userName;
-            oneNode.MonsterName = monsterName;
-            oneNode.GuardLevel = UserGuardLevel;
-            oneNode.TemperedLevel = temperedLevel;
-            PriorityQueue.GetInst().Enqueue(oneNode);
-
-            // 创建订单
-            CreateOrder(userName, monsterName);
-        }
-
-        private bool IsWearingMedal(Danmu.DanmuData data)
-        {
-            if (!ToolsMain.GetConfigService().Config.ONLY_MEDAL_ORDER)
-                return true;
-            return data.fans_medal_wearing_status;
-        }
-
-        private bool IsRepeatUser(string data)
-        {
-            return PriorityQueue.GetInst().Contains(data);
-        }
-
-        // 返回：（怪物名，历战等级）
-        // 曙光的话应该还能用来标记怪异等级，到时候再说
-        private Tuple<string, int> NormalizeMonsterName(string monster_name)
-        {
-            int temperedLevel;
-            // 历战等级设置
-            if (RegexTemperedKing.Match(monster_name).Success)
-            {
-                temperedLevel = 2;
-                monster_name = monster_name.Substring(3);
-            }
-            else if (RegexTempered.Match(monster_name).Success)
-            {
-                temperedLevel = 1;
-                monster_name = monster_name.Substring(2);
-            }
-            else if (RegexKing.Match(monster_name).Success)
-            {
-                temperedLevel = 2;
-                monster_name = monster_name.Substring(1);
-            }
-            else
-                temperedLevel = 0;
-            return new Tuple<string, int>(monster_name, temperedLevel);
-        }
-
-        private string NormalizeString(string data)
-        {
-            data = data.Replace(" ", "").Replace(",", "").Replace("，", "");
-            return data;
-        }
-
-        private void CreateOrder(string userName, string monsterName)
+        private static void OnDanmuProcessed(string userName, string monsterName, IntPtr userData)
         {
             GlobalEventListener.Invoke("RefreshOrder", null);
             GlobalEventListener.Invoke("AddRollingInfo", new RollingInfo(userName + " 点怪 " + monsterName + " 成功！", Colors.Yellow));

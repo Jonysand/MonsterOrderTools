@@ -38,10 +38,6 @@ public:
 
 	inline void OnHotKeyLock() { toolsMainInstance->OnHotKeyLock(); }
 
-	inline void OnReceiveRawMsg(const TString& rawStr) { 
-		toolsMainInstance->OnReceivedRawMsg(ConvertUtils::TStringToString(rawStr));
-	}
-
 	inline std::string GetCommand() { 
 		return std::move(ConvertUtils::StringToStdString(toolsMainInstance->GetCommand())); 
 	}
@@ -56,8 +52,6 @@ private:
 private:
 	static ToolsMainHost^ __instance;
 };
-
-#define GET_CONFIG(NAME) ToolsMainHost::Inst()->GetConfig()->NAME
 
 // TTS引擎类型定义
 #define TTS_ENGINE_MIMO "mimo"
