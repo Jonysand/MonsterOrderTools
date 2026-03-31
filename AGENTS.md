@@ -53,3 +53,47 @@
     <ExcludedFromBuild Condition="'$(Configuration)'=='Release'">true</ExcludedFromBuild>
   </ClCompile>
   ```
+
+## 配置字段扩展规则
+
+新增配置字段时，需要同时修改以下文件：
+
+### 1. C++ 层（持久化层）
+
+| 文件 | 修改内容 |
+|------|---------|
+| `MonsterOrderWilds/ConfigManager.h` | 在 `ConfigData` 结构体中添加字段 |
+| `MonsterOrderWilds/ConfigFieldRegistry.cpp` | 在 `RegisterAll()` 中注册字段 |
+| `MonsterOrderWilds/ConfigManager.cpp` | 在 `LoadConfig()` 和 `SaveConfig()` 中处理 JSON |
+| `MonsterOrderWilds/DataBridgeWrapper.h` | 在 `ConfigProxy` 类的 `Refresh()`、`Apply()` 和属性中添加 |
+
+### 2. C# 层（应用层）
+
+| 文件 | 修改内容 |
+|------|---------|
+| `JonysandMHDanmuTools/DataStructures.cs` | 在 `ConfigDataSnapshot` 结构体中添加字段，并在 `FromMainConfig()` 和 `ApplyTo()` 中处理 |
+| `JonysandMHDanmuTools/Utils.cs` | 在 `ConfigFieldRegistry` 静态构造函数中注册字段，在 `MainConfig` 类中添加属性 |
+| `JonysandMHDanmuTools/ProxyClasses.cs` | 在 `ConfigProxy` 类中添加属性，并在 `RefreshFromConfig()` 和 `ApplyToConfig()` 中处理 |
+| `JonysandMHDanmuTools/ToolsMain.cs` | 在 `ConfigChanged()` 方法中添加处理逻辑（如果需要响应配置变更） |
+
+### 3. UI 层（可选）
+
+如果配置需要用户界面输入，还需要修改：
+- `JonysandMHDanmuTools/ConfigWindow.xaml` - 添加 UI 控件
+- `JonysandMHDanmuTools/ConfigWindow.xaml.cs` - 在 `FillConfig()` 中初始化控件，处理控件事件
+
+### 字段命名规范
+
+| 层 | 命名风格 | 示例 |
+|----|---------|------|
+| C++ ConfigData | camelCase | `defaultMarqueeText` |
+| JSON 配置 | SCREAMING_SNAKE | `DEFAULT_MARQUEE_TEXT` |
+| C# MainConfig | SCREAMING_SNAKE | `DEFAULT_MARQUEE_TEXT` |
+| UI 控件 Name | PascalCase | `DefaultMarqueeTextBox` |
+
+### 注意事项
+
+- **必须同时修改 C++ 和 C# 两层**，否则运行时会出现 `Config field 'xxx' not found` 错误
+- C++ 层的 `ConfigFieldRegistry` 和 C# 层的 `ConfigFieldRegistry` 是两个独立的注册表，需要分别注册
+- 如果字段需要即时生效，需要在 `ToolsMain.ConfigChanged()` 中添加处理逻辑
+- **如果配置变更需要通知其他组件（如 UI 刷新），必须在 `ToolsMain.ConfigChanged()` 中调用 `GlobalEventListener.Invoke("事件名", 值)` 发送通知**，并在该组件中注册监听此事件

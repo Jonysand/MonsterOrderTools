@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using Newtonsoft.Json;
 
 namespace MonsterOrderWindows
 {
@@ -184,22 +183,14 @@ namespace MonsterOrderWindows
         }
     }
 
-    [JsonObject(MemberSerialization = MemberSerialization.OptIn)]
     public class PriorityQueueNode : IComparable<PriorityQueueNode>
     {
-        [JsonProperty]
         public string UserId;
-        [JsonProperty]
         public long TimeStamp;
-        [JsonProperty]
         public bool Priority; //todo 可能要从bool改为int,如果要排总督、提督、舰长。同时改一下CompareTo
-        [JsonProperty]
         public string UserName;
-        [JsonProperty]
         public string MonsterName;
-        [JsonProperty]
         public int GuardLevel;
-        [JsonProperty]
         public int TemperedLevel = 0; // 0 - 普通，1 - 历战，2 - 历战王
 
         public PriorityQueueNode()

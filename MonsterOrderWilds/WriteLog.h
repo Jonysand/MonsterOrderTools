@@ -43,11 +43,20 @@ static inline std::string WstringToUtf8(const std::wstring& wstr)
 #define LOGW_DEBUG(EXPR, ...)
 #endif
 
-#define LOG_ERROR(EXPR, ...)		WriteLog::WriteLog(WriteLog::LogLevel_ERROR, EXPR, __VA_ARGS__)
-#define LOG_WARNING(EXPR, ...)		WriteLog::WriteLog(WriteLog::LogLevel_WARNING, EXPR, __VA_ARGS__)
-#define LOG_INFO(EXPR, ...)			WriteLog::WriteLog(WriteLog::LogLevel_INFO, EXPR, __VA_ARGS__)
+// #define LOG_ERROR(EXPR, ...)		WriteLog::WriteLog(WriteLog::LogLevel_ERROR, EXPR, __VA_ARGS__)
+// #define LOG_WARNING(EXPR, ...)		WriteLog::WriteLog(WriteLog::LogLevel_WARNING, EXPR, __VA_ARGS__)
+// #define LOG_INFO(EXPR, ...)			WriteLog::WriteLog(WriteLog::LogLevel_INFO, EXPR, __VA_ARGS__)
+// #if _DEBUG
+// #define LOG_DEBUG(EXPR, ...)		WriteLog::WriteLog(WriteLog::LogLevel_DEBUG, EXPR, __VA_ARGS__)
+// #else
+// #define LOG_DEBUG(EXPR, ...)
+// #endif
+
+#define LOG_ERROR				LOGW_ERROR
+#define LOG_WARNING				LOGW_WARNING
+#define LOG_INFO				LOGW_INFO
 #if _DEBUG
-#define LOG_DEBUG(EXPR, ...)		WriteLog::WriteLog(WriteLog::LogLevel_DEBUG, EXPR, __VA_ARGS__)
+#define LOG_DEBUG				LOGW_DEBUG
 #else
 #define LOG_DEBUG(EXPR, ...)
 #endif

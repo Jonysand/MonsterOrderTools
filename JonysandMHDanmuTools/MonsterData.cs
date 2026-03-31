@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.IO;
-using Newtonsoft.Json;
 
 namespace MonsterOrderWindows
 {

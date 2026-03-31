@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
@@ -8,6 +9,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Interop;
 using System.Runtime.InteropServices;
 using System.Windows.Threading;
@@ -24,22 +26,46 @@ namespace MonsterOrderWindows
         private AdornerLayer mAdornerLayer = null;
         // 显示info的队列
         private Queue<RollingInfo> mInfoQueue;
-        private DispatcherTimer mInfoChangeTimer;
-        private const string _defaultInfo = "发送“点怪 xxx”进行点怪";
+        private string _defaultInfo = "发送'点怪 xxx'进行点怪";
         // 界面是否锁定
         private bool mIsLocked = false;
+        // ObservableCollection for virtualization support
+        private ObservableCollection<MonsterOrderInfo> _orderCollection = new ObservableCollection<MonsterOrderInfo>();
+        // 节流机制
+        private const int THROTTLE_MS = 100;
+        private DateTime _lastRefreshTime = DateTime.MinValue;
+        // 跑马灯状态管理
+        private bool _isShowingDefault = true;
+        private bool _currentAnimationIsLoop = true;
         public OrderedMonsterWindow()
         {
             InitializeComponent();
+
+            _defaultInfo = ToolsMain.GetConfigService().Config.DEFAULT_MARQUEE_TEXT;
+            if (string.IsNullOrEmpty(_defaultInfo))
+                _defaultInfo = "发送'点怪 xxx'进行点怪";
+
             InfoText_Animation.Duration = new Duration(new TimeSpan(0, 0, 10));
             InfoText.Text = _defaultInfo;
             InfoText_Animation.To = -InfoText.Text.Count() * InfoText.FontSize;
 
             GlobalEventListener.AddListener("AddRollingInfo", (object rollingInfo) => AddRollingInfo(rollingInfo as RollingInfo));
             GlobalEventListener.AddListener("RefreshOrder", (object _) => RefreshOrder());
+            GlobalEventListener.AddListener("MarqueeTextChanged", (object text) => UpdateMarqueeText(text?.ToString() ?? ""));
+
+            _isShowingDefault = true;
+            _currentAnimationIsLoop = true;
+            StartMarqueeAnimation(true);
 
             // 注册事件通知
-            EventDispatcher.Instance.OnQueueChanged += () => Dispatcher.InvokeAsync(new Action(() => RefreshOrder()));
+            EventDispatcher.Instance.OnQueueChanged += () =>
+            {
+                var now = DateTime.Now;
+                if ((now - _lastRefreshTime).TotalMilliseconds < THROTTLE_MS)
+                    return;
+                _lastRefreshTime = now;
+                Dispatcher.InvokeAsync(new Action(() => RefreshOrder()));
+            };
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
@@ -47,13 +73,9 @@ namespace MonsterOrderWindows
             this.Height = 360;
             this.Width = 440;
 
-            // init timer
-            mInfoChangeTimer = new DispatcherTimer();
             mInfoQueue = new Queue<RollingInfo>();
-            mInfoChangeTimer.Interval = InfoText_Animation.Duration.TimeSpan;
-            mInfoChangeTimer.Tick += new EventHandler(OnTimerTick);
-            mInfoChangeTimer.Start();
 
+            MainList.ItemsSource = _orderCollection;
             RefreshWindow();
             RefreshOrder();
             // Hotkey.Regist(this, HotkeyModifiers.Alt, Key.Decimal, OnHotKeyLock);
@@ -117,21 +139,47 @@ namespace MonsterOrderWindows
             RefreshWindow();
         }
 
-        // 更新跑马灯消息
-        private void OnTimerTick(object sender, EventArgs e)
+        // 跑马灯动画控制
+        private void StartMarqueeAnimation(bool loop)
         {
-            if (mInfoQueue.Count == 0)
-            {
-                InfoText.Text = _defaultInfo;
-                InfoText.Foreground = new SolidColorBrush(Colors.LightYellow);
-            }
-            else
+            MarqueeStoryboard.Stop();
+            InfoText_Animation.RepeatBehavior = loop ? RepeatBehavior.Forever : new RepeatBehavior(1);
+            _currentAnimationIsLoop = loop;
+            MarqueeStoryboard.Begin();
+        }
+
+        private void OnMarqueeAnimationCompleted(object sender, EventArgs e)
+        {
+            if (mInfoQueue.Count > 0)
             {
                 var rollingInfo = mInfoQueue.Dequeue();
                 InfoText.Text = rollingInfo.Text;
                 InfoText.Foreground = new SolidColorBrush(rollingInfo.TextColor);
+                InfoText_Animation.To = -InfoText.Text.Count() * InfoText.FontSize;
+                _isShowingDefault = false;
+                StartMarqueeAnimation(false);
             }
-            InfoText_Animation.To = -InfoText.Text.Count() * InfoText.FontSize;
+            else
+            {
+                InfoText.Text = _defaultInfo;
+                InfoText.Foreground = new SolidColorBrush(Colors.LightYellow);
+                InfoText_Animation.To = -InfoText.Text.Count() * InfoText.FontSize;
+                _isShowingDefault = true;
+                StartMarqueeAnimation(true);
+            }
+        }
+
+        private void UpdateMarqueeText(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                text = "发送'点怪 xxx'进行点怪";
+            _defaultInfo = text;
+            if (_isShowingDefault)
+            {
+                InfoText.Text = _defaultInfo;
+                InfoText.Foreground = new SolidColorBrush(Colors.LightYellow);
+                InfoText_Animation.To = -InfoText.Text.Count() * InfoText.FontSize;
+            }
         }
 
         // 左键窗口任意位置拖曳
@@ -151,7 +199,7 @@ namespace MonsterOrderWindows
         }
 
         // 点击以完成订单
-        private void OnClickOrder(object sender, MouseButtonEventArgs e)
+        private async void OnClickOrder(object sender, MouseButtonEventArgs e)
         {
             if (mIsLocked)
                 return;
@@ -165,14 +213,29 @@ namespace MonsterOrderWindows
             if (selectedItem == null || selectedItem.DataContext == null)
                 return;
             MonsterOrderInfo orderInfo = selectedItem.DataContext as MonsterOrderInfo;
-            PriorityQueue.GetInst().Dequeue(MainList.Items.IndexOf(orderInfo));
-            RefreshOrder();
+            int index = _orderCollection.IndexOf(orderInfo);
+            if (index >= 0)
+            {
+                PriorityQueue.GetInst().Dequeue(index);
+                await Dispatcher.InvokeAsync(() => RefreshOrder());
+            }
         }
 
         // 添加跑马灯消息
         public void AddRollingInfo(RollingInfo rollingInfo)
         {
-            mInfoQueue.Enqueue(rollingInfo);
+            if (_isShowingDefault && mInfoQueue.Count == 0)
+            {
+                InfoText.Text = rollingInfo.Text;
+                InfoText.Foreground = new SolidColorBrush(rollingInfo.TextColor);
+                InfoText_Animation.To = -InfoText.Text.Count() * InfoText.FontSize;
+                _isShowingDefault = false;
+                StartMarqueeAnimation(false);
+            }
+            else
+            {
+                mInfoQueue.Enqueue(rollingInfo);
+            }
         }
 
         public async void RefreshOrder()
@@ -201,14 +264,14 @@ namespace MonsterOrderWindows
                 return items;
             });
 
-            Dispatcher.InvokeAsync(new Action(delegate
+            await Dispatcher.InvokeAsync(() =>
             {
-                MainList.Items.Clear();
+                _orderCollection.Clear();
                 foreach (var item in sortedItems)
                 {
-                    MainList.Items.Add(item);
+                    _orderCollection.Add(item);
                 }
-            }));
+            });
         }
 
         // 拖拽排序 -------------------------------------
@@ -267,8 +330,12 @@ namespace MonsterOrderWindows
                 // check if finish order
                 return;
             }
-            MainList.Items.Remove(sourcePerson);
-            MainList.Items.Insert(MainList.Items.IndexOf(targetPerson), sourcePerson);
+            int oldIndex = _orderCollection.IndexOf(sourcePerson);
+            int newIndex = _orderCollection.IndexOf(targetPerson);
+            if (oldIndex >= 0 && newIndex >= 0)
+            {
+                _orderCollection.Move(oldIndex, newIndex);
+            }
         }
     }
 

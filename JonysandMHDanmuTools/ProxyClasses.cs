@@ -142,6 +142,13 @@ namespace MonsterOrderWindows
             set { _topPosY = value; OnPropertyChanged(); }
         }
 
+        private string _defaultMarqueeText = "";
+        public string DefaultMarqueeText
+        {
+            get => _defaultMarqueeText;
+            set { _defaultMarqueeText = value; OnPropertyChanged(); }
+        }
+
         public void RefreshFromConfig(MainConfig config)
         {
             IdCode = config.ID_CODE ?? "";
@@ -161,6 +168,7 @@ namespace MonsterOrderWindows
             MimoSpeed = config.MIMO_SPEED;
             TopPosX = config.TopPos.X;
             TopPosY = config.TopPos.Y;
+            DefaultMarqueeText = config.DEFAULT_MARQUEE_TEXT ?? "";
         }
 
         public void ApplyToConfig(MainConfig config)
@@ -181,6 +189,7 @@ namespace MonsterOrderWindows
             config.MIMO_STYLE = MimoStyle;
             config.MIMO_SPEED = MimoSpeed;
             config.TopPos = new System.Windows.Point(TopPosX, TopPosY);
+            config.DEFAULT_MARQUEE_TEXT = DefaultMarqueeText;
         }
     }
 

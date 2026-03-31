@@ -70,8 +70,13 @@ void TTSManager::Tick()
 
     if (!NormalMsgQueue.empty())
     {
-        if (ConfigManager::Inst()->GetConfig().enableVoice)
+        LOG_INFO(TEXT("=== NormalMsgQueue has %zu messages ==="), NormalMsgQueue.size());
+        if (ConfigManager::Inst()->GetConfig().enableVoice) {
+            LOG_INFO(TEXT("=== enableVoice is true, calling Speak ==="));
             Speak(NormalMsgQueue.front());
+        } else {
+            LOG_INFO(TEXT("=== enableVoice is false, skipping Speak ==="));
+        }
         NormalMsgQueue.pop_front();
     }
     if (!GiftMsgQueue.empty())
@@ -207,6 +212,8 @@ void TTSManager::HandleSpeekEnter(const json& data)
 
 bool TTSManager::Speak(const TString& text)
 {
+    LOG_INFO(TEXT("=== TTS Speak called with text: %s ==="), text.c_str());
+    
 #if USE_MIMO_TTS
     TTSEngine engine = GetActiveEngine();
     
@@ -221,6 +228,7 @@ bool TTSManager::Speak(const TString& text)
 #endif
     
     // 使用Windows SAPI
+    LOG_INFO(TEXT("Using SAPI fallback"));
     return SpeakWithSapi(text);
 }
 
@@ -262,14 +270,16 @@ bool TTSManager::SpeakWithSapi(const TString& text)
 #if USE_MIMO_TTS
 void TTSManager::SpeakWithMimoAsync(const TString& text)
 {
+    LOG_INFO(TEXT("=== SpeakWithMimoAsync called ==="));
+    
     if (mimoClient == NULL || audioPlayer == NULL) {
-        LOG_ERROR(TEXT("SpeakWithMimoAsync: mimoClient or audioPlayer is NULL"));
+        LOG_ERROR(TEXT("SpeakWithMimoAsync: mimoClient or audioPlayer is NULL, falling back to SAPI"));
+        SpeakWithSapi(text);
         return;
     }
 
     if (!mimoClient->IsAvailable()) {
-        LOG_WARNING(TEXT("MiMo TTS not available (API Key not configured)"));
-        // 降级到SAPI
+        LOG_WARNING(TEXT("MiMo TTS not available (API Key not configured), falling back to SAPI"));
         SpeakWithSapi(text);
         return;
     }
@@ -289,6 +299,7 @@ void TTSManager::SpeakWithMimoAsync(const TString& text)
     }
 
     asyncPendingQueue_.push_back(req);
+    LOG_DEBUG(TEXT("SpeakWithMimoAsync: Request added to queue, queue size: %zu"), asyncPendingQueue_.size());
 }
 
 void TTSManager::ProcessAsyncTTS()
@@ -296,6 +307,7 @@ void TTSManager::ProcessAsyncTTS()
     // 处理当前请求
     if (hasCurrentRequest_ && !asyncPendingQueue_.empty()) {
         AsyncTTSRequest& req = asyncPendingQueue_.front();
+        LOG_DEBUG(TEXT("=== ProcessAsyncTTS: hasCurrentRequest_=true, state=%d ==="), (int)req.state);
         switch (req.state) {
         case AsyncTTSState::Pending:
             ProcessPendingRequest(req);
@@ -314,6 +326,8 @@ void TTSManager::ProcessAsyncTTS()
             hasCurrentRequest_ = false;
             break;
         }
+    } else {
+        LOG_DEBUG(TEXT("=== ProcessAsyncTTS: hasCurrentRequest_=%d, queue size=%zu ==="), hasCurrentRequest_, asyncPendingQueue_.size());
     }
 
     // 如果当前没有请求，从队列取下一个

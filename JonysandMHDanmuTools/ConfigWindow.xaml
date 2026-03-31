@@ -391,6 +391,24 @@
                             <StackPanel Orientation="Horizontal" Margin="8,8,0,0"
                                 VerticalAlignment="Center">
                                 <Label
+                                    Content="跑马灯默认文本"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe UI Variable"
+                                    FontSize="14"
+                                    Foreground="#222"
+                                    Margin="0,0,8,0" />
+                                <TextBox
+                                    Name="DefaultMarqueeTextBox"
+                                    Width="300"
+                                    Height="24"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe UI Variable"
+                                    FontSize="14"
+                                    TextChanged="DefaultMarqueeTextBox_TextChanged" />
+                                </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="8,8,0,0"
+                                VerticalAlignment="Center">
+                                <Label
                                     Content="点怪窗口透明度"
                                     VerticalAlignment="Center"
                                     FontFamily="Segoe UI Variable"

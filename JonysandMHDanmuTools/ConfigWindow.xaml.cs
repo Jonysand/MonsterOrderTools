@@ -51,6 +51,8 @@ namespace MonsterOrderWindows
             if (config.ONLY_SPEEK_PAID_GIFT)
                 OnlyPaidGiftCheckBox.IsChecked = true;
             OpacitySlider.Value = config.OPACITY;
+            var marqueeText = config.DEFAULT_MARQUEE_TEXT;
+            DefaultMarqueeTextBox.Text = string.IsNullOrEmpty(marqueeText) ? "发送'点怪 xxx'进行点怪" : marqueeText;
 
             // 小米MiMo TTS配置
             MimoSpeedSlider.Value = config.MIMO_SPEED;
@@ -175,6 +177,7 @@ namespace MonsterOrderWindows
             {
                 if (!string.IsNullOrEmpty(IdentityCodeTextBox.Password))
                 {
+                    GlobalEventListener.Invoke("ConfigChanged", "ID_CODE:" + IdentityCodeTextBox.Password);
                     ToolsMain.SendCommand("ConfirmIDCode:" + IdentityCodeTextBox.Password);
                 }
                 else
@@ -370,6 +373,11 @@ namespace MonsterOrderWindows
             {
                 LockWindowButton.Content = "锁定窗口";
             }
+        }
+
+        private void DefaultMarqueeTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+        {
+            GlobalEventListener.Invoke("ConfigChanged", "DEFAULT_MARQUEE_TEXT:" + DefaultMarqueeTextBox.Text);
         }
     }
 }

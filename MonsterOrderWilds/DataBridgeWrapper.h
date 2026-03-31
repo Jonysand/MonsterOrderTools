@@ -37,6 +37,7 @@ namespace MonsterOrderBridge
             MimoSpeed = config.mimoSpeed;
             TopPosX = config.topPosX;
             TopPosY = config.topPosY;
+            DefaultMarqueeText = gcnew System::String(config.defaultMarqueeText.c_str());
         }
 
         void Apply()
@@ -62,6 +63,7 @@ namespace MonsterOrderBridge
             data.mimoSpeed = MimoSpeed;
             data.topPosX = TopPosX;
             data.topPosY = TopPosY;
+            data.defaultMarqueeText = msclr::interop::marshal_as<std::string>(DefaultMarqueeText);
 
             DataBridge::UpdateAllConfig(data);
         }
@@ -87,6 +89,7 @@ namespace MonsterOrderBridge
         property float MimoSpeed;
         property double TopPosX;
         property double TopPosY;
+        property System::String^ DefaultMarqueeText;
     };
 
     // 队列节点托管包装类

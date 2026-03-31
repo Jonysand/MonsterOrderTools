@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include "framework.h"
 #include "EventSystem.h"
+#include "ConfigFieldRegistry.h"
 #include <functional>
 
 // 配置数据结构（纯数据，无逻辑）
@@ -31,6 +32,9 @@ struct ConfigData
     // 窗口位置
     double topPosX = 0.0;
     double topPosY = 0.0;
+
+    // 跑马灯默认文本
+    std::string defaultMarqueeText = "";
 };
 
 // 配置管理器 - 负责配置加载、保存和变更通知
@@ -70,6 +74,12 @@ public:
     void SetMimoSpeed(float value);
     void SetWindowPosition(double x, double y);
 
+    // 通过 ConfigFieldMeta 设置配置值（用于 DataBridge）
+    void SetValueByMeta(const ConfigFieldMeta* meta, const void* value);
+
+    // 配置变更事件
+    using ConfigChangedHandler = std::function<void(const ConfigData&)>;
+    void AddConfigChangedListener(const ConfigChangedHandler& handler);
 private:
     ConfigManager() = default;
     ~ConfigManager() = default;
@@ -91,10 +101,6 @@ private:
     mutable Lock lock_;
 
     // 配置变更事件
-public:
-    using ConfigChangedHandler = std::function<void(const ConfigData&)>;
-    void AddConfigChangedListener(const ConfigChangedHandler& handler);
-private:
     std::vector<ConfigChangedHandler> configChangedListeners_;
     void NotifyConfigChanged();
 };

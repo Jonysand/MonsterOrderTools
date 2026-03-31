@@ -58,6 +58,8 @@ void ConfigFieldRegistry::RegisterAll()
 
     REGISTER_FIELD("topPosX", double, topPosX, ConfigFieldType::Double);
     REGISTER_FIELD("topPosY", double, topPosY, ConfigFieldType::Double);
+
+    REGISTER_FIELD("defaultMarqueeText", std::string, defaultMarqueeText, ConfigFieldType::String);
 }
 
 const ConfigFieldMeta* ConfigFieldRegistry::Find(const char* name)

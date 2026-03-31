@@ -34,6 +34,9 @@ namespace MonsterOrderWindows
         public double TopPosX;
         public double TopPosY;
 
+        // 跑马灯默认文本
+        public string DefaultMarqueeText;
+
         /// <summary>
         /// 从现有MainConfig创建快照
         /// </summary>
@@ -60,7 +63,8 @@ namespace MonsterOrderWindows
                 MimoAudioFormat = "mp3",
                 MimoSpeed = config.MIMO_SPEED,
                 TopPosX = config.TopPos.X,
-                TopPosY = config.TopPos.Y
+                TopPosY = config.TopPos.Y,
+                DefaultMarqueeText = config.DEFAULT_MARQUEE_TEXT ?? ""
             };
         }
 
@@ -85,6 +89,7 @@ namespace MonsterOrderWindows
             config.MIMO_STYLE = MimoStyle;
             config.MIMO_SPEED = MimoSpeed;
             config.TopPos = new System.Windows.Point(TopPosX, TopPosY);
+            config.DEFAULT_MARQUEE_TEXT = DefaultMarqueeText;
         }
     }
 

@@ -35,40 +35,47 @@ extern "C" {
         try
         {
             auto configMgr = DataBridge::GetConfigManager();
-            auto& config = const_cast<ConfigData&>(configMgr->GetConfig());
 
             auto* meta = ConfigFieldRegistry::Find(key);
             if (!meta)
             {
-                LOG_ERROR(TEXT("Config_SetValue: unknown key=%s"), key);
+                LOG_ERROR(TEXT("Config_SetValue: unknown key=%hs"), key);
                 return;
             }
 
             switch (type)
             {
             case CONFIG_TYPE_STRING:
-                ConfigFieldRegistry::SetString(meta, config, value);
+                {
+                    std::string strVal(value);
+                    configMgr->SetValueByMeta(meta, &strVal);
+                }
                 break;
             case CONFIG_TYPE_BOOL:
                 {
-                    bool boolVal = (strcmp(value, "true") == 0 || strcmp(value, "1") == 0);
-                    ConfigFieldRegistry::SetBool(meta, config, boolVal);
+                    bool boolVal = (_stricmp(value, "true") == 0 || strcmp(value, "1") == 0);
+                    configMgr->SetValueByMeta(meta, &boolVal);
                 }
                 break;
             case CONFIG_TYPE_INT:
-                ConfigFieldRegistry::SetInt(meta, config, atoi(value));
+                {
+                    int intVal = atoi(value);
+                    configMgr->SetValueByMeta(meta, &intVal);
+                }
                 break;
             case CONFIG_TYPE_FLOAT:
-                ConfigFieldRegistry::SetFloat(meta, config, (float)atof(value));
+                {
+                    float floatVal = (float)atof(value);
+                    configMgr->SetValueByMeta(meta, &floatVal);
+                }
                 break;
             case CONFIG_TYPE_DOUBLE:
-                ConfigFieldRegistry::SetDouble(meta, config, atof(value));
+                {
+                    double doubleVal = atof(value);
+                    configMgr->SetValueByMeta(meta, &doubleVal);
+                }
                 break;
             }
-
-            configMgr->MarkDirty();
-
-            ConfigFieldRegistry::InvokeOnChanged(meta, config);
         }
         catch (const std::exception& e)
         {
@@ -376,12 +383,10 @@ extern "C" {
         if (callback != nullptr)
         {
             DataBridge::GetDanmuProcessor()->AddDanmuProcessedListener([](const DanmuProcessResult& result) {
-                std::wstring wuserName = Utf8ToWstring(result.userName);
-                std::wstring wmonsterName = Utf8ToWstring(result.monsterName);
-                LOGW_DEBUG(L"[DataBridge] Callback: addedToQueue=%d, userName=%s, monsterName=%s",
-                    result.addedToQueue, wuserName.c_str(), wmonsterName.c_str());
                 if (g_danmuProcessedCallback != nullptr && result.addedToQueue)
                 {
+                    std::wstring wuserName = Utf8ToWstring(result.userName);
+                    std::wstring wmonsterName = Utf8ToWstring(result.monsterName);
                     g_danmuProcessedCallback(wuserName.c_str(), wmonsterName.c_str(), g_danmuProcessedUserData);
                 }
             });

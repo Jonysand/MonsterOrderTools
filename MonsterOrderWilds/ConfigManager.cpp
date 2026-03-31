@@ -4,12 +4,17 @@
 #include <fstream>
 #include <sstream>
 #include <filesystem>
+#include <Windows.h>
 
 DEFINE_SINGLETON(ConfigManager)
 
 std::string ConfigManager::GetConfigDirectory() const
 {
-    return "MonsterOrderWilds_configs";
+    wchar_t exePath[MAX_PATH];
+    GetModuleFileNameW(nullptr, exePath, MAX_PATH);
+    std::filesystem::path exeFullPath(exePath);
+    std::filesystem::path exeDir = exeFullPath.parent_path();
+    return (exeDir / "MonsterOrderWilds_configs").string();
 }
 
 std::string ConfigManager::GetConfigPath() const
@@ -64,6 +69,9 @@ bool ConfigManager::LoadConfig()
             if (pos.contains("X")) config_.topPosX = pos["X"].get<double>();
             if (pos.contains("Y")) config_.topPosY = pos["Y"].get<double>();
         }
+
+        // 跑马灯默认文本
+        if (j.contains("DEFAULT_MARQUEE_TEXT")) config_.defaultMarqueeText = j["DEFAULT_MARQUEE_TEXT"].get<std::string>();
 
         // MiMo TTS 配置
         if (j.contains("TTS_ENGINE")) config_.ttsEngine = j["TTS_ENGINE"].get<std::string>();
@@ -123,6 +131,9 @@ bool ConfigManager::SaveConfig(bool force)
         j["MIMO_ROLE"] = config_.mimoRole;
         j["MIMO_AUDIO_FORMAT"] = config_.mimoAudioFormat;
         j["MIMO_SPEED"] = config_.mimoSpeed;
+
+        // 跑马灯默认文本
+        j["DEFAULT_MARQUEE_TEXT"] = config_.defaultMarqueeText;
 
         std::string path = GetConfigPath();
         std::ofstream file(path);
@@ -349,4 +360,38 @@ void ConfigManager::NotifyConfigChanged()
     {
         handler(config_);
     }
+}
+
+void ConfigManager::SetValueByMeta(const ConfigFieldMeta* meta, const void* value)
+{
+    if (!meta) return;
+    lock_.lock();
+    char* base = reinterpret_cast<char*>(&config_) + meta->offset;
+    char* cachedBase = reinterpret_cast<char*>(&cachedConfig_) + meta->offset;
+    
+    switch (meta->type)
+    {
+    case ConfigFieldType::Bool:
+        *reinterpret_cast<bool*>(base) = *static_cast<const bool*>(value);
+        *reinterpret_cast<bool*>(cachedBase) = *static_cast<const bool*>(value);
+        break;
+    case ConfigFieldType::Int:
+        *reinterpret_cast<int*>(base) = *static_cast<const int*>(value);
+        *reinterpret_cast<int*>(cachedBase) = *static_cast<const int*>(value);
+        break;
+    case ConfigFieldType::Float:
+        *reinterpret_cast<float*>(base) = *static_cast<const float*>(value);
+        *reinterpret_cast<float*>(cachedBase) = *static_cast<const float*>(value);
+        break;
+    case ConfigFieldType::Double:
+        *reinterpret_cast<double*>(base) = *static_cast<const double*>(value);
+        *reinterpret_cast<double*>(cachedBase) = *static_cast<const double*>(value);
+        break;
+    case ConfigFieldType::String:
+        *reinterpret_cast<std::string*>(base) = *static_cast<const std::string*>(value);
+        *reinterpret_cast<std::string*>(cachedBase) = *static_cast<const std::string*>(value);
+        break;
+    }
+    dirty_ = true;
+    lock_.unlock();
 }

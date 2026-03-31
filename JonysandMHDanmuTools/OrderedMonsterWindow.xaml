@@ -29,9 +29,8 @@
             <Canvas.Triggers>
                 <EventTrigger RoutedEvent="Loaded">
                     <BeginStoryboard>
-                        <Storyboard>
+                        <Storyboard x:Name="MarqueeStoryboard" Completed="OnMarqueeAnimationCompleted">
                             <DoubleAnimation x:Name="InfoText_Animation" From="600" To="-200" Duration="0:0:6" 
-                                RepeatBehavior="Forever"
                                 Storyboard.TargetName="StatueWithFireMachine"
                                 Storyboard.TargetProperty="RenderTransform.X"/>
                         </Storyboard>
@@ -158,6 +157,13 @@
                     </GridViewColumn>
                 </GridView>
             </ListView.View>
+            <ListView.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <VirtualizingStackPanel 
+                        VirtualizationMode="Recycling" 
+                        IsVirtualizing="True"/>
+                </ItemsPanelTemplate>
+            </ListView.ItemsPanel>
         </ListView>
     </Grid>
 </Window>

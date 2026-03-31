@@ -124,7 +124,6 @@ namespace MonsterOrderWindows
             else if (parts[0] == "ID_CODE")
             {
                 _Config.Config.ID_CODE = parts[1];
-                _Config.SaveConfig();
             }
             else if (parts[0] == "ONLY_MEDAL_ORDER")
             {
@@ -203,6 +202,11 @@ namespace MonsterOrderWindows
             else if (parts[0] == "MIMO_API_KEY")
             {
                 _Config.Config.MIMO_API_KEY = parts[1];
+            }
+            else if (parts[0] == "DEFAULT_MARQUEE_TEXT")
+            {
+                _Config.Config.DEFAULT_MARQUEE_TEXT = parts[1];
+                GlobalEventListener.Invoke("MarqueeTextChanged", parts[1]);
             }
             _Config.SaveConfig();
         }

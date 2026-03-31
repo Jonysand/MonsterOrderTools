@@ -5,7 +5,6 @@ using System.Windows.Media;
 using System.Windows;
 using System.Runtime.InteropServices;
 using System.Windows.Documents;
-using Newtonsoft.Json;
 using System.IO;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -212,6 +211,10 @@ namespace MonsterOrderWindows
             Register("topPosY", ConfigFieldType.Double,
                 () => GetDouble("topPosY"),
                 v => SetValue("topPosY", (double)v, ConfigFieldType.Double));
+
+            Register("defaultMarqueeText", ConfigFieldType.String,
+                () => GetString("defaultMarqueeText"),
+                v => SetValue("defaultMarqueeText", (string)v, ConfigFieldType.String));
         }
 
         public static void Register(string name, ConfigFieldType type, Func<object> getter, Action<object> setter)
@@ -281,7 +284,6 @@ namespace MonsterOrderWindows
     public class MainConfig
     {
         // 使用 ConfigFieldRegistry 进行反射式访问
-        [JsonProperty]
         public Point TopPos
         {
             get => new Point((double)ConfigFieldRegistry.Get("topPosX"), (double)ConfigFieldRegistry.Get("topPosY"));
@@ -293,109 +295,100 @@ namespace MonsterOrderWindows
             }
         }
 
-        [JsonProperty]
         public String ID_CODE
         {
             get => (string)ConfigFieldRegistry.Get("idCode");
             set { ConfigFieldRegistry.Set("idCode", value); OnPropertyChanged(); }
         }
 
-        [JsonProperty]
         public bool ONLY_MEDAL_ORDER
         {
             get => (bool)ConfigFieldRegistry.Get("onlyMedalOrder");
             set { ConfigFieldRegistry.Set("onlyMedalOrder", value); OnPropertyChanged(); }
         }
 
-        [JsonProperty]
         public bool ENABLE_VOICE
         {
             get => (bool)ConfigFieldRegistry.Get("enableVoice");
             set { ConfigFieldRegistry.Set("enableVoice", value); OnPropertyChanged(); }
         }
 
-        [JsonProperty]
         public int SPEECH_RATE
         {
             get => (int)ConfigFieldRegistry.Get("speechRate");
             set { ConfigFieldRegistry.Set("speechRate", value); OnPropertyChanged(); }
         }
 
-        [JsonProperty]
         public int SPEECH_PITCH
         {
             get => (int)ConfigFieldRegistry.Get("speechPitch");
             set { ConfigFieldRegistry.Set("speechPitch", value); OnPropertyChanged(); }
         }
 
-        [JsonProperty]
         public int SPEECH_VOLUME
         {
             get => (int)ConfigFieldRegistry.Get("speechVolume");
             set { ConfigFieldRegistry.Set("speechVolume", value); OnPropertyChanged(); }
         }
 
-        [JsonProperty]
         public bool ONLY_SPEEK_WEARING_MEDAL
         {
             get => (bool)ConfigFieldRegistry.Get("onlySpeekWearingMedal");
             set { ConfigFieldRegistry.Set("onlySpeekWearingMedal", value); OnPropertyChanged(); }
         }
 
-        [JsonProperty]
         public int ONLY_SPEEK_GUARD_LEVEL
         {
             get => (int)ConfigFieldRegistry.Get("onlySpeekGuardLevel");
             set { ConfigFieldRegistry.Set("onlySpeekGuardLevel", value); OnPropertyChanged(); }
         }
 
-        [JsonProperty]
         public bool ONLY_SPEEK_PAID_GIFT
         {
             get => (bool)ConfigFieldRegistry.Get("onlySpeekPaidGift");
             set { ConfigFieldRegistry.Set("onlySpeekPaidGift", value); OnPropertyChanged(); }
         }
 
-        [JsonProperty]
         public int OPACITY
         {
             get => (int)ConfigFieldRegistry.Get("opacity");
             set { ConfigFieldRegistry.Set("opacity", value); OnPropertyChanged(); }
         }
 
-        [JsonProperty]
         public String TTS_ENGINE
         {
             get => (string)ConfigFieldRegistry.Get("ttsEngine");
             set { ConfigFieldRegistry.Set("ttsEngine", value); OnPropertyChanged(); }
         }
 
-        [JsonProperty]
         public String MIMO_API_KEY
         {
             get => (string)ConfigFieldRegistry.Get("mimoApiKey");
             set { ConfigFieldRegistry.Set("mimoApiKey", value); OnPropertyChanged(); }
         }
 
-        [JsonProperty]
         public String MIMO_VOICE
         {
             get => (string)ConfigFieldRegistry.Get("mimoVoice");
             set { ConfigFieldRegistry.Set("mimoVoice", value); OnPropertyChanged(); }
         }
 
-        [JsonProperty]
         public String MIMO_STYLE
         {
             get => (string)ConfigFieldRegistry.Get("mimoStyle");
             set { ConfigFieldRegistry.Set("mimoStyle", value); OnPropertyChanged(); }
         }
 
-        [JsonProperty]
         public float MIMO_SPEED
         {
             get => (float)ConfigFieldRegistry.Get("mimoSpeed");
             set { ConfigFieldRegistry.Set("mimoSpeed", value); OnPropertyChanged(); }
+        }
+
+        public String DEFAULT_MARQUEE_TEXT
+        {
+            get => (string)ConfigFieldRegistry.Get("defaultMarqueeText");
+            set { ConfigFieldRegistry.Set("defaultMarqueeText", value); OnPropertyChanged(); }
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
