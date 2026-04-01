@@ -5,8 +5,45 @@
 #include <sstream>
 #include <filesystem>
 #include <Windows.h>
+#include <WinReg.h>
 
 DEFINE_SINGLETON(ConfigManager)
+
+namespace
+{
+    const char* REG_SUBKEY = "Software\\MonsterOrderWilds";
+    const char* REG_VALUE_NAME = "IdCode";
+
+    std::string ReadIdCodeFromRegistry()
+    {
+        std::string result;
+        HKEY hKey;
+        if (RegOpenKeyExA(HKEY_CURRENT_USER, REG_SUBKEY, 0, KEY_READ, &hKey) == ERROR_SUCCESS)
+        {
+            char buffer[256];
+            DWORD bufferSize = sizeof(buffer);
+            if (RegQueryValueExA(hKey, REG_VALUE_NAME, nullptr, nullptr, (LPBYTE)buffer, &bufferSize) == ERROR_SUCCESS)
+            {
+                result = buffer;
+            }
+            RegCloseKey(hKey);
+        }
+        return result;
+    }
+
+    bool WriteIdCodeToRegistry(const std::string& idCode)
+    {
+        HKEY hKey;
+        DWORD disp;
+        if (RegCreateKeyExA(HKEY_CURRENT_USER, REG_SUBKEY, 0, nullptr, REG_OPTION_NON_VOLATILE, KEY_WRITE, nullptr, &hKey, &disp) == ERROR_SUCCESS)
+        {
+            RegSetValueExA(hKey, REG_VALUE_NAME, 0, REG_SZ, (const BYTE*)idCode.c_str(), idCode.length() + 1);
+            RegCloseKey(hKey);
+            return true;
+        }
+        return false;
+    }
+}
 
 std::string ConfigManager::GetConfigDirectory() const
 {
@@ -50,8 +87,7 @@ bool ConfigManager::LoadConfig()
 
         json j = json::parse(content);
 
-        // 基本配置
-        if (j.contains("ID_CODE")) config_.idCode = j["ID_CODE"].get<std::string>();
+        // 基本配置（idCode 从注册表读取，不从 JSON）
         if (j.contains("ONLY_MEDAL_ORDER")) config_.onlyMedalOrder = j["ONLY_MEDAL_ORDER"].get<bool>();
         if (j.contains("ENABLE_VOICE")) config_.enableVoice = j["ENABLE_VOICE"].get<bool>();
         if (j.contains("SPEECH_RATE")) config_.speechRate = j["SPEECH_RATE"].get<int>();
@@ -83,6 +119,9 @@ bool ConfigManager::LoadConfig()
         if (j.contains("MIMO_AUDIO_FORMAT")) config_.mimoAudioFormat = j["MIMO_AUDIO_FORMAT"].get<std::string>();
         if (j.contains("MIMO_SPEED")) config_.mimoSpeed = j["MIMO_SPEED"].get<float>();
 
+        // 从注册表读取 idCode
+        config_.idCode = ReadIdCodeFromRegistry();
+
         dirty_ = false;
         return true;
     }
@@ -107,8 +146,7 @@ bool ConfigManager::SaveConfig(bool force)
         }
 
         json j;
-        // 基本配置
-        j["ID_CODE"] = config_.idCode;
+        // 基本配置（idCode 写入注册表，不写入 JSON）
         j["ONLY_MEDAL_ORDER"] = config_.onlyMedalOrder;
         j["ENABLE_VOICE"] = config_.enableVoice;
         j["SPEECH_RATE"] = config_.speechRate;
@@ -145,6 +183,13 @@ bool ConfigManager::SaveConfig(bool force)
 
         file << j.dump(4);
         file.close();
+
+        // 将 idCode 写入注册表
+        if (!WriteIdCodeToRegistry(config_.idCode))
+        {
+            LOG_ERROR(TEXT("ConfigManager: Failed to write idCode to registry"));
+        }
+
         dirty_ = false;
         return true;
     }

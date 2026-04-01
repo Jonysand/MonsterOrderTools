@@ -40,6 +40,7 @@ extern "C" void TestLog(const char* msg) {
 }
 
 extern void RunAllConfigManagerTests();
+extern void RunAllConfigManagerRegistryTests();
 extern void RunAllMonsterDataManagerTests();
 extern void RunAllPriorityQueueManagerTests();
 extern void RunAllDanmuProcessorTests();
@@ -57,6 +58,10 @@ int RunTests()
     
     TestLog("Running ConfigManager tests...");
     RunAllConfigManagerTests();
+    TestLog("");
+
+    TestLog("Running ConfigManager Registry tests...");
+    RunAllConfigManagerRegistryTests();
     TestLog("");
     
     TestLog("Running MonsterDataManager tests...");
