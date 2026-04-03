@@ -90,3 +90,14 @@ ehthumbs.db
 # Sensitive credentials
 MonsterOrderWilds/CredentialsConsts.h
 TODO.md
+
+# Code signing certificates and related files
+*.cer
+*.pfx
+*.p12
+*.pvk
+*.spc
+
+# Installer build files
+installer/files/
+installer/output/
