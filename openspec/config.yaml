@@ -1,20 +1,52 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+project:
+  name: JonysandMHDanmuTools
+  description: B站弹幕点怪工具，允许用户通过发送弹幕预约特定怪物
+  tech-stack: C++ (核心业务逻辑) + C# (UI)
+  platform: Windows
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+context: |
+  技术栈：C++/CLI 混合架构
+  - MonsterOrderWilds/: C++ 核心层（网络、弹幕处理、数据管理、TTS）
+  - JonysandMHDanmuTools/: C# UI 层（WPF）
+  - 通信：C++/CLI Bridge via DataBridgeWrapper
+
+  核心模块：
+  - BliveManager: B站连接生命周期管理（连接/断开/重连）
+  - DanmuProcessor: 弹幕消息解析和处理
+  - ConfigManager: 配置持久化（JSON）
+  - TTSManager: MiMo TTS 语音合成
+  - AudioPlayer: Windows MCI 音频播放
+  - StringProcessor: UTF-8/中文字符串处理
+  - CredentialsManager: 敏感信息加密存储
+  - EventSystem: C++ 事件分发（单播/多播委托）
+  - ErrorHandler: 统一错误处理和报告
+  - WriteLog: 日志系统
+  - DumpHelper: 崩溃转储
+
+  配置字段扩展规范：
+  - C++ ConfigData: camelCase
+  - JSON: SCREAMING_SNAKE
+  - C# MainConfig: SCREAMING_SNAKE
+  - UI控件: PascalCase
+
+  命名规范：
+  - 源文件编码: UTF-8 with BOM
+  - vcxproj 文件组织: 字母顺序排列
+
+rules:
+  spec:
+    - 每个 spec 应对应一个明确的功能模块
+    - 保持 specs 目录整洁，一个模块一个 spec.md
+    - spec 文件使用 markdown 格式
+  change:
+    - 不要删除已归档的 change
+    - 新 change 放在 changes/ 目录下
+    - 归档的 change 放在 changes/archive/ 下
+  tasks:
+    - 任务描述要具体可执行
+    - 避免超过 2 小时的复杂任务，必要时拆分
+  proposal:
+    - 提案应简洁，核心内容不超过 500 字
+    - 必须包含 Non-goals 章节明确范围外内容
