@@ -5,6 +5,7 @@
 #if USE_MIMO_TTS
 #include "MimoTTSClient.h"
 #include "AudioPlayer.h"
+#include "TTSCacheManager.h"
 #endif
 
 struct ISpVoice;
@@ -133,6 +134,29 @@ private:
 	static constexpr int MAX_RETRY_COUNT = 0;           // 最大重试次数
 	static constexpr int API_TIMEOUT_SECONDS = 5;       // API请求超时（秒）
 	static constexpr int PLAYBACK_TIMEOUT_SECONDS = 3; // 播放超时（秒）
+
+	static constexpr int GIFT_COOLDOWN_SECONDS = 5;
+	static constexpr int DYNAMIC_COMBO_WINDOW_SECONDS = 10;
+
+	struct DynamicComboEntry {
+		std::string combo_id;
+		std::string uname;
+		std::string gift_name;
+		int gift_num;
+		float combo_timeout;
+		bool paid;
+		bool firstReported;
+		int64_t lastUpdateTime;
+		
+		DynamicComboEntry() : gift_num(0), combo_timeout(0), paid(false), firstReported(false), lastUpdateTime(0) {}
+	};
+	
+	std::unordered_map<std::string, DynamicComboEntry> dynamicComboMap_;
+	std::unordered_map<std::string, int64_t> giftCooldownMap_;
+	
+	bool IsInCooldown(const std::string& comboId);
+	void UpdateCooldown(const std::string& comboId);
+	void CleanupExpiredCooldowns();
 #endif
 
 	// 引擎降级相关

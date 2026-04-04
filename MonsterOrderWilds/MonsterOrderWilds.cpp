@@ -4,6 +4,7 @@
 #include "TextToSpeech.h"
 #include "Network.h"
 #include "WriteLog.h"
+#include "CredentialsManager.h"
 
 #define WIDGETID_IDINPUT	1001
 #define WIDGETID_IDCONFIRM	1002
@@ -13,6 +14,7 @@ DEFINE_SINGLETON(MonsterOrderWilds)
 MonsterOrderWilds::MonsterOrderWilds()
 {
 	LOG_INFO(TEXT("--------------------MonsterOrderWilds start! v %d -------------------------"), APP_VERSION);
+	LoadCredentials();
 }
 
 UINT MonsterOrderWilds::HandleHwndMsg(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)

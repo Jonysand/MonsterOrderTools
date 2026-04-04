@@ -47,6 +47,8 @@ extern void RunAllDanmuProcessorTests();
 extern void RunAllStringProcessorTests();
 extern void RunAllDataBridgeTests();
 extern void RunAllCredentialsManagerTests();
+extern void TestTTSCacheManager();
+extern void TestDynamicComboConstants();
 
 int RunTests()
 {
@@ -87,6 +89,14 @@ int RunTests()
     
     TestLog("Running CredentialsManager tests...");
     RunAllCredentialsManagerTests();
+    TestLog("");
+    
+    TestLog("Running TTSCacheManager tests...");
+    TestTTSCacheManager();
+    TestLog("");
+    
+    TestLog("Running TextToSpeech tests...");
+    TestDynamicComboConstants();
     TestLog("");
     
     TestLog("========================================");

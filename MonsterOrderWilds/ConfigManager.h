@@ -35,6 +35,9 @@ struct ConfigData
 
     // 跑马灯默认文本
     std::string defaultMarqueeText = "";
+
+    // TTS缓存配置
+    int ttsCacheDaysToKeep = 7;
 };
 
 // 配置管理器 - 负责配置加载、保存和变更通知
@@ -73,6 +76,7 @@ public:
     void SetMimoAudioFormat(const std::string& value);
     void SetMimoSpeed(float value);
     void SetWindowPosition(double x, double y);
+    void SetTtsCacheDaysToKeep(int value);
 
     // 通过 ConfigFieldMeta 设置配置值（用于 DataBridge）
     void SetValueByMeta(const ConfigFieldMeta* meta, const void* value);

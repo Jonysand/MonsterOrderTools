@@ -54,6 +54,8 @@ namespace MonsterOrderWindows
             var marqueeText = config.DEFAULT_MARQUEE_TEXT;
             DefaultMarqueeTextBox.Text = string.IsNullOrEmpty(marqueeText) ? "发送'点怪 xxx'进行点怪" : marqueeText;
 
+            TtsCacheDaysToKeepTextBox.Text = config.TTS_CACHE_DAYS_TO_KEEP.ToString();
+
             // 小米MiMo TTS配置
             MimoSpeedSlider.Value = config.MIMO_SPEED;
 
@@ -378,6 +380,23 @@ namespace MonsterOrderWindows
         private void DefaultMarqueeTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
         {
             GlobalEventListener.Invoke("ConfigChanged", "DEFAULT_MARQUEE_TEXT:" + DefaultMarqueeTextBox.Text);
+        }
+
+        private void TtsCacheDaysToKeepTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+        {
+            if (TtsCacheDaysToKeepTextBox == null) return;
+            
+            if (int.TryParse(TtsCacheDaysToKeepTextBox.Text, out int days))
+            {
+                if (days < 1) days = 1;
+                if (days > 365) days = 365;
+                
+                if (ConfigProxy.Instance.TtsCacheDaysToKeep != days)
+                {
+                    ConfigProxy.Instance.TtsCacheDaysToKeep = days;
+                    GlobalEventListener.Invoke("ConfigChanged", "TTS_CACHE_DAYS_TO_KEEP:" + days);
+                }
+            }
         }
     }
 }

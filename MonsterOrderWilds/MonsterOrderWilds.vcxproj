@@ -243,6 +243,7 @@
     <ClInclude Include="StringProcessor.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="TextToSpeech.h" />
+    <ClInclude Include="TTSCacheManager.h" />
     <ClInclude Include="UnitTestLog.h" />
     <ClInclude Include="WriteLog.h" />
   </ItemGroup>
@@ -266,6 +267,7 @@
     <ClCompile Include="PriorityQueueManager.cpp" />
     <ClCompile Include="StringProcessor.cpp" />
     <ClCompile Include="TextToSpeech.cpp" />
+    <ClCompile Include="TTSCacheManager.cpp" />
     <ClCompile Include="UnitTestMain.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)'!='UnitTest'">true</ExcludedFromBuild>
     </ClCompile>
@@ -299,6 +301,14 @@
       <ExcludedFromBuild Condition="'$(Configuration)'!='UnitTest'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="CredentialsManagerTests.cpp">
+      <Filter>UnitTests</Filter>
+      <ExcludedFromBuild Condition="'$(Configuration)'!='UnitTest'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="TTSCacheManagerTests.cpp">
+      <Filter>UnitTests</Filter>
+      <ExcludedFromBuild Condition="'$(Configuration)'!='UnitTest'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="TextToSpeechTests.cpp">
       <Filter>UnitTests</Filter>
       <ExcludedFromBuild Condition="'$(Configuration)'!='UnitTest'">true</ExcludedFromBuild>
     </ClCompile>

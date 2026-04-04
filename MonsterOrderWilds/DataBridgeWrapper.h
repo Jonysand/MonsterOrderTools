@@ -38,6 +38,7 @@ namespace MonsterOrderBridge
             TopPosX = config.topPosX;
             TopPosY = config.topPosY;
             DefaultMarqueeText = gcnew System::String(config.defaultMarqueeText.c_str());
+            TtsCacheDaysToKeep = config.ttsCacheDaysToKeep;
         }
 
         void Apply()
@@ -64,6 +65,7 @@ namespace MonsterOrderBridge
             data.topPosX = TopPosX;
             data.topPosY = TopPosY;
             data.defaultMarqueeText = msclr::interop::marshal_as<std::string>(DefaultMarqueeText);
+            data.ttsCacheDaysToKeep = TtsCacheDaysToKeep;
 
             DataBridge::UpdateAllConfig(data);
         }
@@ -90,6 +92,7 @@ namespace MonsterOrderBridge
         property double TopPosX;
         property double TopPosY;
         property System::String^ DefaultMarqueeText;
+        property int TtsCacheDaysToKeep;
     };
 
     // 队列节点托管包装类

@@ -215,6 +215,10 @@ namespace MonsterOrderWindows
             Register("defaultMarqueeText", ConfigFieldType.String,
                 () => GetString("defaultMarqueeText"),
                 v => SetValue("defaultMarqueeText", (string)v, ConfigFieldType.String));
+
+            Register("ttsCacheDaysToKeep", ConfigFieldType.Int,
+                () => GetInt("ttsCacheDaysToKeep"),
+                v => SetValue("ttsCacheDaysToKeep", (int)v, ConfigFieldType.Int));
         }
 
         public static void Register(string name, ConfigFieldType type, Func<object> getter, Action<object> setter)
@@ -389,6 +393,12 @@ namespace MonsterOrderWindows
         {
             get => (string)ConfigFieldRegistry.Get("defaultMarqueeText");
             set { ConfigFieldRegistry.Set("defaultMarqueeText", value); OnPropertyChanged(); }
+        }
+
+        public int TTS_CACHE_DAYS_TO_KEEP
+        {
+            get => (int)ConfigFieldRegistry.Get("ttsCacheDaysToKeep");
+            set { ConfigFieldRegistry.Set("ttsCacheDaysToKeep", value); OnPropertyChanged(); }
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

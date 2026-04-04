@@ -60,6 +60,8 @@ void ConfigFieldRegistry::RegisterAll()
     REGISTER_FIELD("topPosY", double, topPosY, ConfigFieldType::Double);
 
     REGISTER_FIELD("defaultMarqueeText", std::string, defaultMarqueeText, ConfigFieldType::String);
+
+    REGISTER_FIELD("ttsCacheDaysToKeep", int, ttsCacheDaysToKeep, ConfigFieldType::Int);
 }
 
 const ConfigFieldMeta* ConfigFieldRegistry::Find(const char* name)

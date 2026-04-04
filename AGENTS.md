@@ -48,6 +48,8 @@
     <ExcludedFromBuild Condition="'$(Configuration)'=='Release'">true</ExcludedFromBuild>
   </ClCompile>
   ```
+- **新增文件时必须同时添加到对应的 Filter 中**，否则文件不会显示在 Visual Studio 的虚拟文件夹里
+- 添加文件后检查 `.vcxproj.filters` 文件，确保新增文件在正确的 `<Filter>` 节点下
 
 ### 编译宏
 - USE_MIMO_TTS: 编译时开关，默认启用（设为0可排除MiMo代码）

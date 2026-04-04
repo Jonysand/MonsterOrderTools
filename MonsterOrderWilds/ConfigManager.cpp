@@ -119,6 +119,8 @@ bool ConfigManager::LoadConfig()
         if (j.contains("MIMO_AUDIO_FORMAT")) config_.mimoAudioFormat = j["MIMO_AUDIO_FORMAT"].get<std::string>();
         if (j.contains("MIMO_SPEED")) config_.mimoSpeed = j["MIMO_SPEED"].get<float>();
 
+        if (j.contains("TTS_CACHE_DAYS_TO_KEEP")) config_.ttsCacheDaysToKeep = j["TTS_CACHE_DAYS_TO_KEEP"].get<int>();
+
         // 从注册表读取 idCode
         config_.idCode = ReadIdCodeFromRegistry();
 
@@ -169,6 +171,8 @@ bool ConfigManager::SaveConfig(bool force)
         j["MIMO_ROLE"] = config_.mimoRole;
         j["MIMO_AUDIO_FORMAT"] = config_.mimoAudioFormat;
         j["MIMO_SPEED"] = config_.mimoSpeed;
+
+        j["TTS_CACHE_DAYS_TO_KEEP"] = config_.ttsCacheDaysToKeep;
 
         // 跑马灯默认文本
         j["DEFAULT_MARQUEE_TEXT"] = config_.defaultMarqueeText;
@@ -390,6 +394,15 @@ void ConfigManager::SetWindowPosition(double x, double y)
         config_.topPosY = y;
         dirty_ = true;
     }
+    lock_.unlock();
+    if (changed) NotifyConfigChanged();
+}
+
+void ConfigManager::SetTtsCacheDaysToKeep(int value)
+{
+    lock_.lock();
+    bool changed = config_.ttsCacheDaysToKeep != value;
+    if (changed) { config_.ttsCacheDaysToKeep = value; dirty_ = true; }
     lock_.unlock();
     if (changed) NotifyConfigChanged();
 }

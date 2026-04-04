@@ -149,6 +149,13 @@ namespace MonsterOrderWindows
             set { _defaultMarqueeText = value; OnPropertyChanged(); }
         }
 
+        private int _ttsCacheDaysToKeep = 7;
+        public int TtsCacheDaysToKeep
+        {
+            get => _ttsCacheDaysToKeep;
+            set { _ttsCacheDaysToKeep = value; OnPropertyChanged(); }
+        }
+
         public void RefreshFromConfig(MainConfig config)
         {
             IdCode = config.ID_CODE ?? "";
@@ -169,6 +176,7 @@ namespace MonsterOrderWindows
             TopPosX = config.TopPos.X;
             TopPosY = config.TopPos.Y;
             DefaultMarqueeText = config.DEFAULT_MARQUEE_TEXT ?? "";
+            TtsCacheDaysToKeep = config.TTS_CACHE_DAYS_TO_KEEP;
         }
 
         public void ApplyToConfig(MainConfig config)
@@ -190,6 +198,7 @@ namespace MonsterOrderWindows
             config.MIMO_SPEED = MimoSpeed;
             config.TopPos = new System.Windows.Point(TopPosX, TopPosY);
             config.DEFAULT_MARQUEE_TEXT = DefaultMarqueeText;
+            config.TTS_CACHE_DAYS_TO_KEEP = TtsCacheDaysToKeep;
         }
     }
 

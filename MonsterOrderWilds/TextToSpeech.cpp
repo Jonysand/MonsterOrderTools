@@ -27,6 +27,7 @@ TTSManager::TTSManager()
 #if USE_MIMO_TTS
     mimoClient = new MimoTTSClient();
     audioPlayer = new AudioPlayer();
+    TTSCacheManager::Inst()->Initialize();
 #endif
 }
 
@@ -105,6 +106,30 @@ void TTSManager::Tick()
         else
             ++it;
     }
+    
+#if USE_MIMO_TTS
+    for (auto it = dynamicComboMap_.begin(); it != dynamicComboMap_.end(); ) {
+        it->second.combo_timeout -= deltaTime;
+        if (it->second.combo_timeout <= 0.0f) {
+            if (!it->second.firstReported || it->second.gift_num > 0) {
+                TString msg = TEXT("感谢 ") + utf8_to_wstring(it->second.uname) + 
+                              TEXT(" 赠送的") + std::to_wstring(it->second.gift_num) + 
+                              TEXT("个") + utf8_to_wstring(it->second.gift_name);
+                GiftMsgQueue.push_back(msg);
+                HistoryLogMsgQueue.push_back(msg);
+            }
+            it = dynamicComboMap_.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    
+    static int64_t lastCooldownCleanup = 0;
+    if (GetTickCount64() - lastCooldownCleanup > 60000) {
+        CleanupExpiredCooldowns();
+        lastCooldownCleanup = GetTickCount64();
+    }
+#endif
 }
 
 void TTSManager::HandleSpeekDm(const json& data)
@@ -133,36 +158,81 @@ void TTSManager::HandleSpeekSendGift(const json& data)
     const auto& uname = data["uname"].get<std::string>();
     const auto& gift_name = data["gift_name"].get<std::string>();
     int gift_num = data["gift_num"].get<int>();
+    const auto& open_id = data["open_id"].get<std::string>();
+    std::string gift_id = std::to_string(data["gift_id"].get<int>());
+    std::string combo_id = open_id + gift_id;
 
-    std::string combo_id;
-    int combo_timeout = 3;
-    if (paid)
-    {
-        combo_id = data["combo_info"]["combo_id"].get<std::string>();
-        combo_timeout = data["combo_info"]["combo_timeout"].get<int>();
-        gift_num = data["combo_info"]["combo_base_num"].get<int>() * data["combo_info"]["combo_count"].get<int>();
-    }
-    else
-    {
-        const auto& open_id = data["open_id"].get<std::string>();
-        std::string gift_id = std::to_string(data["gift_id"].get<int>());
-        combo_id = open_id + gift_id;
-    }
-    auto it = ComboGiftMsgPrepareMap.find(combo_id);
-    if (it != ComboGiftMsgPrepareMap.end())
-    {
-        it->second.combo_timeout = combo_timeout;
-        if (paid)
-            it->second.gift_num = gift_num;
-        else
+    if (IsInCooldown(combo_id)) {
+        auto it = dynamicComboMap_.find(combo_id);
+        if (it != dynamicComboMap_.end()) {
             it->second.gift_num += gift_num;
+            it->second.lastUpdateTime = GetTickCount64();
+            it->second.combo_timeout = DYNAMIC_COMBO_WINDOW_SECONDS;
+        }
+        return;
     }
-    else
-        ComboGiftMsgPrepareMap.emplace(
-            std::piecewise_construct,
-            std::forward_as_tuple(std::move(combo_id)),
-            std::forward_as_tuple(combo_timeout, gift_num, uname, gift_name, paid)
-        );
+
+    if (paid && data.contains("combo_info")) {
+        std::string official_combo_id = data["combo_info"]["combo_id"].get<std::string>();
+        int combo_timeout = data["combo_info"]["combo_timeout"].get<int>();
+        int combo_base_num = data["combo_info"]["combo_base_num"].get<int>();
+        int combo_count = data["combo_info"]["combo_count"].get<int>();
+        gift_num = combo_base_num * combo_count;
+        
+        auto it = ComboGiftMsgPrepareMap.find(official_combo_id);
+        if (it != ComboGiftMsgPrepareMap.end()) {
+            it->second.combo_timeout = combo_timeout;
+            it->second.gift_num = gift_num;
+        } else {
+            ComboGiftMsgEntry info;
+            info.uname = uname;
+            info.gift_name = gift_name;
+            info.gift_num = gift_num;
+            info.combo_timeout = combo_timeout;
+            info.paid = paid;
+            ComboGiftMsgPrepareMap.emplace(official_combo_id, std::move(info));
+        }
+    } else {
+        auto it = dynamicComboMap_.find(combo_id);
+        if (it != dynamicComboMap_.end()) {
+            it->second.gift_num += gift_num;
+            it->second.lastUpdateTime = GetTickCount64();
+            it->second.combo_timeout = DYNAMIC_COMBO_WINDOW_SECONDS;
+            
+            if (!it->second.firstReported && it->second.gift_num >= 3) {
+                TString firstMsg = TEXT("感谢 ") + utf8_to_wstring(it->second.uname) + 
+                                   TEXT(" 开始赠送") + utf8_to_wstring(it->second.gift_name);
+                GiftMsgQueue.push_back(firstMsg);
+                HistoryLogMsgQueue.push_back(firstMsg);
+                it->second.firstReported = true;
+                UpdateCooldown(combo_id);
+            }
+        } else {
+            DynamicComboEntry entry;
+            entry.combo_id = combo_id;
+            entry.uname = uname;
+            entry.gift_name = gift_name;
+            entry.gift_num = gift_num;
+            entry.combo_timeout = DYNAMIC_COMBO_WINDOW_SECONDS;
+            entry.paid = paid;
+            entry.firstReported = false;
+            entry.lastUpdateTime = GetTickCount64();
+            dynamicComboMap_.emplace(combo_id, std::move(entry));
+            
+            if (gift_num < 3) {
+                TString msg = TEXT("感谢 ") + utf8_to_wstring(uname) + TEXT(" 赠送的") + 
+                              std::to_wstring(gift_num) + TEXT("个") + utf8_to_wstring(gift_name);
+                GiftMsgQueue.push_back(msg);
+                HistoryLogMsgQueue.push_back(msg);
+                UpdateCooldown(combo_id);
+                
+                auto findIt = dynamicComboMap_.find(combo_id);
+                if (findIt != dynamicComboMap_.end()) {
+                    findIt->second.firstReported = true;
+                }
+            }
+        }
+    }
 }
 
 void TTSManager::HandleSpeekSC(const json& data)
@@ -390,6 +460,9 @@ void TTSManager::ProcessPendingRequest(AsyncTTSRequest& req)
             req.audioData = response.audioData;
             req.state = AsyncTTSState::Playing;
             LOG_INFO(TEXT("TTS Async: API request succeeded, starting playback"));
+            
+            std::string utf8Text = wstring_to_utf8(req.text);
+            TTSCacheManager::Inst()->SaveCachedAudio(utf8Text, response.audioData);
         } else {
             req.errorMessage = response.errorMessage;
             req.state = AsyncTTSState::Failed;
@@ -599,6 +672,28 @@ bool TTSManager::ShouldTryRecovery() const
 #else
     return false;
 #endif
+}
+
+bool TTSManager::IsInCooldown(const std::string& comboId) {
+    auto it = giftCooldownMap_.find(comboId);
+    if (it == giftCooldownMap_.end()) return false;
+    
+    int64_t cooldownMs = GIFT_COOLDOWN_SECONDS * 1000;
+    return (GetTickCount64() - it->second) < cooldownMs;
+}
+
+void TTSManager::UpdateCooldown(const std::string& comboId) {
+    giftCooldownMap_[comboId] = GetTickCount64();
+}
+
+void TTSManager::CleanupExpiredCooldowns() {
+    int64_t cooldownMs = GIFT_COOLDOWN_SECONDS * 1000;
+    int64_t now = GetTickCount64();
+    for (auto it = giftCooldownMap_.begin(); it != giftCooldownMap_.end(); ) {
+        if (now - it->second > cooldownMs * 2) {
+            it = giftCooldownMap_.erase(it);
+        } else ++it;
+    }
 }
 
 void TTSManager::HandleDmOrderFood(const std::wstring& msg, const std::wstring& uname)

@@ -37,6 +37,9 @@ namespace MonsterOrderWindows
         // 跑马灯默认文本
         public string DefaultMarqueeText;
 
+        // TTS缓存配置
+        public int TtsCacheDaysToKeep;
+
         /// <summary>
         /// 从现有MainConfig创建快照
         /// </summary>
@@ -64,7 +67,8 @@ namespace MonsterOrderWindows
                 MimoSpeed = config.MIMO_SPEED,
                 TopPosX = config.TopPos.X,
                 TopPosY = config.TopPos.Y,
-                DefaultMarqueeText = config.DEFAULT_MARQUEE_TEXT ?? ""
+                DefaultMarqueeText = config.DEFAULT_MARQUEE_TEXT ?? "",
+                TtsCacheDaysToKeep = config.TTS_CACHE_DAYS_TO_KEEP
             };
         }
 
@@ -90,6 +94,7 @@ namespace MonsterOrderWindows
             config.MIMO_SPEED = MimoSpeed;
             config.TopPos = new System.Windows.Point(TopPosX, TopPosY);
             config.DEFAULT_MARQUEE_TEXT = DefaultMarqueeText;
+            config.TTS_CACHE_DAYS_TO_KEEP = TtsCacheDaysToKeep;
         }
     }
 

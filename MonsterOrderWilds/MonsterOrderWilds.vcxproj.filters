@@ -60,7 +60,13 @@
     <ClInclude Include="StringUtils.h">
       <Filter>Core</Filter>
     </ClInclude>
+    <ClInclude Include="TTSCacheManager.h">
+      <Filter>Core</Filter>
+    </ClInclude>
     <ClInclude Include="ConfigManager.h">
+      <Filter>DataProcessing</Filter>
+    </ClInclude>
+    <ClInclude Include="ConfigFieldRegistry.h">
       <Filter>DataProcessing</Filter>
     </ClInclude>
     <ClInclude Include="MonsterDataManager.h">
@@ -90,8 +96,14 @@
     <ClInclude Include="EventBridgeWrapper.h">
       <Filter>Bridge</Filter>
     </ClInclude>
+    <ClInclude Include="DataBridgeExports.h">
+      <Filter>Bridge</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="UnitTestLog.h">
+      <Filter>UnitTests</Filter>
+    </ClInclude>
     <ClCompile Include="main.cpp">
       <Filter>Core</Filter>
     </ClCompile>
@@ -122,7 +134,13 @@
     <ClCompile Include="MimoTTSClient.cpp">
       <Filter>Core</Filter>
     </ClCompile>
+    <ClCompile Include="TTSCacheManager.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
     <ClCompile Include="ConfigManager.cpp">
+      <Filter>DataProcessing</Filter>
+    </ClCompile>
+    <ClCompile Include="ConfigFieldRegistry.cpp">
       <Filter>DataProcessing</Filter>
     </ClCompile>
     <ClCompile Include="MonsterDataManager.cpp">
@@ -165,6 +183,9 @@
       <Filter>UnitTests</Filter>
       <ExcludedFromBuild Condition="'$(Configuration)'=='Release'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="DataBridgeExports.cpp">
+      <Filter>Bridge</Filter>
+    </ClCompile>
     <ClCompile Include="BliveManagerTests.cpp">
       <Filter>UnitTests</Filter>
       <ExcludedFromBuild Condition="'$(Configuration)'=='Release'">true</ExcludedFromBuild>
@@ -172,6 +193,21 @@
     <ClCompile Include="CredentialsManagerTests.cpp">
       <Filter>UnitTests</Filter>
       <ExcludedFromBuild Condition="'$(Configuration)'=='Release'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="ConfigManagerRegistryTests.cpp">
+      <Filter>UnitTests</Filter>
+      <ExcludedFromBuild Condition="'$(Configuration)'=='Release'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="TTSCacheManagerTests.cpp">
+      <Filter>UnitTests</Filter>
+      <ExcludedFromBuild Condition="'$(Configuration)'=='Release'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="TextToSpeechTests.cpp">
+      <Filter>UnitTests</Filter>
+      <ExcludedFromBuild Condition="'$(Configuration)'=='Release'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="UnitTestMain.cpp">
+      <Filter>UnitTests</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
