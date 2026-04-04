@@ -110,18 +110,15 @@ bool LoadCredentials() {
     
     content = content.substr(strlen(FILE_MAGIC));
     
-    // Parse key=value lines
-    std::istringstream iss(content);
-    std::string line;
-    while (std::getline(iss, line)) {
-        auto pos = line.find('=');
-        if (pos == std::string::npos) continue;
-        std::string key = line.substr(0, pos);
-        std::string value = line.substr(pos + 1);
-        if (key == "APP_ID") s_appId = value;
-        else if (key == "ACCESS_KEY_ID") s_accessKeyId = value;
-        else if (key == "ACCESS_KEY_SECRET") s_accessKeySecret = value;
-        else if (key == "MIMO_API_KEY") s_mimoApiKey = value;
+    // Parse JSON dictionary
+    try {
+        auto json = nlohmann::json::parse(content);
+        s_appId = json.value("APP_ID", "");
+        s_accessKeyId = json.value("ACCESS_KEY_ID", "");
+        s_accessKeySecret = json.value("ACCESS_KEY_SECRET", "");
+        s_mimoApiKey = json.value("MIMO_API_KEY", "");
+    } catch (...) {
+        return false;
     }
     
     s_loaded = true;
@@ -186,7 +183,13 @@ if __name__ == "__main__":
     access_key_secret = sys.argv[4]
     mimo_api_key = sys.argv[5] if len(sys.argv) > 5 else ""
     
-    data = f"APP_ID={app_id}\nACCESS_KEY_ID={access_key_id}\nACCESS_KEY_SECRET={access_key_secret}\nMIMO_API_KEY={mimo_api_key}\n"
+    import json
+    data = json.dumps({
+        "APP_ID": app_id,
+        "ACCESS_KEY_ID": access_key_id,
+        "ACCESS_KEY_SECRET": access_key_secret,
+        "MIMO_API_KEY": mimo_api_key
+    })
     write_info_file(filepath, data)
     print(f"Credentials written to {filepath}")
 ```

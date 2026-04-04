@@ -32,15 +32,17 @@ std::string GetMIMO_API_KEY();
 ## File Format
 
 ```
-[base64(zlib('@MonsterOrderSecret@' + 'APP_ID=xxx\nACCESS_KEY_ID=xxx\nACCESS_KEY_SECRET=xxx\nMIMO_API_KEY=xxx\n'))]
+[base64(zlib('@MonsterOrderSecret@' + '{"APP_ID":"xxx","ACCESS_KEY_ID":"xxx","ACCESS_KEY_SECRET":"xxx","MIMO_API_KEY":"xxx"}'))]
 ```
+
+使用 JSON 字典存储，便于后续新增字段。
 
 ## Loading Flow
 
 1. `LoadCredentials()` 读取 `MonsterOrderWilds_configs/credentials.dat`
 2. Base64解码 → zlib解压
 3. 验证 `FILE_MAGIC = "@MonsterOrderSecret@"`
-4. 按行解析 `key=value` 格式
+4. 解析 JSON 字典
 5. 缓存到静态变量
 
 ## Error Handling
