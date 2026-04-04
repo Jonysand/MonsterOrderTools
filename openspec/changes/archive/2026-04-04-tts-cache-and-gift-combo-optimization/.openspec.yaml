@@ -1,0 +1,5 @@
+schema: spec-driven
+created: 2026-04-04
+specs:
+  - tts-cache-manager-spec
+  - gift-combo-optimization-spec
