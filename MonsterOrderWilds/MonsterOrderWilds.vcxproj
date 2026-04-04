@@ -222,7 +222,7 @@
     <ClInclude Include="BliveManager.h" />
     <ClInclude Include="ConfigFieldRegistry.h" />
     <ClInclude Include="ConfigManager.h" />
-    <ClInclude Include="CredentialsConsts.h" />
+    <ClInclude Include="CredentialsManager.h" />
     <ClInclude Include="DanmuProcessor.h" />
     <ClInclude Include="DataBridge.h" />
     <ClInclude Include="DataBridgeExports.h" />
@@ -251,6 +251,7 @@
     <ClCompile Include="BliveManager.cpp" />
     <ClCompile Include="ConfigFieldRegistry.cpp" />
     <ClCompile Include="ConfigManager.cpp" />
+    <ClCompile Include="CredentialsManager.cpp" />
     <ClCompile Include="DanmuProcessor.cpp" />
     <ClCompile Include="DataBridgeExports.cpp" />
     <ClCompile Include="DumpHelper.cpp" />

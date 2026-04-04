@@ -39,9 +39,6 @@
     <ClInclude Include="BliveManager.h">
       <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="CredentialsConsts.h">
-      <Filter>Core</Filter>
-    </ClInclude>
     <ClInclude Include="Network.h">
       <Filter>Core</Filter>
     </ClInclude>

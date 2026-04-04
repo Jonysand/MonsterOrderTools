@@ -1,6 +1,6 @@
 #include "MimoTTSClient.h"
 #include "WriteLog.h"
-#include "CredentialsConsts.h"
+#include "CredentialsManager.h"
 #include "StringUtils.h"
 #include <mutex>
 
@@ -35,7 +35,7 @@ void MimoTTSClient::RequestTTS(const TTSRequest& request, TTSCallback callback)
 bool MimoTTSClient::IsAvailable() const
 {
 #if USE_MIMO_TTS
-    return strlen(MIMO_API_KEY) > 0;
+    return !GetMIMO_API_KEY().empty();
 #else
     return false;
 #endif
@@ -172,7 +172,7 @@ MimoTTSClient::TTSResponse MimoTTSClient::ParseResponse(const std::string& respo
 void MimoTTSClient::ExecuteWithRetry(const TTSRequest& request, TTSCallback callback, int maxRetries)
 {
 #if USE_MIMO_TTS
-    std::string apiKey = MIMO_API_KEY;
+    std::string apiKey = GetMIMO_API_KEY();
     if (apiKey.empty()) {
         lastError = "API Key not configured";
         TTSResponse response;

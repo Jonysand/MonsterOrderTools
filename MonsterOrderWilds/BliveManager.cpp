@@ -1,5 +1,5 @@
 ﻿#include "BliveManager.h"
-#include "CredentialsConsts.h"
+#include "CredentialsManager.h"
 #include "WriteLog.h"
 #include "TextToSpeech.h"
 #include "DataBridge.h"
@@ -104,7 +104,7 @@ void BliveManager::Start(const std::string& IdCode)
         gameId.clear();
         return;
     }
-    std::string params = "{\"code\":\"" + idCode + "\",\"app_id\":" + credentials::APP_ID + "}";
+    std::string params = "{\"code\":\"" + idCode + "\",\"app_id\":" + GetAPP_ID() + "}";
     std::string signedHeader = ProtoUtils::Sign(params);
     networkCoroutines.push_front(std::move(Network::MakeHttpsRequest(
         BLIVE_URL,
@@ -120,7 +120,7 @@ void BliveManager::Start(const std::string& IdCode)
 
 void BliveManager::End(const std::string& GameId, bool instantly, bool restart)
 {
-    std::string params = "{\"game_id\":\"" + (GameId.empty() ? gameId : GameId) + "\",\"app_id\":" + credentials::APP_ID + "}";
+    std::string params = "{\"game_id\":\"" + (GameId.empty() ? gameId : GameId) + "\",\"app_id\":" + GetAPP_ID() + "}";
     std::string signedHeader = ProtoUtils::Sign(params);
     Network::NetworkCoroutine request = Network::MakeHttpsRequest(
         BLIVE_URL,

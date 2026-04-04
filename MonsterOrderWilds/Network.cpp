@@ -1,6 +1,6 @@
 ﻿#include "Network.h"
 #include "BliveManager.h"
-#include "CredentialsConsts.h"
+#include "CredentialsManager.h"
 #include "WriteLog.h"
 
 // Protoco Utils
@@ -112,7 +112,7 @@ namespace ProtoUtils
             {"x-bili-timestamp", std::to_string(ts)},
             {"x-bili-signature-method", "HMAC-SHA256"},
             {"x-bili-signature-nonce", nonce},
-            {"x-bili-accesskeyid", credentials::ACCESS_KEY_ID},
+            {"x-bili-accesskeyid", GetACCESS_KEY_ID()},
             {"x-bili-signature-version", "1.0"},
             {"x-bili-content-md5", md5data}
         };
@@ -126,7 +126,7 @@ namespace ProtoUtils
         headerStr.pop_back(); // Remove trailing newline
 
         // Generate HMAC-SHA256 signature
-        std::string signature = hashpp::get::getHMAC(hashpp::ALGORITHMS::SHA2_256, ProtoUtils::Encode(credentials::ACCESS_KEY_SECRET), ProtoUtils::Encode(headerStr));
+        std::string signature = hashpp::get::getHMAC(hashpp::ALGORITHMS::SHA2_256, ProtoUtils::Encode(GetACCESS_KEY_SECRET()), ProtoUtils::Encode(headerStr));
 
         // Add signature and other headers
         headerMap["Authorization"] = signature;
