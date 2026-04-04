@@ -46,6 +46,7 @@ extern void RunAllPriorityQueueManagerTests();
 extern void RunAllDanmuProcessorTests();
 extern void RunAllStringProcessorTests();
 extern void RunAllDataBridgeTests();
+extern void RunAllCredentialsManagerTests();
 
 int RunTests()
 {
@@ -82,6 +83,10 @@ int RunTests()
     
     TestLog("Running DataBridge tests...");
     RunAllDataBridgeTests();
+    TestLog("");
+    
+    TestLog("Running CredentialsManager tests...");
+    RunAllCredentialsManagerTests();
     TestLog("");
     
     TestLog("========================================");

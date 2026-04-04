@@ -40,6 +40,7 @@ Name: "cert"; Description: "安装签名证书（推荐，可避免WindowsDefend
 Source: "files\MonsterOrderWilds.exe"; DestDir: "{app}"; Flags: ignoreversion; Components: main
 Source: "files\MonsterOrderWildsGUI.dll"; DestDir: "{app}"; Flags: ignoreversion; Components: main
 Source: "files\MonsterOrderWilds.cer"; DestDir: "{app}"; Flags: ignoreversion; Components: cert
+Source: "files\credentials.dat"; DestDir: "{app}\MonsterOrderWilds_configs"; Flags: ignoreversion; Components: main
 
 [InstallDelete]
 ; Clean old program files but preserve config directory
