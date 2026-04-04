@@ -192,6 +192,8 @@ bool ConfigManager::SaveConfig(bool force)
         if (!WriteIdCodeToRegistry(config_.idCode))
         {
             LOG_ERROR(TEXT("ConfigManager: Failed to write idCode to registry"));
+            dirty_ = true;
+            return false;
         }
 
         dirty_ = false;
