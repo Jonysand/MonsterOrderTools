@@ -232,6 +232,8 @@ void BliveManager::OnReceiveStartResponse(const std::string& response)
 
 void BliveManager::StartAppHeartBeat()
 {
+    if (gameId.empty())
+        return;
     std::string heartbeatParams = "{\"game_id\":\"" + gameId + "\"}";
     std::string signedHeartbeatHeader = ProtoUtils::Sign(heartbeatParams);
     auto heartBeatCoroutine = Network::MakeHttpsRequest(
@@ -250,6 +252,11 @@ void BliveManager::StartAppHeartBeat()
 void BliveManager::OnReceiveAppHeartbeatResponse(const std::string& response)
 {
     LOG_DEBUG(TEXT("OnReceiveAppHeartbeatResponse: %s"), ProtoUtils::Decode(response).c_str());
+    if (gameId.empty())
+    {
+        LOG_DEBUG(TEXT("OnReceiveAppHeartbeatResponse: ignored due to empty gameId"));
+        return;
+    }
     if (response.empty())
     {
         LOG_ERROR(TEXT("Error OnReceiveAppHeartbeatResponse: empty response"));

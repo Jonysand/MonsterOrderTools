@@ -60,6 +60,12 @@ The system SHALL automatically attempt reconnection when disconnected due to net
 - **THEN** state transitions to ReconnectFailed
 - **AND** automatic reconnection stops
 
+#### Scenario: In-flight heartbeat ignored after disconnect
+- **WHEN** user actively disconnects (reason = None)
+- **AND** an in-flight heartbeat response returns with error
+- **THEN** the heartbeat response is ignored
+- **AND** automatic reconnection is NOT triggered
+
 ### Requirement: Manual reconnection after failure
 The system SHALL allow manual reconnection after reaching maximum retry limit.
 
