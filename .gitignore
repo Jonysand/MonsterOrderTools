@@ -93,6 +93,9 @@ MonsterOrderWilds/CredentialsManager.h
 MonsterOrderWilds/CredentialsManager.cpp
 MonsterOrderWilds/CredentialsManagerTests.cpp
 scripts/generate_credentials.py
+scripts/generate_credentials.bat
+scripts/credentials.json
+MonsterOrderWilds_configs/credentials.dat
 TODO.md
 
 # Code signing certificates and related files
