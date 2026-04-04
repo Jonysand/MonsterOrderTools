@@ -89,6 +89,10 @@ ehthumbs.db
 
 # Sensitive credentials
 MonsterOrderWilds/CredentialsConsts.h
+MonsterOrderWilds/CredentialsManager.h
+MonsterOrderWilds/CredentialsManager.cpp
+MonsterOrderWilds/CredentialsManagerTests.cpp
+scripts/generate_credentials.py
 TODO.md
 
 # Code signing certificates and related files
