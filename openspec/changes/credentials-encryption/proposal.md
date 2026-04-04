@@ -66,6 +66,12 @@ std::string GetMIMO_API_KEY();
 
 - `CredentialsConsts.h`：不再需要，凭证从文件加载
 
+## Tools
+
+| 工具 | 位置 | 说明 |
+|------|------|------|
+| `scripts/generate_credentials.py` | 加密凭证生成工具 | 不提交git，仅本地使用 |
+
 ## Testing
 
-- 单元测试：验证加密文件生成、解析、错误处理
+- 单元测试：验证解密解析、错误处理
