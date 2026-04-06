@@ -519,9 +519,10 @@ using AnswerCallback = std::function<void(const AnswerResult&)>;
 
 // 单个关键词记录
 struct KeywordRecord {
+    int32_t id;                   // 关键词ID（数据库主键）
     std::string word;              // 关键词（UTF-8）
-    int32_t frequency;           // 出现频率
-    int64_t lastSeenTimestamp;   // 最后出现时间戳
+    int32_t frequency;             // 出现频率
+    int64_t lastSeenTimestamp;     // 最后出现时间戳
 };
 
 // 运行时用户画像（内存缓存）

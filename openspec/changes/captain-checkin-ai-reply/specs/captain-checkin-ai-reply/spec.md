@@ -172,7 +172,7 @@ GenerateCheckinAnswerAsync() 生成回复
     ↓
 获取AI回复文本 → ITTSProvider TTS播报（自动处理引擎回退）
     ↓
-调用 `TTSCacheManager::SaveCachedAudio()` 缓存音频（`打卡_{username}_{timestamp}.mp3`）
+调用 `TTSCacheManager::SaveCheckinAudio()` 缓存音频（`打卡_{username}_{timestamp}.mp3`）
 ```
 
 **事件解耦**：`DanmuProcessor` 与 `CaptainCheckInModule` 通过 `CaptainDanmuHandler` 回调接口解耦，无直接头文件依赖。

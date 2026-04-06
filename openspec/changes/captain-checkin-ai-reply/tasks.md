@@ -351,7 +351,7 @@ void CaptainCheckInModule::Init() {
 - AI 回复文本通过 `TTSProviderFactory` 创建 `ITTSProvider` 进行 TTS 播报
 - 使用 `AI_PROVIDER` 中的 `tts_provider` 和 `tts_api_key`
 - AI 回复播报受 `enableVoice` 配置影响
-- **必须调用 `TTSCacheManager::SaveCachedAudio()` 缓存 AI TTS 音频**
+- **必须调用 `TTSCacheManager::SaveCheckinAudio()` 缓存 AI TTS 音频**
 - 缓存命名格式：`打卡_{username}_{timestamp}.mp3`
 - 参考 `TextToSpeech.cpp` 中的缓存调用方式
 

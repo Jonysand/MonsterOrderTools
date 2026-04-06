@@ -44,7 +44,34 @@ public:
     cppjieba::Jieba jieba_;
 };
 
-DEFINE_SINGLETON(CaptainCheckInModule)
+CaptainCheckInModule* CaptainCheckInModule::__Instance = nullptr;
+
+CaptainCheckInModule* CaptainCheckInModule::Inst() {
+    if (!__Instance) __Instance = new CaptainCheckInModule();
+    return __Instance;
+}
+
+void CaptainCheckInModule::Destroy() {
+    LOG_INFO(TEXT("CaptainCheckInModule::Destroy"));
+
+    lock_guard<std::mutex> lock(profilesLock_);
+    for (auto& [uid, profile] : profiles_) {
+        SaveProfileToDb(profile);
+    }
+    profiles_.clear();
+
+    jiebaContext_.reset();
+    triggerWordPatterns_.clear();
+    inited_ = false;
+    enabled_ = true;
+
+    LOG_INFO(TEXT("CaptainCheckInModule::Destroy done"));
+
+    if (__Instance) {
+        delete __Instance;
+        __Instance = nullptr;
+    }
+}
 
 bool CaptainCheckInModule::Init() {
     if (inited_) return true;
