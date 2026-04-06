@@ -74,7 +74,8 @@ bool CaptainCheckInModule::Init() {
         jiebaContext_ = std::make_unique<JiebaContext>(jiebaDict, hmmModel, userDict, stopWords);
         LOG_INFO(TEXT("CaptainCheckInModule::Init cppjieba initialized successfully"));
     } catch (const std::exception& e) {
-        LOG_ERROR(TEXT("CaptainCheckInModule::Init cppjieba init failed: %s"), e.what());
+        LOG_ERROR(TEXT("CaptainCheckInModule::Init cppjieba init failed: %s, keyword extraction will be disabled"), e.what());
+        jiebaContext_.reset();
     }
 
     inited_ = true;

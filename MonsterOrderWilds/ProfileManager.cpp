@@ -351,14 +351,47 @@ namespace {
     }
 }
 
+bool ProfileManager::GetLastCheckinRecordFromDb(uint64_t uid, int32_t& outLastDate, int32_t& outContinuousDays) {
+    if (!storage_) {
+        auto it = profiles_.find(uid);
+        if (it != profiles_.end()) {
+            outLastDate = it->second.lastCheckinDate;
+            outContinuousDays = it->second.continuousDays;
+            return outLastDate != 0;
+        }
+        return false;
+    }
+
+    sqlite3* db = (sqlite3*)storage_;
+    char sql[256];
+    snprintf(sql, sizeof(sql),
+        "SELECT last_checkin_date, continuous_days FROM user_profiles WHERE uid = %llu",
+        (unsigned long long)uid);
+
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        return false;
+    }
+
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        outLastDate = sqlite3_column_int(stmt, 0);
+        outContinuousDays = sqlite3_column_int(stmt, 1);
+        sqlite3_finalize(stmt);
+        return outLastDate != 0;
+    }
+
+    sqlite3_finalize(stmt);
+    return false;
+}
+
 int32_t ProfileManager::CalculateContinuousDays(uint64_t uid, int32_t checkinDate) {
-    auto it = profiles_.find(uid);
-    if (it == profiles_.end()) {
+    int32_t lastDate = 0;
+    int32_t lastContinuousDays = 0;
+
+    if (!GetLastCheckinRecordFromDb(uid, lastDate, lastContinuousDays)) {
         return 1;
     }
 
-    const UserProfileData& profile = it->second;
-    int32_t lastDate = profile.lastCheckinDate;
     if (lastDate == 0) {
         return 1;
     }
@@ -373,21 +406,34 @@ int32_t ProfileManager::CalculateContinuousDays(uint64_t uid, int32_t checkinDat
 
     if (year == lastYear && month == lastMonth) {
         if (day == lastDay + 1) {
-            return profile.continuousDays + 1;
+            return lastContinuousDays + 1;
         }
         else if (day == lastDay) {
-            return profile.continuousDays;
+            return lastContinuousDays;
         }
     }
     else if (year == lastYear && month == lastMonth + 1) {
         int32_t lastMonthDays = GetDaysInMonth(lastYear, lastMonth);
         if (day == 1 && lastDay == lastMonthDays) {
-            return profile.continuousDays + 1;
+            return lastContinuousDays + 1;
         }
     }
-    else if (year == lastYear + 1 && month == 1 && lastMonth == 12) {
+    else if (year == lastYear + 1) {
+        if (month == 1 && lastMonth == 12) {
+            if (day == 1 && lastDay == 31) {
+                return lastContinuousDays + 1;
+            }
+        }
+        else if (month == 2 && lastMonth == 1) {
+            int32_t lastMonthDays = GetDaysInMonth(lastYear, lastMonth);
+            if (day == 1 && lastDay == lastMonthDays) {
+                return lastContinuousDays + 1;
+            }
+        }
+    }
+    else if (year == lastYear + 2 && month == 1 && lastMonth == 12) {
         if (day == 1 && lastDay == 31) {
-            return profile.continuousDays + 1;
+            return lastContinuousDays + 1;
         }
     }
 

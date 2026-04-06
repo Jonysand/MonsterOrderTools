@@ -52,6 +52,7 @@ private:
     std::vector<std::pair<int64_t, std::string>> JsonToDanmuHistory(const std::string& json) const;
     bool LoadProfileFromDb(uint64_t uid, UserProfileData& outProfile);
     void SaveProfileToDb(const UserProfileData& profile);
+    bool GetLastCheckinRecordFromDb(uint64_t uid, int32_t& outLastDate, int32_t& outContinuousDays);
 
     std::string dbPath_;
     void* storage_ = nullptr;

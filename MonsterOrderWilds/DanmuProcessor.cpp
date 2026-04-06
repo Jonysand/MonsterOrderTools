@@ -157,6 +157,15 @@ DanmuProcessResult DanmuProcessor::ProcessDanmu(const DanmuData& danmu)
         capEvent.username = danmu.userName;
         capEvent.content = danmu.message;
         capEvent.serverTimestamp = danmu.timestamp;
+
+        std::time_t timeSec = danmu.timestamp / 1000;
+        std::tm tmResult = {};
+        if (localtime_s(&tmResult, &timeSec) == 0) {
+            capEvent.sendDate = (tmResult.tm_year + 1900) * 10000 + (tmResult.tm_mon + 1) * 100 + tmResult.tm_mday;
+        } else {
+            capEvent.sendDate = 0;
+        }
+
         NotifyCaptainDanmu(capEvent);
     }
 
