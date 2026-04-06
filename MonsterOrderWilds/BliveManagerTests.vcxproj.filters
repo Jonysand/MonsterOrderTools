@@ -15,6 +15,9 @@
     <ClCompile Include="AIChatProviderTests.cpp">
       <Filter>UnitTests</Filter>
     </ClCompile>
+    <ClCompile Include="DeepSeekAIChatProviderTests.cpp">
+      <Filter>UnitTests</Filter>
+    </ClCompile>
     <ClCompile Include="TTSProviderTests.cpp">
       <Filter>UnitTests</Filter>
     </ClCompile>
@@ -37,6 +40,9 @@
       <Filter>UnitTests</Filter>
     </ClCompile>
     <ClCompile Include="MiniMaxAIChatProvider.cpp">
+      <Filter>UnitTests</Filter>
+    </ClCompile>
+    <ClCompile Include="DeepSeekAIChatProvider.cpp">
       <Filter>UnitTests</Filter>
     </ClCompile>
     <ClCompile Include="StringProcessor.cpp">

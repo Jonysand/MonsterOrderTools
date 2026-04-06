@@ -53,6 +53,7 @@ extern void RunProfileManagerTests();
 extern void RunAIChatProviderTests();
 extern void RunTTSProviderTests();
 extern void RunCaptainCheckInModuleTests();
+extern void RunDeepSeekAIChatProviderTests();
 
 int RunTests()
 {
@@ -109,6 +110,10 @@ int RunTests()
 
     TestLog("Running AIChatProvider tests...");
     RunAIChatProviderTests();
+    TestLog("");
+
+    TestLog("Running DeepSeek AIChatProvider tests...");
+    RunDeepSeekAIChatProviderTests();
     TestLog("");
 
     TestLog("Running TTSProvider tests...");

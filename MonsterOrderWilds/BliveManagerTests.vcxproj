@@ -86,6 +86,7 @@
     <ClCompile Include="BliveManagerTests.cpp" />
     <ClCompile Include="ProfileManagerTests.cpp" />
     <ClCompile Include="AIChatProviderTests.cpp" />
+    <ClCompile Include="DeepSeekAIChatProviderTests.cpp" />
     <ClCompile Include="TTSProviderTests.cpp" />
     <ClCompile Include="ProfileManager.cpp" />
     <ClCompile Include="AIChatProviderFactory.cpp" />
@@ -94,6 +95,7 @@
     <ClCompile Include="XiaomiTTSProvider.cpp" />
     <ClCompile Include="MiniMaxTTSProvider.cpp" />
     <ClCompile Include="MiniMaxAIChatProvider.cpp" />
+    <ClCompile Include="DeepSeekAIChatProvider.cpp" />
     <ClCompile Include="StringProcessor.cpp" />
     <ClCompile Include="WriteLog.cpp" />
   </ItemGroup>

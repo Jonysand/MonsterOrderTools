@@ -69,6 +69,9 @@
     <ClInclude Include="MiniMaxAIChatProvider.h">
       <Filter>DataProcessing</Filter>
     </ClInclude>
+    <ClInclude Include="DeepSeekAIChatProvider.h">
+      <Filter>DataProcessing</Filter>
+    </ClInclude>
     <ClInclude Include="AudioPlayer.h">
       <Filter>Core</Filter>
     </ClInclude>
@@ -156,6 +159,9 @@
       <Filter>DataProcessing</Filter>
     </ClCompile>
     <ClCompile Include="MiniMaxAIChatProvider.cpp">
+      <Filter>DataProcessing</Filter>
+    </ClCompile>
+    <ClCompile Include="DeepSeekAIChatProvider.cpp">
       <Filter>DataProcessing</Filter>
     </ClCompile>
     <ClCompile Include="AudioPlayer.cpp">
@@ -254,7 +260,11 @@
     </ClCompile>
     <ClCompile Include="AIChatProviderTests.cpp">
       <Filter>UnitTests</Filter>
-      <ExcludedFromBuild Condition="'$(Configuration)'=='Release'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)'!='UnitTest'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="DeepSeekAIChatProviderTests.cpp">
+      <Filter>UnitTests</Filter>
+      <ExcludedFromBuild Condition="'$(Configuration)'!='UnitTest'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="TTSProviderTests.cpp">
       <Filter>UnitTests</Filter>

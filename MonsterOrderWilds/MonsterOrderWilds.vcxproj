@@ -219,6 +219,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="AIChatProvider.h" />
+    <ClInclude Include="DeepSeekAIChatProvider.h" />
     <ClInclude Include="MiniMaxAIChatProvider.h" />
     <ClInclude Include="AudioPlayer.h" />
     <ClInclude Include="BliveManager.h" />
@@ -268,6 +269,7 @@
     </ClCompile>
     <ClCompile Include="MHDanmuToolsHost.cpp" />
     <ClCompile Include="MimoTTSClient.cpp" />
+    <ClCompile Include="DeepSeekAIChatProvider.cpp" />
     <ClCompile Include="MiniMaxAIChatProvider.cpp" />
     <ClCompile Include="MonsterDataManager.cpp" />
     <ClCompile Include="MonsterOrderWilds.cpp" />
@@ -330,6 +332,10 @@
       <ExcludedFromBuild Condition="'$(Configuration)'!='UnitTest'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="AIChatProviderTests.cpp">
+      <Filter>UnitTests</Filter>
+      <ExcludedFromBuild Condition="'$(Configuration)'!='UnitTest'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="DeepSeekAIChatProviderTests.cpp">
       <Filter>UnitTests</Filter>
       <ExcludedFromBuild Condition="'$(Configuration)'!='UnitTest'">true</ExcludedFromBuild>
     </ClCompile>

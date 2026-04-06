@@ -1,6 +1,7 @@
 #include "framework.h"
 #include "AIChatProvider.h"
 #include "MiniMaxAIChatProvider.h"
+#include "DeepSeekAIChatProvider.h"
 #include "CredentialsManager.h"
 #include "WriteLog.h"
 
@@ -19,6 +20,10 @@ std::unique_ptr<IAIChatProvider> AIChatProviderFactory::Create(
 
         if (provider == "minimax") {
             return std::make_unique<MiniMaxAIChatProvider>(apiKey);
+        }
+
+        if (provider == "deepseek") {
+            return std::make_unique<DeepSeekAIChatProvider>(apiKey);
         }
 
         LOG_ERROR(TEXT("Unsupported chat provider: %hs"), provider.c_str());
