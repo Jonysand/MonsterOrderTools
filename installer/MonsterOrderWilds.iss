@@ -46,7 +46,6 @@ Source: "..\MonsterOrderWilds\dict\jieba.dict.utf8"; DestDir: "{app}\dict"; Flag
 Source: "..\MonsterOrderWilds\dict\hmm_model.utf8"; DestDir: "{app}\dict"; Flags: ignoreversion; Components: main
 Source: "..\MonsterOrderWilds\dict\stop_words.utf8"; DestDir: "{app}\dict"; Flags: ignoreversion; Components: main
 Source: "..\MonsterOrderWilds\dict\user.dict.utf8"; DestDir: "{app}\dict"; Flags: ignoreversion; Components: main
-Source: "..\MonsterOrderWilds\dict\idf.utf8"; DestDir: "{app}\dict"; Flags: ignoreversion; Components: main
 ; 舰长打卡AI配置说明
 Source: "..\openspec\changes\captain-checkin-ai-reply\dict\弹幕习惯词黑白名单配置.txt"; DestDir: "{app}\dict"; Flags: ignoreversion; Components: main
 

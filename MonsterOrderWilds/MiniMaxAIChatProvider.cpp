@@ -15,10 +15,11 @@ bool MiniMaxAIChatProvider::IsAvailable() const { return available_; }
 std::string MiniMaxAIChatProvider::GetLastError() const { return lastError_; }
 
 bool MiniMaxAIChatProvider::CallAPI(const std::string& prompt, std::string& outResponse) {
-    std::string body = R"({
-        "model": "M2-her",
-        "messages": [{"role": "user", "content": ")" + prompt + R"("}]
-    })";
+    nlohmann::json j;
+    j["model"] = "M2-her";
+    j["messages"] = nlohmann::json::array();
+    j["messages"].push_back({{"role", "user"}, {"content", prompt}});
+    std::string body = j.dump();
 
     std::string headersStr =
         "Content-Type: application/json\r\n"
