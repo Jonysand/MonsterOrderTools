@@ -214,7 +214,7 @@ std::vector<KeywordRecord> ProfileManager::JsonToKeywords(const std::string& jso
             result.push_back(record);
         }
     } catch (const std::exception& e) {
-        LOG_ERROR(TEXT("ProfileManager: Failed to parse keywords JSON: %s"), e.what());
+        LOG_ERROR(TEXT("ProfileManager: Failed to parse keywords JSON: %hs"), e.what());
     }
     return result;
 }
@@ -242,7 +242,7 @@ std::vector<std::pair<int64_t, std::string>> ProfileManager::JsonToDanmuHistory(
             }
         }
     } catch (const std::exception& e) {
-        LOG_ERROR(TEXT("ProfileManager: Failed to parse danmu history JSON: %s"), e.what());
+        LOG_ERROR(TEXT("ProfileManager: Failed to parse danmu history JSON: %hs"), e.what());
     }
     return result;
 }
@@ -332,6 +332,25 @@ void ProfileManager::RecordCheckin(uint64_t uid, const std::string& username, in
     LOG_INFO(TEXT("ProfileManager: Recorded checkin for uid=%llu, days=%d"), uid, continuousDays);
 }
 
+namespace {
+    bool IsLeapYear(int32_t year) {
+        return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+    }
+
+    int32_t GetDaysInMonth(int32_t year, int32_t month) {
+        switch (month) {
+            case 1: case 3: case 5: case 7: case 8: case 10: case 12:
+                return 31;
+            case 4: case 6: case 9: case 11:
+                return 30;
+            case 2:
+                return IsLeapYear(year) ? 29 : 28;
+            default:
+                return 30;
+        }
+    }
+}
+
 int32_t ProfileManager::CalculateContinuousDays(uint64_t uid, int32_t checkinDate) {
     auto it = profiles_.find(uid);
     if (it == profiles_.end()) {
@@ -361,16 +380,8 @@ int32_t ProfileManager::CalculateContinuousDays(uint64_t uid, int32_t checkinDat
         }
     }
     else if (year == lastYear && month == lastMonth + 1) {
-        if (lastMonth == 12) {
-            if (day == 1 && lastDay == 31) {
-                return profile.continuousDays + 1;
-            }
-        }
-        else if ((lastMonth == 1 || lastMonth == 3 || lastMonth == 5 || lastMonth == 7 ||
-                  lastMonth == 8 || lastMonth == 10) && day == 1 && lastDay == 31) {
-            return profile.continuousDays + 1;
-        }
-        else if ((lastMonth == 4 || lastMonth == 6 || lastMonth == 9 || lastMonth == 11) && day == 1 && lastDay == 30) {
+        int32_t lastMonthDays = GetDaysInMonth(lastYear, lastMonth);
+        if (day == 1 && lastDay == lastMonthDays) {
             return profile.continuousDays + 1;
         }
     }

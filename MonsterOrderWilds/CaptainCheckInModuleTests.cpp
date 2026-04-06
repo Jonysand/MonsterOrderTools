@@ -154,7 +154,7 @@ void TestCalculateContinuousDays_ProfileManagerIntegration()
     int32_t today = 20260406;
     
     ProfileManager::Inst()->RecordCheckin(testUid, "TestUser", today);
-    int32_t days = CaptainCheckInModule::Inst()->CalculateContinuousDays(testUid, today);
+    int32_t days = ProfileManager::Inst()->CalculateContinuousDays(testUid, today);
     
     assert(days >= 1);
     std::cout << "[PASS] TestCalculateContinuousDays_ProfileManagerIntegration" << std::endl;

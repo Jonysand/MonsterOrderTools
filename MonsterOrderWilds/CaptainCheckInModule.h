@@ -64,12 +64,12 @@ public:
     void SetEnabled(bool enabled);
     bool IsEnabled() const;
     bool IsCheckinMessage(const std::string& content) const;
+    std::string GetFallbackAnswer(const CheckinEvent& event);
 
 private:
     int32_t CalculateContinuousDays(uint64_t uid, int32_t checkinDate);
     std::string BuildPrompt(const CheckinEvent& event, const UserProfile* profile);
     std::string GenerateAIAnswer(const CheckinEvent& event, const UserProfile* profile);
-    std::string GetFallbackAnswer(const CheckinEvent& event);
     void ExtractKeywords(UserProfile& profile, const std::string& content);
     void LoadProfileFromDb(uint64_t uid);
     void SaveProfileToDb(const UserProfile& profile);

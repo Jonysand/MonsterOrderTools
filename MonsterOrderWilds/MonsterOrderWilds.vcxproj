@@ -188,7 +188,7 @@
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)external;$(ProjectDir)external/sqlite_orm/include;$(ProjectDir)external/cppjieba/include;$(ProjectDir)external/cppjieba/deps/limonp/include;$(ProjectDir)../ExternalLibs</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\external;$(ProjectDir)external;$(ProjectDir)..\external/sqlite_orm/include;$(ProjectDir)..\external/cppjieba/include;$(ProjectDir)..\external/cppjieba/deps/limonp/include;$(ProjectDir)../ExternalLibs</AdditionalIncludeDirectories>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile />
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
@@ -206,7 +206,7 @@
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;RUN_UNIT_TESTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)external;$(ProjectDir)external/sqlite_orm/include;$(ProjectDir)external/cppjieba/include;$(ProjectDir)external/cppjieba/deps/limonp/include;$(ProjectDir)../ExternalLibs</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\external;$(ProjectDir)external;$(ProjectDir)..\external/sqlite_orm/include;$(ProjectDir)..\external/cppjieba/include;$(ProjectDir)..\external/cppjieba/deps/limonp/include;$(ProjectDir)../ExternalLibs</AdditionalIncludeDirectories>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile />
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
