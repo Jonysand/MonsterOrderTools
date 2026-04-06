@@ -1,6 +1,7 @@
 #include "ConfigFieldRegistry.h"
 #include "ConfigManager.h"
 #include "DanmuProcessor.h"
+#include "CaptainCheckInModule.h"
 #include <cstring>
 
 #define REGISTER_FIELD(name, type, member, fieldType) \
@@ -62,6 +63,18 @@ void ConfigFieldRegistry::RegisterAll()
     REGISTER_FIELD("defaultMarqueeText", std::string, defaultMarqueeText, ConfigFieldType::String);
 
     REGISTER_FIELD("ttsCacheDaysToKeep", int, ttsCacheDaysToKeep, ConfigFieldType::Int);
+
+    REGISTER_FIELD_WITH_CALLBACK("enableCaptainCheckinAI", bool, enableCaptainCheckinAI, ConfigFieldType::Bool,
+        [](ConfigData& cfg) {
+            if (CaptainCheckInModule::Inst()->IsEnabled() != cfg.enableCaptainCheckinAI) {
+                CaptainCheckInModule::Inst()->SetEnabled(cfg.enableCaptainCheckinAI);
+            }
+        });
+
+    REGISTER_FIELD_WITH_CALLBACK("checkinTriggerWords", std::string, checkinTriggerWords, ConfigFieldType::String,
+        [](ConfigData& cfg) {
+            CaptainCheckInModule::Inst()->SetTriggerWords(cfg.checkinTriggerWords);
+        });
 }
 
 const ConfigFieldMeta* ConfigFieldRegistry::Find(const char* name)

@@ -91,7 +91,6 @@ ehthumbs.db
 MonsterOrderWilds/CredentialsConsts.h
 MonsterOrderWilds/CredentialsManager.h
 MonsterOrderWilds/CredentialsManager.cpp
-MonsterOrderWilds/CredentialsManagerTests.cpp
 scripts/generate_credentials.py
 scripts/generate_credentials.bat
 scripts/credentials.json

@@ -496,6 +496,41 @@
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>
+                <TabItem Header="舰长打卡AI">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="8">
+                            <CheckBox
+                                Name="EnableCaptainCheckinAICheckBox"
+                                Content="开启舰长打卡AI功能"
+                                Margin="0,8,0,10"
+                                FontFamily="Segoe UI Variable"
+                                FontSize="14"
+                                Foreground="#222"
+                                Checked="EnableCaptainCheckinAICheckBox_Changed"
+                                Unchecked="EnableCaptainCheckinAICheckBox_Changed" />
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                                <TextBlock Text="打卡触发词（逗号分隔）："
+                                           VerticalAlignment="Center"
+                                           FontFamily="Segoe UI Variable"
+                                           FontSize="14"
+                                           Foreground="#222" />
+                            </StackPanel>
+                            <TextBox
+                                Name="CheckinTriggerWordsTextBox"
+                                Width="300"
+                                Height="24"
+                                HorizontalAlignment="Left"
+                                FontFamily="Segoe UI Variable"
+                                FontSize="14"
+                                TextChanged="CheckinTriggerWordsTextBox_TextChanged" />
+                            <TextBlock Text="默认：打卡,签到"
+                                       Foreground="Gray"
+                                       FontFamily="Segoe UI Variable"
+                                       FontSize="12"
+                                       Margin="0,5,0,0" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
             </TabControl>
             <Button
                 Name="SaveSettingsButton"

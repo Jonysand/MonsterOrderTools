@@ -72,10 +72,13 @@ public:
 	bool IsUsingMimoTTS() const;
 	// 强制刷新引擎状态（用于配置变更后）
 	void RefreshEngineStatus();
-
-private:
-	bool Speak(const TString& text);
+	// 使用SAPI进行语音播报
 	bool SpeakWithSapi(const TString& text);
+
+public:
+	bool Speak(const TString& text);
+	bool PlayAudioData(const std::vector<uint8_t>& audioData, const std::string& format = "mp3");
+private:
 #if USE_MIMO_TTS
 	// 异步TTS方法
 	void SpeakWithMimoAsync(const TString& text);

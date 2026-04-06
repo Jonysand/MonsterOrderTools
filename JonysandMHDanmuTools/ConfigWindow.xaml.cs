@@ -56,6 +56,10 @@ namespace MonsterOrderWindows
 
             TtsCacheDaysToKeepTextBox.Text = config.TTS_CACHE_DAYS_TO_KEEP.ToString();
 
+            // 舰长打卡AI配置
+            EnableCaptainCheckinAICheckBox.IsChecked = config.ENABLE_CAPTAIN_CHECKIN_AI;
+            CheckinTriggerWordsTextBox.Text = config.CHECKIN_TRIGGER_WORDS ?? "打卡,签到";
+
             // 小米MiMo TTS配置
             MimoSpeedSlider.Value = config.MIMO_SPEED;
 
@@ -397,6 +401,19 @@ namespace MonsterOrderWindows
                     GlobalEventListener.Invoke("ConfigChanged", "TTS_CACHE_DAYS_TO_KEEP:" + days);
                 }
             }
+        }
+
+        private void EnableCaptainCheckinAICheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (EnableCaptainCheckinAICheckBox.IsChecked == true)
+                GlobalEventListener.Invoke("ConfigChanged", "ENABLE_CAPTAIN_CHECKIN_AI:1");
+            else
+                GlobalEventListener.Invoke("ConfigChanged", "ENABLE_CAPTAIN_CHECKIN_AI:0");
+        }
+
+        private void CheckinTriggerWordsTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+        {
+            GlobalEventListener.Invoke("ConfigChanged", "CHECKIN_TRIGGER_WORDS:" + CheckinTriggerWordsTextBox.Text);
         }
     }
 }

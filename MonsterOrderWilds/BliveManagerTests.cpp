@@ -6,6 +6,14 @@
 
 #ifdef RUN_UNIT_TESTS
 
+extern void RunProfileManagerTests();
+extern void RunAIChatProviderTests();
+extern void RunTTSProviderTests();
+
+#endif
+
+#ifdef RUN_UNIT_TESTS
+
 // ═══════════════════════════════════════════════════════════════════
 // 枚举和常量测试
 // ═══════════════════════════════════════════════════════════════════
@@ -629,6 +637,18 @@ int main()
     TestButtonText_Reconnecting();
     TestButtonText_Disconnected();
     TestButtonText_ReconnectFailed();
+    std::cout << std::endl;
+    
+    std::cout << "[--- ProfileManager Tests ---]" << std::endl;
+    RunProfileManagerTests();
+    std::cout << std::endl;
+    
+    std::cout << "[--- AIChatProvider Tests ---]" << std::endl;
+    RunAIChatProviderTests();
+    std::cout << std::endl;
+    
+    std::cout << "[--- TTSProvider Tests ---]" << std::endl;
+    RunTTSProviderTests();
     std::cout << std::endl;
     
     std::cout << "========================================" << std::endl;

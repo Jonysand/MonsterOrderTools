@@ -219,6 +219,14 @@ namespace MonsterOrderWindows
             Register("ttsCacheDaysToKeep", ConfigFieldType.Int,
                 () => GetInt("ttsCacheDaysToKeep"),
                 v => SetValue("ttsCacheDaysToKeep", (int)v, ConfigFieldType.Int));
+
+            Register("enableCaptainCheckinAI", ConfigFieldType.Bool,
+                () => GetBool("enableCaptainCheckinAI"),
+                v => SetValue("enableCaptainCheckinAI", (bool)v, ConfigFieldType.Bool));
+
+            Register("checkinTriggerWords", ConfigFieldType.String,
+                () => GetString("checkinTriggerWords"),
+                v => SetValue("checkinTriggerWords", (string)v, ConfigFieldType.String));
         }
 
         public static void Register(string name, ConfigFieldType type, Func<object> getter, Action<object> setter)
@@ -399,6 +407,18 @@ namespace MonsterOrderWindows
         {
             get => (int)ConfigFieldRegistry.Get("ttsCacheDaysToKeep");
             set { ConfigFieldRegistry.Set("ttsCacheDaysToKeep", value); OnPropertyChanged(); }
+        }
+
+        public bool ENABLE_CAPTAIN_CHECKIN_AI
+        {
+            get => (bool)ConfigFieldRegistry.Get("enableCaptainCheckinAI");
+            set { ConfigFieldRegistry.Set("enableCaptainCheckinAI", value); OnPropertyChanged(); }
+        }
+
+        public string CHECKIN_TRIGGER_WORDS
+        {
+            get => (string)ConfigFieldRegistry.Get("checkinTriggerWords");
+            set { ConfigFieldRegistry.Set("checkinTriggerWords", value); OnPropertyChanged(); }
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

@@ -41,6 +41,14 @@ Source: "files\MonsterOrderWilds.exe"; DestDir: "{app}"; Flags: ignoreversion; C
 Source: "files\MonsterOrderWildsGUI.dll"; DestDir: "{app}"; Flags: ignoreversion; Components: main
 Source: "files\MonsterOrderWilds.cer"; DestDir: "{app}"; Flags: ignoreversion; Components: cert
 Source: "files\credentials.dat"; DestDir: "{app}\MonsterOrderWilds_configs"; Flags: ignoreversion; Components: main
+; cppjieba 分词字典文件
+Source: "..\MonsterOrderWilds\dict\jieba.dict.utf8"; DestDir: "{app}\dict"; Flags: ignoreversion; Components: main
+Source: "..\MonsterOrderWilds\dict\hmm_model.utf8"; DestDir: "{app}\dict"; Flags: ignoreversion; Components: main
+Source: "..\MonsterOrderWilds\dict\stop_words.utf8"; DestDir: "{app}\dict"; Flags: ignoreversion; Components: main
+Source: "..\MonsterOrderWilds\dict\user.dict.utf8"; DestDir: "{app}\dict"; Flags: ignoreversion; Components: main
+Source: "..\MonsterOrderWilds\dict\idf.utf8"; DestDir: "{app}\dict"; Flags: ignoreversion; Components: main
+; 舰长打卡AI配置说明
+Source: "..\openspec\changes\captain-checkin-ai-reply\dict\弹幕习惯词黑白名单配置.txt"; DestDir: "{app}\dict"; Flags: ignoreversion; Components: main
 
 [InstallDelete]
 ; Clean old program files but preserve config directory

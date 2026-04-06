@@ -21,6 +21,12 @@
     <ClInclude Include="framework.h">
       <Filter>Core</Filter>
     </ClInclude>
+    <ClInclude Include="ITTSProvider.h">
+      <Filter>DataProcessing</Filter>
+    </ClInclude>
+    <ClInclude Include="TTSProvider.h">
+      <Filter>DataProcessing</Filter>
+    </ClInclude>
     <ClInclude Include="targetver.h">
       <Filter>Core</Filter>
     </ClInclude>
@@ -39,8 +45,14 @@
     <ClInclude Include="BliveManager.h">
       <Filter>Core</Filter>
     </ClInclude>
+    <ClInclude Include="CaptainCheckInModule.h">
+      <Filter>DataProcessing</Filter>
+    </ClInclude>
     <ClInclude Include="Network.h">
       <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="ProfileManager.h">
+      <Filter>DataProcessing</Filter>
     </ClInclude>
     <ClInclude Include="EventSystem.h">
       <Filter>Core</Filter>
@@ -50,6 +62,12 @@
     </ClInclude>
     <ClInclude Include="DumpHelper.h">
       <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="AIChatProvider.h">
+      <Filter>DataProcessing</Filter>
+    </ClInclude>
+    <ClInclude Include="MiniMaxAIChatProvider.h">
+      <Filter>DataProcessing</Filter>
     </ClInclude>
     <ClInclude Include="AudioPlayer.h">
       <Filter>Core</Filter>
@@ -119,8 +137,14 @@
     <ClCompile Include="BliveManager.cpp">
       <Filter>Core</Filter>
     </ClCompile>
+    <ClCompile Include="CaptainCheckInModule.cpp">
+      <Filter>DataProcessing</Filter>
+    </ClCompile>
     <ClCompile Include="Network.cpp">
       <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="SapiTTSProvider.cpp">
+      <Filter>DataProcessing</Filter>
     </ClCompile>
     <ClCompile Include="TextToSpeech.cpp">
       <Filter>Core</Filter>
@@ -128,14 +152,29 @@
     <ClCompile Include="DumpHelper.cpp">
       <Filter>Core</Filter>
     </ClCompile>
+    <ClCompile Include="AIChatProviderFactory.cpp">
+      <Filter>DataProcessing</Filter>
+    </ClCompile>
+    <ClCompile Include="MiniMaxAIChatProvider.cpp">
+      <Filter>DataProcessing</Filter>
+    </ClCompile>
     <ClCompile Include="AudioPlayer.cpp">
       <Filter>Core</Filter>
     </ClCompile>
     <ClCompile Include="MimoTTSClient.cpp">
       <Filter>Core</Filter>
     </ClCompile>
+    <ClCompile Include="MiniMaxTTSProvider.cpp">
+      <Filter>DataProcessing</Filter>
+    </ClCompile>
     <ClCompile Include="TTSCacheManager.cpp">
       <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="TTSProviderFactory.cpp">
+      <Filter>DataProcessing</Filter>
+    </ClCompile>
+    <ClCompile Include="XiaomiTTSProvider.cpp">
+      <Filter>DataProcessing</Filter>
     </ClCompile>
     <ClCompile Include="ConfigManager.cpp">
       <Filter>DataProcessing</Filter>
@@ -147,6 +186,9 @@
       <Filter>DataProcessing</Filter>
     </ClCompile>
     <ClCompile Include="PriorityQueueManager.cpp">
+      <Filter>DataProcessing</Filter>
+    </ClCompile>
+    <ClCompile Include="ProfileManager.cpp">
       <Filter>DataProcessing</Filter>
     </ClCompile>
     <ClCompile Include="DanmuProcessor.cpp">
@@ -203,6 +245,22 @@
       <ExcludedFromBuild Condition="'$(Configuration)'=='Release'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="TextToSpeechTests.cpp">
+      <Filter>UnitTests</Filter>
+      <ExcludedFromBuild Condition="'$(Configuration)'=='Release'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="ProfileManagerTests.cpp">
+      <Filter>UnitTests</Filter>
+      <ExcludedFromBuild Condition="'$(Configuration)'=='Release'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="AIChatProviderTests.cpp">
+      <Filter>UnitTests</Filter>
+      <ExcludedFromBuild Condition="'$(Configuration)'=='Release'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="TTSProviderTests.cpp">
+      <Filter>UnitTests</Filter>
+      <ExcludedFromBuild Condition="'$(Configuration)'=='Release'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="CaptainCheckInModuleTests.cpp">
       <Filter>UnitTests</Filter>
       <ExcludedFromBuild Condition="'$(Configuration)'=='Release'">true</ExcludedFromBuild>
     </ClCompile>

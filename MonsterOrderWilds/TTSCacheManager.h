@@ -11,6 +11,8 @@ public:
     std::wstring GetTodayCacheDir() const;
     std::string GetContentPrefix(const std::string& text) const;
     bool SaveCachedAudio(const std::string& text, const std::vector<uint8_t>& audioData);
+    bool SaveCachedAudioWithPrefix(const std::string& text, const std::vector<uint8_t>& audioData, const std::string& prefix);
+    bool SaveCheckinAudio(const std::string& username, const std::vector<uint8_t>& audioData, int64_t timestamp);
     void CleanupOldCache(int daysToKeep = 7);
 
 private:

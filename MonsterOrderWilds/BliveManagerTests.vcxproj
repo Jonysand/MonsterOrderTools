@@ -52,15 +52,15 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;RUN_UNIT_TESTS;USE_CAPTAIN_CHECKIN;USE_MIMO_TTS=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>false</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)../ExternalLibs/Foundation/include;$(ProjectDir)../ExternalLibs/Net/include;$(ProjectDir)external;$(ProjectDir)../ExternalLibs</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)../ExternalLibs/Foundation/include;$(ProjectDir)../ExternalLibs/Net/include;$(ProjectDir)external;$(ProjectDir)..;$(ProjectDir)..\external;$(ProjectDir)..\external/sqlite_orm/include;$(ProjectDir)..\external/cppjieba/include;$(ProjectDir)..\external/cppjieba/deps/limonp/include;$(ProjectDir)../ExternalLibs</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>winhttp.lib;$(ProjectDir)..\external\sqlite3.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -69,21 +69,33 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;RUN_UNIT_TESTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <ConformanceMode>true</ConformanceMode>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;RUN_UNIT_TESTS;USE_CAPTAIN_CHECKIN;USE_MIMO_TTS=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>false</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)../ExternalLibs/Foundation/include;$(ProjectDir)../ExternalLibs/Net/include;$(ProjectDir)external;$(ProjectDir)../ExternalLibs</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)../ExternalLibs/Foundation/include;$(ProjectDir)../ExternalLibs/Net/include;$(ProjectDir)external;$(ProjectDir)..;$(ProjectDir)..\external;$(ProjectDir)..\external/sqlite_orm/include;$(ProjectDir)..\external/cppjieba/include;$(ProjectDir)..\external/cppjieba/deps/limonp/include;$(ProjectDir)../ExternalLibs</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>winhttp.lib;$(ProjectDir)..\external\sqlite3.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="BliveManagerTests.cpp" />
+    <ClCompile Include="ProfileManagerTests.cpp" />
+    <ClCompile Include="AIChatProviderTests.cpp" />
+    <ClCompile Include="TTSProviderTests.cpp" />
+    <ClCompile Include="ProfileManager.cpp" />
+    <ClCompile Include="AIChatProviderFactory.cpp" />
+    <ClCompile Include="TTSProviderFactory.cpp" />
+    <ClCompile Include="SapiTTSProviderStub.cpp" />
+    <ClCompile Include="XiaomiTTSProvider.cpp" />
+    <ClCompile Include="MiniMaxTTSProvider.cpp" />
+    <ClCompile Include="MiniMaxAIChatProvider.cpp" />
+    <ClCompile Include="StringProcessor.cpp" />
+    <ClCompile Include="WriteLog.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

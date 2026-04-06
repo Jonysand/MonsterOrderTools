@@ -34,7 +34,7 @@
 
 #### 目录结构
 ```
-MonsterOrderWilds/
+external/
 ├── cppjieba/                      # cppjieba 源码
 │   ├── include/
 │   │   └── cppjieba/              # 16个头文件
@@ -44,16 +44,20 @@ MonsterOrderWilds/
 │   │       ├── HMMSegment.hpp
 │   │       ├── MixSegment.hpp
 │   │       └── ... (其他)
-│   └── limonp/                    # 依赖库
-│       └── include/
-│           └── limonp/
-│               ├── StringUtil.hpp
-│               └── ... (其他)
+│   ├── deps/
+│   │   └── limonp/               # limonp 依赖库
+│   │       └── include/
+│   │           └── limonp/
+│   │               ├── StringUtil.hpp
+│   │               └── ... (其他)
+MonsterOrderWilds/
 └── dict/                          # 词典文件
     ├── jieba.dict.utf8            # 最大概率分词词典 (~4MB)
     ├── hmm_model.utf8             # HMM模型 (~200KB)
     └── stop_words.utf8            # 停用词词典
 ```
+
+**注意**：cppjieba 源码在 `external/cppjieba/`，词典文件在 `MonsterOrderWilds/dict/`。CaptainCheckInModule 使用 `GetModuleDictPath()` 动态获取 exe 所在目录的 `dict/` 子目录。
 
 #### cppjieba 初始化
 ```cpp
@@ -143,6 +147,8 @@ class IAIChatProvider {
 public:
     virtual ~IAIChatProvider() = default;
     virtual std::string GetProviderName() const = 0;
+    virtual bool IsAvailable() const = 0;
+    virtual std::string GetLastError() const = 0;
     virtual bool CallAPI(const std::string& prompt, std::string& outResponse) = 0;
 };
 
@@ -155,17 +161,17 @@ public:
 
 ### ProfileManager 用户画像持久化管理
 
-使用 **sqlite_orm** 头文件-only库管理 SQLite 数据库，实现用户画像的持久化存储。
+使用 **SQLite C API** 管理 SQLite 数据库，实现用户画像的持久化存储。
 
-#### sqlite_orm 简介
+#### SQLite C API 简介
 
 | 特性 | 说明 |
 |------|------|
-| 库类型 | 头文件-only，单文件 `include/sqlite_orm/sqlite_orm.h` |
-| C++标准 | C++14+ |
-| 依赖 | libsqlite3 |
-| 许可证 | AGPL (开源) / MIT (商业购买) |
-| 主要功能 | CRUD、查询条件、事务、迁移、JOIN |
+| 库类型 | 原生 C API |
+| 头文件 | `sqlite3.h` |
+| 依赖 | libsqlite3.lib / sqlite3.dll |
+| 许可证 | 公共领域 |
+| 主要功能 | CRUD、事务、预处理语句 |
 
 #### 数据库结构
 
@@ -196,13 +202,11 @@ CREATE TABLE checkin_records (
 CREATE INDEX idx_checkin_uid_date ON checkin_records(uid, checkin_date);
 ```
 
-#### sqlite_orm 映射代码
+#### SQLite C API 数据结构
 
 ```cpp
 // ProfileManager.h
-#include "sqlite_orm/sqlite_orm.h"
-
-using namespace sqlite_orm;
+#include "sqlite3.h"
 
 struct UserProfileRecord {
     uint64_t uid = 0;                    // 主键
@@ -222,30 +226,6 @@ struct CheckinRecordEntry {
     int32_t checkinDate = 0;
     int64_t createdAt = 0;
 };
-
-// 创建 storage
-auto createProfileStorage(const std::string& dbPath) {
-    return make_storage(dbPath,
-        make_table("user_profiles",
-            make_column("uid", &UserProfileRecord::uid, primary_key()),
-            make_column("username", &UserProfileRecord::username),
-            make_column("keywords", &UserProfileRecord::keywordsJson),
-            make_column("danmu_history", &UserProfileRecord::danmuHistoryJson),
-            make_column("last_checkin_date", &UserProfileRecord::lastCheckinDate),
-            make_column("continuous_days", &UserProfileRecord::continuousDays),
-            make_column("last_danmu_timestamp", &UserProfileRecord::lastDanmuTimestamp),
-            make_column("created_at", &UserProfileRecord::createdAt),
-            make_column("updated_at", &UserProfileRecord::updatedAt)
-        ),
-        make_table("checkin_records",
-            make_column("id", &CheckinRecordEntry::id, primary_key().autoincrement()),
-            make_column("uid", &CheckinRecordEntry::uid),
-            make_column("checkin_date", &CheckinRecordEntry::checkinDate),
-            make_column("created_at", &CheckinRecordEntry::createdAt),
-            unique(get_column(&CheckinRecordEntry::uid), get_column(&CheckinRecordEntry::checkinDate))
-        )
-    );
-}
 ```
 
 #### ProfileManager 接口
@@ -255,114 +235,154 @@ class ProfileManager {
 public:
     static ProfileManager& Instance();
     
-    bool Init(const std::string& dbPath);
+    bool Init();  // 无参数，内部自动获取 dbPath
     void Destroy();
     
     // 用户画像 CRUD
-    std::shared_ptr<UserProfileRecord> GetProfile(uint64_t uid);
-    void SaveProfile(const UserProfileRecord& profile);
+    bool LoadProfile(uint64_t uid, UserProfileData& outProfile);
+    void SaveProfile(const UserProfileData& profile);
     void DeleteProfile(uint64_t uid);
     
     // 打卡记录
-    void RecordCheckin(uint64_t uid, int32_t checkinDate);
+    void RecordCheckin(uint64_t uid, const std::string& username, int32_t checkinDate);
     int32_t CalculateContinuousDays(uint64_t uid, int32_t checkinDate);
     
-    // JSON 序列化/反序列化（使用 nlohmann::json）
-    static std::string KeywordsToJson(const std::vector<KeywordRecord>& keywords);
-    static std::vector<KeywordRecord> JsonToKeywords(const std::string& json);
-    static std::string DanmuHistoryToJson(const std::vector<std::pair<int64_t, std::string>>& history);
-    static std::vector<std::pair<int64_t, std::string>> JsonToDanmuHistory(const std::string& json);
+    // JSON 序列化/反序列化
+    std::string SerializeToJson(const UserProfileData& profile);
+    bool DeserializeFromJson(const std::string& json, UserProfileData& outProfile);
     
 private:
-    std::unique_ptr<decltype(createProfileStorage(nullptr))> storage_;
-    std::mutex mutex_;
+    std::string GetDbPath() const;
+    std::string KeywordsToJson(const std::vector<KeywordRecord>& keywords) const;
+    std::vector<KeywordRecord> JsonToKeywords(const std::string& json) const;
+    std::string DanmuHistoryToJson(const std::vector<std::pair<int64_t, std::string>>& history) const;
+    std::vector<std::pair<int64_t, std::string>> JsonToDanmuHistory(const std::string& json) const;
+    bool LoadProfileFromDb(uint64_t uid, UserProfileData& outProfile);
+    void SaveProfileToDb(const UserProfileData& profile);
+    
+    std::string dbPath_;
+    void* storage_ = nullptr;  // sqlite3* 指针
+    std::map<uint64_t, UserProfileData> profiles_;  // 内存缓存
+    std::mutex profilesLock_;
 };
 ```
+
+**数据库路径**：`GetModuleFileNameA()` 获取 exe 路径后拼接 `MonsterOrderWilds_configs\captain_profiles.db`
 
 #### JSON 序列化实现
 
 ```cpp
 std::string ProfileManager::DanmuHistoryToJson(
-    const std::vector<std::pair<int64_t, std::string>>& history) {
-    using nlohmann::json;
-    json arr = json::array();
-    for (const auto& [ts, content] : history) {
-        arr.push_back({{"ts", ts}, {"content", content}});
+    const std::vector<std::pair<int64_t, std::string>>& history) const {
+    std::ostringstream oss;
+    oss << "[";
+    for (size_t i = 0; i < history.size(); ++i) {
+        if (i > 0) oss << ",";
+        oss << "[" << history[i].first << ",\"" << history[i].second << "\"]";
     }
-    return arr.dump();
+    oss << "]";
+    return oss.str();
 }
 
 std::vector<std::pair<int64_t, std::string>> ProfileManager::JsonToDanmuHistory(
-    const std::string& jsonStr) {
-    using nlohmann::json;
+    const std::string& json) const {
     std::vector<std::pair<int64_t, std::string>> result;
+    if (json.empty() || json == "[]") return result;
+    
     try {
-        json arr = json::parse(jsonStr);
-        for (const auto& item : arr) {
-            int64_t ts = item.value("ts", 0);
-            std::string content = item.value("content", "");
-            result.emplace_back(ts, content);
+        auto j = nlohmann::json::parse(json);
+        for (const auto& item : j) {
+            if (item.is_array() && item.size() == 2) {
+                result.emplace_back(item[0].get<int64_t>(), item[1].get<std::string>());
+            }
         }
-    } catch (const std::exception&) {
-        // 解析失败返回空
-    }
+    } catch (const std::exception&) {}
     return result;
 }
 ```
 
-#### ProfileManager 实现要点
+#### ProfileManager 实现要点（SQLite C API）
 
 ```cpp
-bool ProfileManager::Init(const std::string& dbPath) {
-    try {
-        // 确保数据库目录存在（复用 ConfigManager 的配置目录）
-        std::filesystem::path dbDir = std::filesystem::path(dbPath).parent_path();
-        if (!std::filesystem::exists(dbDir)) {
-            std::filesystem::create_directories(dbDir);
-        }
-        
-        storage_ = std::make_unique<decltype(createProfileStorage(dbPath))>(
-            createProfileStorage(dbPath));
-        storage_->sync_schema();  // 自动迁移
-        return true;
-    } catch (const std::exception& e) {
-        LOG_ERROR(TEXT("ProfileManager init failed: %s"), e.what());
+bool ProfileManager::Init() {
+    if (storage_) return true;
+    
+    dbPath_ = GetDbPath();
+    
+    sqlite3* db = nullptr;
+    int result = sqlite3_open(dbPath_.c_str(), &db);
+    if (result != SQLITE_OK) {
+        sqlite3_close(db);
         return false;
     }
-}
-```
-
-**数据库路径**：使用 `ConfigManager::GetConfigDirectory() + "/captain_profiles.db"` 获取完整路径。
-
-std::shared_ptr<UserProfileRecord> ProfileManager::GetProfile(uint64_t uid) {
-    lock_guard<mutex> lock(mutex_);
-    auto profile = storage_->get_pointer<UserProfileRecord>(uid);
-    if (profile) {
-        return std::make_shared<UserProfileRecord>(std::move(*profile));
-    }
-    return nullptr;
-}
-
-void ProfileManager::SaveProfile(const UserProfileRecord& profile) {
-    lock_guard<mutex> lock(mutex_);
-    storage_->insert_or_replace(profile);  // insert or update
-}
-
-int32_t ProfileManager::CalculateContinuousDays(uint64_t uid, int32_t checkinDate) {
-    lock_guard<mutex> lock(mutex_);
-    auto today = checkinDate;
-    int32_t consecutive = 0;
-    int32_t checkDate = today;
     
-    while (true) {
-        auto records = storage_->get_all<CheckinRecordEntry>(
-            where(c(&CheckinRecordEntry::uid) == uid && 
-                  c(&CheckinRecordEntry::checkinDate) == checkDate));
-        if (records.empty()) break;
-        consecutive++;
-        checkDate--;  // 前一天
+    // 创建 user_profiles 表
+    const char* createUserProfilesSql = 
+        "CREATE TABLE IF NOT EXISTS user_profiles ("
+        "uid INTEGER PRIMARY KEY,"
+        "username TEXT NOT NULL,"
+        "last_checkin_date INTEGER DEFAULT 0,"
+        "continuous_days INTEGER DEFAULT 0,"
+        "last_danmu_timestamp INTEGER DEFAULT 0,"
+        "created_at INTEGER DEFAULT 0,"
+        "updated_at INTEGER DEFAULT 0,"
+        "keywords_json TEXT DEFAULT '[]',"
+        "danmu_history_json TEXT DEFAULT '[]'"
+        ")";
+    
+    sqlite3_exec(db, createUserProfilesSql, nullptr, nullptr, nullptr);
+    
+    // 创建 checkin_records 表
+    const char* createCheckinRecordsSql = 
+        "CREATE TABLE IF NOT EXISTS checkin_records ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "uid INTEGER NOT NULL,"
+        "checkin_date INTEGER NOT NULL,"
+        "created_at INTEGER NOT NULL,"
+        "username TEXT,"
+        "UNIQUE(uid, checkin_date)"
+        ")";
+    
+    sqlite3_exec(db, createCheckinRecordsSql, nullptr, nullptr, nullptr);
+    
+    storage_ = (void*)db;
+    return true;
+}
+
+bool ProfileManager::LoadProfileFromDb(uint64_t uid, UserProfileData& outProfile) {
+    sqlite3* db = (sqlite3*)storage_;
+    char sql[256];
+    snprintf(sql, sizeof(sql),
+        "SELECT uid, username, last_checkin_date, continuous_days, "
+        "last_danmu_timestamp, created_at, updated_at, keywords_json, danmu_history_json "
+        "FROM user_profiles WHERE uid = %llu", uid);
+    
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        return false;
     }
-    return consecutive;
+    
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        outProfile.uid = sqlite3_column_int64(stmt, 0);
+        outProfile.username = (const char*)sqlite3_column_text(stmt, 1);
+        outProfile.lastCheckinDate = sqlite3_column_int(stmt, 2);
+        outProfile.continuousDays = sqlite3_column_int(stmt, 3);
+        outProfile.lastDanmuTimestamp = sqlite3_column_int64(stmt, 4);
+        outProfile.createdAt = sqlite3_column_int64(stmt, 5);
+        outProfile.updatedAt = sqlite3_column_int64(stmt, 6);
+        
+        const char* keywordsJson = (const char*)sqlite3_column_text(stmt, 7);
+        if (keywordsJson) outProfile.keywords = JsonToKeywords(keywordsJson);
+        
+        const char* danmuHistoryJson = (const char*)sqlite3_column_text(stmt, 8);
+        if (danmuHistoryJson) outProfile.danmuHistory = JsonToDanmuHistory(danmuHistoryJson);
+        
+        sqlite3_finalize(stmt);
+        return true;
+    }
+    
+    sqlite3_finalize(stmt);
+    return false;
 }
 ```
 
@@ -517,24 +537,16 @@ struct UserProfile {
 };
 
 // 数据库用户画像记录（SQLite 存储用）
-struct UserProfileRecord {
+struct UserProfileData {
     uint64_t uid = 0;
     std::string username;
-    std::string keywordsJson;                        // JSON: [{"word":"太刀","freq":5,"ts":123456},...]
-    std::string danmuHistoryJson;                    // JSON: [{"ts":123456,"content":"内容"},...]
+    std::vector<KeywordRecord> keywords;                      // 运行时使用
+    std::vector<std::pair<int64_t, std::string>> danmuHistory;  // 运行时使用
     int32_t lastCheckinDate = 0;
     int32_t continuousDays = 0;
     int64_t lastDanmuTimestamp = 0;
     int64_t createdAt = 0;
     int64_t updatedAt = 0;
-};
-
-// 打卡记录条目
-struct CheckinRecordEntry {
-    int64_t id = 0;
-    uint64_t uid = 0;
-    int32_t checkinDate = 0;
-    int64_t createdAt = 0;
 };
 ```
 
@@ -610,48 +622,69 @@ DanmuProcessor::ProcessDanmu()
 GenerateCheckinAnswerAsync()
     → API Key 为空? → GetFallbackAnswer()
     → 构建 Prompt（用户名 + 关键词 + 历史发言）
-    → 调用 MiniMax API
+    → 调用 MiniMax API（通过 MiniMaxAIChatProvider）
     → 成功? → 获取文本回复
     → 失败? → GetFallbackAnswer()
-    → 文本结果通过 TTSManager 走 TTS 播报
+    → 文本结果通过 ITTSProvider 进行 TTS 播报
 ```
 
-**TextToSpeech 复用策略**：
-- AI 回复文本通过 `TTSManager` 加入播报队列（与其他弹幕 TTS 共享队列）
-- 通过 `TTSProviderFactory` 根据 `AI_PROVIDER` JSON 创建对应 Provider
-- `ITTSProvider` 自动处理引擎选择和回退：
-  1. 优先使用 `AI_PROVIDER` 中指定的 TTS Provider（xiaomi 或 minimax）
-  2. 如果 Provider 不可用或 API Key 为空，降级到 Windows SAPI
-  3. Windows SAPI 通过 `TTSManager::SpeakWithSapi()` 实现
-- AI 回复的 TTS 播报**受 `enableVoice` 配置影响**：关闭 `enableVoice` 后不进行播报
+**ITTSProvider 播报策略**：
+- AI 回复 TTS **独立于弹幕 TTS**，通过 `TTSProviderFactory::Create()` 创建 `ITTSProvider`
+- 使用 `AI_PROVIDER` 中的 `tts_provider` 和 `tts_api_key` 配置
+- 支持 xiaomi / minimax / sapi（降级）三种 Provider
+- Provider 不可用或 API Key 为空时，自动降级到 Windows SAPI
+- AI 回复 TTS **受 `enableVoice` 配置影响**：关闭 `enableVoice` 后不进行播报
+
+**AI TTS 播报流程**：
+```cpp
+void CaptainCheckInModule::PlayCheckinTTS(const std::string& text, ...) {
+    auto ttsProvider = TTSProviderFactory::Create(aiProviderJson_);
+    if (!ttsProvider || !ttsProvider->IsAvailable()) {
+        return;  // 降级到 SAPI
+    }
+    
+    TTSRequest ttsReq;
+    ttsReq.text = text;
+    ttsReq.style = "开心";  // 固定使用开心风格
+    
+    ttsProvider->RequestTTS(ttsReq, [&](const TTSResponse& response) {
+        if (response.success && !response.audioData.empty()) {
+            // 1. 缓存 AI TTS 音频
+            TTSCacheManager::Inst()->SaveCheckinAudio(username, response.audioData, timestamp);
+            // 2. 通过 TTSManager 播放
+            TTSManager::Inst()->PlayAudioData(response.audioData, "mp3");
+        }
+    });
+}
+```
 
 **与 TTSManager 的关系**：
 | 特性 | AI 回复 TTS | TTSManager 弹幕 TTS |
 |------|-------------|-------------------|
-| TTS 来源 | `AI_PROVIDER` | `ConfigManager` (mimoApiKey) |
-| 队列 | 共享 `TTSManager` 队列 | 共享队列 |
-| 缓存 | 独立缓存（`打卡_{username}_{timestamp}.mp3`） | 通用缓存 |
-| 配置 | 独立 Provider 工厂 | TTSManager 内部逻辑 |
+| Provider 来源 | `AI_PROVIDER` 配置 | `ConfigManager.ttsEngine` |
+| 入口 | `ITTSProvider::RequestTTS()` | `TTSManager::Speak()` |
+| 播放 | `TTSManager::PlayAudioData()` | 直接播放 |
+| 缓存 | `TTSCacheManager::SaveCheckinAudio()` | `TTSCacheManager::SaveCachedAudio()` |
 
 **AI TTS 音频缓存策略**：
 - AI TTS 回复**必须缓存**，使用 `TTSCacheManager` 管理
 - 缓存目录：`TempAudio/{YYYYMMDD}/`
 - 缓存命名：`打卡_{username}_{timestamp}.mp3`
 - 示例：`打卡_舰长A_28475682.mp3`
-- 通过 `TTSCacheManager::SaveCachedAudio()` 保存
+- 通过 `TTSCacheManager::SaveCheckinAudio()` 保存（独立于通用 TTS 缓存）
 - 缓存文件会在 `TTSCacheManager::CleanupOldCache()` 时自动清理（按 `ttsCacheDaysToKeep` 配置）
 
 ### 4. 画像加载流程（Init 时）
 
 ```
 Init()
-    → ProfileManager::Init(dbPath)
-    → sync_schema()  // 自动创建/迁移表
+    → ProfileManager::Inst()->Init()
+    → CREATE TABLE IF NOT EXISTS（自动创建表）
     → 内存缓存为空，不主动加载全部画像
-    → GetUserProfile(uid) 时按需从 DB 加载
+    → LoadProfile(uid, outProfile) 时按需从 DB 加载
     → LoadProfileFromDb(uid)
-        → ProfileManager::GetProfile(uid)
-        → 转换为运行时 UserProfile 结构
+        → ProfileManager::LoadProfileFromDb(uid)
+        → 转换为运行时 UserProfileData 结构
 ```
 
 ## AI Prompt 模板
@@ -781,12 +814,15 @@ std::string BuildPrompt(const CheckinEvent& event, const UserProfile* profile) {
 | `MonsterOrderWilds/CaptainCheckInModuleTests.cpp` | 单元测试 |
 | `MonsterOrderWilds/ProfileManager.h` | 用户画像持久化管理层 |
 | `MonsterOrderWilds/ProfileManager.cpp` | ProfileManager 实现 |
-| `MonsterOrderWilds/AIChatProvider.h` | AI Chat Provider 接口和工厂 |
+| `MonsterOrderWilds/ProfileManagerTests.cpp` | ProfileManager 单元测试 |
+| `MonsterOrderWilds/AIChatProvider.h` | AI Chat Provider 接口 |
+| `MonsterOrderWilds/MiniMaxAIChatProvider.h` | MiniMax AI Chat Provider 头文件 |
 | `MonsterOrderWilds/AIChatProviderFactory.cpp` | AI Chat Provider 工厂实现 |
 | `MonsterOrderWilds/MiniMaxAIChatProvider.cpp` | MiniMax AI Chat API 实现 |
-| `MonsterOrderWilds/sqlite_orm/include/sqlite_orm/sqlite_orm.h` | sqlite_orm 头文件 |
-| `MonsterOrderWilds/cppjieba/include/cppjieba/*` | cppjieba 源码（16个头文件） |
-| `MonsterOrderWilds/cppjieba/limonp/include/limonp/*` | limonp 依赖库头文件 |
+| `MonsterOrderWilds/AIChatProviderTests.cpp` | AI Chat Provider 单元测试 |
+| `external/sqlite3.h` | SQLite C API 头文件 |
+| `external/cppjieba/include/cppjieba/*` | cppjieba 源码（16个头文件） |
+| `external/cppjieba/deps/limonp/*` | limonp 依赖库头文件 |
 | `MonsterOrderWilds/dict/jieba.dict.utf8` | 最大概率分词词典 |
 | `MonsterOrderWilds/dict/hmm_model.utf8` | HMM 模型 |
 | `MonsterOrderWilds/dict/stop_words.utf8` | 停用词词典 |
@@ -795,6 +831,8 @@ std::string BuildPrompt(const CheckinEvent& event, const UserProfile* profile) {
 | `MonsterOrderWilds/XiaomiTTSProvider.cpp` | Xiaomi TTS 实现 |
 | `MonsterOrderWilds/MiniMaxTTSProvider.cpp` | MiniMax TTS 实现 |
 | `MonsterOrderWilds/TTSProviderFactory.cpp` | TTS Provider 工厂 |
+| `MonsterOrderWilds/TTSProviderTests.cpp` | TTS Provider 单元测试 |
+| `openspec/changes/captain-checkin-ai-reply/dict/弹幕习惯词黑白名单配置.txt` | 词典配置说明 |
 
 ### Modified Files
 
@@ -814,7 +852,7 @@ std::string BuildPrompt(const CheckinEvent& event, const UserProfile* profile) {
 
 ## Dependencies
 
-- **sqlite_orm** - SQLite ORM 库（头文件-only，https://github.com/fnc12/sqlite_orm）
+- **SQLite** - SQLite C API（https://www.sqlite.org/）
 - **cppjieba** - 中文分词库（头文件-only，集成到项目中）
 - **limonp** - cppjieba 依赖库（头文件-only）
 - **词典文件** - jieba.dict.utf8, hmm_model.utf8, stop_words.utf8
@@ -840,21 +878,21 @@ std::string BuildPrompt(const CheckinEvent& event, const UserProfile* profile) {
 **第二步：在 `DataBridge::Initialize()` 之后，单独初始化 CaptainCheckInModule**
 
 ```
-7. ProfileManager::Init()            → 初始化 SQLite 数据库
-8. DanmuProcessor::Init()            → 初始化弹幕处理器（此时可以开始接收弹幕）
-9. CaptainCheckInModule::Init()      → 初始化 cppjieba，向 DanmuProcessor 注册舰长弹幕回调
+7. ProfileManager::Inst()->Init()            → 初始化 SQLite 数据库（无参数）
+8. DanmuProcessor::Inst()->Init()            → 初始化弹幕处理器（此时可以开始接收弹幕）
+9. CaptainCheckInModule::Inst()->Init()      → 初始化 cppjieba，向 DanmuProcessor 注册舰长弹幕回调
 ```
 
 **注意**：
-- `ProfileManager` 使用 `DECLARE_SINGLETON(ProfileManager)` 宏
-- `CaptainCheckInModule` 使用 `DECLARE_SINGLETON(CaptainCheckInModule)` 宏
+- `ProfileManager` 使用 `DEFINE_SINGLETON(ProfileManager)` 宏
+- `CaptainCheckInModule` 使用 `DEFINE_SINGLETON(CaptainCheckInModule)` 宏
 - 需要在 `DataBridgeExports.cpp` 中添加 `CaptainCheckInModule_Initialize()` 导出函数，供 C# 层在 `DataBridge_Initialize()` 之后调用
 - `CaptainCheckInModule::Init()` 必须在 `DanmuProcessor::Init()` 之后调用，因为需要在 `Init()` 中向 DanmuProcessor 注册监听器
 - `DanmuProcessor` 先初始化，CaptainCheckInModule 后注册监听器，这是正确的时序（监听器在事件发生前注册即可）
 
 ## 数据库迁移策略
 
-**当前策略**：`sync_schema()` 自动创建表，不自动迁移 schema 变更。
+**当前策略**：使用 `CREATE TABLE IF NOT EXISTS` 自动创建表，不自动迁移 schema 变更。
 
 **限制**：
 - 首次安装时自动创建表

@@ -3,6 +3,9 @@
 #include "WriteLog.h"
 #include <cstring>
 
+#include "CaptainCheckInModule.h"
+#include "ProfileManager.h"
+
 extern "C" {
 
     __declspec(dllexport) bool __stdcall DataBridge_Initialize()
@@ -390,6 +393,69 @@ extern "C" {
                     g_danmuProcessedCallback(wuserName.c_str(), wmonsterName.c_str(), g_danmuProcessedUserData);
                 }
             });
+        }
+    }
+
+    __declspec(dllexport) bool __stdcall CaptainCheckInModule_Initialize()
+    {
+        try
+        {
+            if (!ProfileManager::Inst()->Init()) {
+                LOG_ERROR(TEXT("CaptainCheckInModule_Initialize: ProfileManager::Init() failed"));
+                return false;
+            }
+
+            DanmuProcessor::Inst()->Init();
+
+            if (!CaptainCheckInModule::Inst()->Init()) {
+                LOG_ERROR(TEXT("CaptainCheckInModule_Initialize: CaptainCheckInModule::Init() failed"));
+                return false;
+            }
+
+            LOG_INFO(TEXT("CaptainCheckInModule_Initialize: initialization sequence completed successfully"));
+            return true;
+        }
+        catch (const std::exception& e)
+        {
+            LOG_ERROR(TEXT("CaptainCheckInModule_Initialize failed: %s"), e.what());
+            return false;
+        }
+    }
+
+    __declspec(dllexport) void __stdcall CaptainCheckInModule_SetEnabled(bool enabled)
+    {
+        try
+        {
+            CaptainCheckInModule::Inst()->SetEnabled(enabled);
+        }
+        catch (const std::exception& e)
+        {
+            LOG_ERROR(TEXT("CaptainCheckInModule_SetEnabled failed: %s"), e.what());
+        }
+    }
+
+    __declspec(dllexport) bool __stdcall CaptainCheckInModule_IsEnabled()
+    {
+        try
+        {
+            return CaptainCheckInModule::Inst()->IsEnabled();
+        }
+        catch (const std::exception& e)
+        {
+            LOG_ERROR(TEXT("CaptainCheckInModule_IsEnabled failed: %s"), e.what());
+            return false;
+        }
+    }
+
+    __declspec(dllexport) void __stdcall CaptainCheckInModule_SetTriggerWords(const char* words)
+    {
+        try
+        {
+            CaptainCheckInModule::Inst()->SetTriggerWords(words);
+        }
+        catch (const std::exception& e)
+        {
+            LOG_ERROR(TEXT("CaptainCheckInModule_SetTriggerWords failed: %s"), e.what());
         }
     }
     

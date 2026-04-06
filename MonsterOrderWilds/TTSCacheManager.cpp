@@ -89,6 +89,75 @@ bool TTSCacheManager::SaveCachedAudio(const std::string& text, const std::vector
     return true;
 }
 
+bool TTSCacheManager::SaveCachedAudioWithPrefix(const std::string& text, const std::vector<uint8_t>& audioData, const std::string& prefix) {
+    std::wstring todayDir = GetTodayCacheDir();
+    if (!std::filesystem::exists(todayDir)) {
+        if (!CreateDirectoryW(todayDir.c_str(), NULL)) {
+            DWORD dirError = ::GetLastError();
+            if (dirError != ERROR_ALREADY_EXISTS) {
+                LOG_ERROR(TEXT("TTSCacheManager: Failed to create cache directory"));
+                return false;
+            }
+        }
+    }
+
+    int64_t timestamp = GetTickCount64();
+    std::wstring fileName = utf8_to_wstring(prefix) + L"_" + std::to_wstring(timestamp) + L".mp3";
+    std::wstring filePath = todayDir + L"\\" + fileName;
+
+    HANDLE hFile = CreateFileW(filePath.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hFile == INVALID_HANDLE_VALUE) {
+        LOG_ERROR(TEXT("TTSCacheManager: Failed to create cache file with prefix"));
+        return false;
+    }
+
+    DWORD bytesWritten;
+    LOG_INFO(TEXT("TTSCacheManager: Writing %d bytes to cache file with prefix %hs"), (int)audioData.size(), prefix.c_str());
+    if (!WriteFile(hFile, audioData.data(), static_cast<DWORD>(audioData.size()), &bytesWritten, NULL)) {
+        CloseHandle(hFile);
+        LOG_ERROR(TEXT("TTSCacheManager: Failed to write cache data with prefix"));
+        return false;
+    }
+
+    CloseHandle(hFile);
+    LOG_INFO(TEXT("TTSCacheManager: Cached audio with prefix to %s"), filePath.c_str());
+    return true;
+}
+
+bool TTSCacheManager::SaveCheckinAudio(const std::string& username, const std::vector<uint8_t>& audioData, int64_t timestamp) {
+    std::wstring todayDir = GetTodayCacheDir();
+    if (!std::filesystem::exists(todayDir)) {
+        if (!CreateDirectoryW(todayDir.c_str(), NULL)) {
+            DWORD dirError = ::GetLastError();
+            if (dirError != ERROR_ALREADY_EXISTS) {
+                LOG_ERROR(TEXT("TTSCacheManager: Failed to create cache directory"));
+                return false;
+            }
+        }
+    }
+
+    std::wstring fileName = L"打卡_" + utf8_to_wstring(username) + L"_" + std::to_wstring(timestamp) + L".mp3";
+    std::wstring filePath = todayDir + L"\\" + fileName;
+
+    HANDLE hFile = CreateFileW(filePath.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hFile == INVALID_HANDLE_VALUE) {
+        LOG_ERROR(TEXT("TTSCacheManager: Failed to create checkin cache file"));
+        return false;
+    }
+
+    DWORD bytesWritten;
+    LOG_INFO(TEXT("TTSCacheManager: Writing %d bytes to checkin cache file"), (int)audioData.size());
+    if (!WriteFile(hFile, audioData.data(), static_cast<DWORD>(audioData.size()), &bytesWritten, NULL)) {
+        CloseHandle(hFile);
+        LOG_ERROR(TEXT("TTSCacheManager: Failed to write checkin cache data"));
+        return false;
+    }
+
+    CloseHandle(hFile);
+    LOG_INFO(TEXT("TTSCacheManager: Cached checkin audio to %s"), filePath.c_str());
+    return true;
+}
+
 void TTSCacheManager::CleanupOldCache(int daysToKeep) {
     std::wstring baseDir = GetCacheBaseDir();
     if (!std::filesystem::exists(baseDir)) {

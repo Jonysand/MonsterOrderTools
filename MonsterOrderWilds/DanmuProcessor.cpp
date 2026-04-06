@@ -9,6 +9,10 @@ DanmuProcessor::DanmuProcessor()
     InitPatterns();
 }
 
+void DanmuProcessor::Init()
+{
+}
+
 void DanmuProcessor::InitPatterns()
 {
     orderPatterns_.push_back({ std::wregex(L"^点怪"), L"点怪" });
@@ -144,6 +148,18 @@ DanmuProcessResult DanmuProcessor::ProcessDanmu(const DanmuData& danmu)
     }
 
     NotifyDanmuProcessed(result);
+
+    if (danmu.guardLevel >= 3)
+    {
+        CaptainDanmuEvent capEvent;
+        capEvent.uid = std::stoull(danmu.userId.empty() ? "0" : danmu.userId);
+        capEvent.guardLevel = danmu.guardLevel;
+        capEvent.username = danmu.userName;
+        capEvent.content = danmu.message;
+        capEvent.serverTimestamp = danmu.timestamp;
+        NotifyCaptainDanmu(capEvent);
+    }
+
     return result;
 }
 
@@ -280,5 +296,18 @@ void DanmuProcessor::NotifyDanmuProcessed(const DanmuProcessResult& result)
     for (const auto& handler : danmuProcessedListeners_)
     {
         handler(result);
+    }
+}
+
+void DanmuProcessor::AddCaptainDanmuListener(const CaptainDanmuHandler& handler)
+{
+    captainDanmuListeners_.push_back(handler);
+}
+
+void DanmuProcessor::NotifyCaptainDanmu(const CaptainDanmuEvent& event)
+{
+    for (const auto& handler : captainDanmuListeners_)
+    {
+        handler(event);
     }
 }

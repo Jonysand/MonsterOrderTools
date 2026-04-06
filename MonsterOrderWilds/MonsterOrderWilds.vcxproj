@@ -141,10 +141,10 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)external;$(ProjectDir)../ExternalLibs</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)external;$(ProjectDir)..;$(ProjectDir)..\external;$(ProjectDir)..\external/sqlite_orm/include;$(ProjectDir)..\external/cppjieba/include;$(ProjectDir)..\external/cppjieba/deps/limonp/include;$(ProjectDir)../ExternalLibs</AdditionalIncludeDirectories>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile />
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
@@ -152,7 +152,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>winhttp.lib;$(ProjectDir)..\external\sqlite3.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -164,7 +164,7 @@
       <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)../ExternalLibs/Foundation/include;$(ProjectDir)../ExternalLibs/Net/include;$(ProjectDir)external;$(ProjectDir)../ExternalLibs</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)../ExternalLibs/Foundation/include;$(ProjectDir)../ExternalLibs/Net/include;$(ProjectDir)external;$(ProjectDir)..;$(ProjectDir)..\external/sqlite_orm/include;$(ProjectDir)..\external/cppjieba/include;$(ProjectDir)..\external/cppjieba/deps/limonp/include;$(ProjectDir)../ExternalLibs</AdditionalIncludeDirectories>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile />
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
@@ -178,17 +178,17 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>winhttp.lib;$(ProjectDir)..\external\sqlite3.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='UnitTest|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)external;$(ProjectDir)../ExternalLibs</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)external;$(ProjectDir)external/sqlite_orm/include;$(ProjectDir)external/cppjieba/include;$(ProjectDir)external/cppjieba/deps/limonp/include;$(ProjectDir)../ExternalLibs</AdditionalIncludeDirectories>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile />
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
@@ -196,7 +196,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>winhttp.lib;$(ProjectDir)..\external\sqlite3.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='UnitTest|x64'">
@@ -206,7 +206,7 @@
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;RUN_UNIT_TESTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)external;$(ProjectDir)../ExternalLibs</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)external;$(ProjectDir)external/sqlite_orm/include;$(ProjectDir)external/cppjieba/include;$(ProjectDir)external/cppjieba/deps/limonp/include;$(ProjectDir)../ExternalLibs</AdditionalIncludeDirectories>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile />
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
@@ -214,12 +214,15 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>winhttp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>winhttp.lib;$(ProjectDir)..\external\sqlite3.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="AIChatProvider.h" />
+    <ClInclude Include="MiniMaxAIChatProvider.h" />
     <ClInclude Include="AudioPlayer.h" />
     <ClInclude Include="BliveManager.h" />
+    <ClInclude Include="CaptainCheckInModule.h" />
     <ClInclude Include="ConfigFieldRegistry.h" />
     <ClInclude Include="ConfigManager.h" />
     <ClInclude Include="CredentialsManager.h" />
@@ -233,11 +236,13 @@
     <ClInclude Include="EventBridgeWrapper.h" />
     <ClInclude Include="EventSystem.h" />
     <ClInclude Include="framework.h" />
+    <ClInclude Include="ITTSProvider.h" />
     <ClInclude Include="MHDanmuToolsHost.h" />
     <ClInclude Include="MimoTTSClient.h" />
     <ClInclude Include="MonsterDataManager.h" />
     <ClInclude Include="MonsterOrderWilds.h" />
     <ClInclude Include="Network.h" />
+    <ClInclude Include="ProfileManager.h" />
     <ClInclude Include="PriorityQueueManager.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="StringProcessor.h" />
@@ -248,8 +253,10 @@
     <ClInclude Include="WriteLog.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="AIChatProviderFactory.cpp" />
     <ClCompile Include="AudioPlayer.cpp" />
     <ClCompile Include="BliveManager.cpp" />
+    <ClCompile Include="CaptainCheckInModule.cpp" />
     <ClCompile Include="ConfigFieldRegistry.cpp" />
     <ClCompile Include="ConfigManager.cpp" />
     <ClCompile Include="CredentialsManager.cpp" />
@@ -261,13 +268,19 @@
     </ClCompile>
     <ClCompile Include="MHDanmuToolsHost.cpp" />
     <ClCompile Include="MimoTTSClient.cpp" />
+    <ClCompile Include="MiniMaxAIChatProvider.cpp" />
     <ClCompile Include="MonsterDataManager.cpp" />
     <ClCompile Include="MonsterOrderWilds.cpp" />
     <ClCompile Include="Network.cpp" />
     <ClCompile Include="PriorityQueueManager.cpp" />
+    <ClCompile Include="ProfileManager.cpp" />
     <ClCompile Include="StringProcessor.cpp" />
     <ClCompile Include="TextToSpeech.cpp" />
     <ClCompile Include="TTSCacheManager.cpp" />
+    <ClCompile Include="TTSProviderFactory.cpp" />
+    <ClCompile Include="SapiTTSProvider.cpp" />
+    <ClCompile Include="XiaomiTTSProvider.cpp" />
+    <ClCompile Include="MiniMaxTTSProvider.cpp" />
     <ClCompile Include="UnitTestMain.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)'!='UnitTest'">true</ExcludedFromBuild>
     </ClCompile>
@@ -309,6 +322,22 @@
       <ExcludedFromBuild Condition="'$(Configuration)'!='UnitTest'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="TextToSpeechTests.cpp">
+      <Filter>UnitTests</Filter>
+      <ExcludedFromBuild Condition="'$(Configuration)'!='UnitTest'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="ProfileManagerTests.cpp">
+      <Filter>UnitTests</Filter>
+      <ExcludedFromBuild Condition="'$(Configuration)'!='UnitTest'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="AIChatProviderTests.cpp">
+      <Filter>UnitTests</Filter>
+      <ExcludedFromBuild Condition="'$(Configuration)'!='UnitTest'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="TTSProviderTests.cpp">
+      <Filter>UnitTests</Filter>
+      <ExcludedFromBuild Condition="'$(Configuration)'!='UnitTest'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="CaptainCheckInModuleTests.cpp">
       <Filter>UnitTests</Filter>
       <ExcludedFromBuild Condition="'$(Configuration)'!='UnitTest'">true</ExcludedFromBuild>
     </ClCompile>

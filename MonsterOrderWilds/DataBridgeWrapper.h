@@ -39,6 +39,8 @@ namespace MonsterOrderBridge
             TopPosY = config.topPosY;
             DefaultMarqueeText = gcnew System::String(config.defaultMarqueeText.c_str());
             TtsCacheDaysToKeep = config.ttsCacheDaysToKeep;
+            EnableCaptainCheckinAI = config.enableCaptainCheckinAI;
+            CheckinTriggerWords = gcnew System::String(config.checkinTriggerWords.c_str());
         }
 
         void Apply()
@@ -66,6 +68,8 @@ namespace MonsterOrderBridge
             data.topPosY = TopPosY;
             data.defaultMarqueeText = msclr::interop::marshal_as<std::string>(DefaultMarqueeText);
             data.ttsCacheDaysToKeep = TtsCacheDaysToKeep;
+            data.enableCaptainCheckinAI = EnableCaptainCheckinAI;
+            data.checkinTriggerWords = msclr::interop::marshal_as<std::string>(CheckinTriggerWords);
 
             DataBridge::UpdateAllConfig(data);
         }
@@ -93,6 +97,8 @@ namespace MonsterOrderBridge
         property double TopPosY;
         property System::String^ DefaultMarqueeText;
         property int TtsCacheDaysToKeep;
+        property bool EnableCaptainCheckinAI;
+        property System::String^ CheckinTriggerWords;
     };
 
     // 队列节点托管包装类

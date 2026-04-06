@@ -302,6 +302,23 @@ bool TTSManager::Speak(const TString& text)
     return SpeakWithSapi(text);
 }
 
+bool TTSManager::PlayAudioData(const std::vector<uint8_t>& audioData, const std::string& format) {
+#if USE_MIMO_TTS
+    if (audioPlayer == NULL) {
+        LOG_ERROR(TEXT("PlayAudioData: audioPlayer is NULL"));
+        return false;
+    }
+    bool success = audioPlayer->Play(audioData, format);
+    if (!success) {
+        LOG_ERROR(TEXT("PlayAudioData: AudioPlayer::Play failed"));
+    }
+    return success;
+#else
+    LOG_WARNING(TEXT("PlayAudioData: MIMO TTS not enabled, using SAPI"));
+    return false;
+#endif
+}
+
 bool TTSManager::SpeakWithSapi(const TString& text)
 {
     std::lock_guard<std::mutex> lock(sapiMutex_);

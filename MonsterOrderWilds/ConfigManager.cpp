@@ -121,6 +121,10 @@ bool ConfigManager::LoadConfig()
 
         if (j.contains("TTS_CACHE_DAYS_TO_KEEP")) config_.ttsCacheDaysToKeep = j["TTS_CACHE_DAYS_TO_KEEP"].get<int>();
 
+        // 舰长打卡AI配置
+        if (j.contains("ENABLE_CAPTAIN_CHECKIN_AI")) config_.enableCaptainCheckinAI = j["ENABLE_CAPTAIN_CHECKIN_AI"].get<bool>();
+        if (j.contains("CHECKIN_TRIGGER_WORDS")) config_.checkinTriggerWords = j["CHECKIN_TRIGGER_WORDS"].get<std::string>();
+
         // 从注册表读取 idCode
         config_.idCode = ReadIdCodeFromRegistry();
 
@@ -173,6 +177,10 @@ bool ConfigManager::SaveConfig(bool force)
         j["MIMO_SPEED"] = config_.mimoSpeed;
 
         j["TTS_CACHE_DAYS_TO_KEEP"] = config_.ttsCacheDaysToKeep;
+
+        // 舰长打卡AI配置
+        j["ENABLE_CAPTAIN_CHECKIN_AI"] = config_.enableCaptainCheckinAI;
+        j["CHECKIN_TRIGGER_WORDS"] = config_.checkinTriggerWords;
 
         // 跑马灯默认文本
         j["DEFAULT_MARQUEE_TEXT"] = config_.defaultMarqueeText;
@@ -405,6 +413,24 @@ void ConfigManager::SetTtsCacheDaysToKeep(int value)
     lock_.lock();
     bool changed = config_.ttsCacheDaysToKeep != value;
     if (changed) { config_.ttsCacheDaysToKeep = value; dirty_ = true; }
+    lock_.unlock();
+    if (changed) NotifyConfigChanged();
+}
+
+void ConfigManager::SetEnableCaptainCheckinAI(bool value)
+{
+    lock_.lock();
+    bool changed = config_.enableCaptainCheckinAI != value;
+    if (changed) { config_.enableCaptainCheckinAI = value; dirty_ = true; }
+    lock_.unlock();
+    if (changed) NotifyConfigChanged();
+}
+
+void ConfigManager::SetCheckinTriggerWords(const std::string& value)
+{
+    lock_.lock();
+    bool changed = config_.checkinTriggerWords != value;
+    if (changed) { config_.checkinTriggerWords = value; dirty_ = true; }
     lock_.unlock();
     if (changed) NotifyConfigChanged();
 }

@@ -40,6 +40,10 @@ namespace MonsterOrderWindows
         // TTS缓存配置
         public int TtsCacheDaysToKeep;
 
+        // 舰长打卡AI配置
+        public bool EnableCaptainCheckinAI;
+        public string CheckinTriggerWords;
+
         /// <summary>
         /// 从现有MainConfig创建快照
         /// </summary>
@@ -68,7 +72,9 @@ namespace MonsterOrderWindows
                 TopPosX = config.TopPos.X,
                 TopPosY = config.TopPos.Y,
                 DefaultMarqueeText = config.DEFAULT_MARQUEE_TEXT ?? "",
-                TtsCacheDaysToKeep = config.TTS_CACHE_DAYS_TO_KEEP
+                TtsCacheDaysToKeep = config.TTS_CACHE_DAYS_TO_KEEP,
+                EnableCaptainCheckinAI = config.ENABLE_CAPTAIN_CHECKIN_AI,
+                CheckinTriggerWords = config.CHECKIN_TRIGGER_WORDS ?? "打卡,签到"
             };
         }
 
@@ -95,6 +101,8 @@ namespace MonsterOrderWindows
             config.TopPos = new System.Windows.Point(TopPosX, TopPosY);
             config.DEFAULT_MARQUEE_TEXT = DefaultMarqueeText;
             config.TTS_CACHE_DAYS_TO_KEEP = TtsCacheDaysToKeep;
+            config.ENABLE_CAPTAIN_CHECKIN_AI = EnableCaptainCheckinAI;
+            config.CHECKIN_TRIGGER_WORDS = CheckinTriggerWords;
         }
     }
 

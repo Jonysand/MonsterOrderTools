@@ -156,6 +156,20 @@ namespace MonsterOrderWindows
             set { _ttsCacheDaysToKeep = value; OnPropertyChanged(); }
         }
 
+        private bool _enableCaptainCheckinAI = true;
+        public bool EnableCaptainCheckinAI
+        {
+            get => _enableCaptainCheckinAI;
+            set { _enableCaptainCheckinAI = value; OnPropertyChanged(); }
+        }
+
+        private string _checkinTriggerWords = "打卡,签到";
+        public string CheckinTriggerWords
+        {
+            get => _checkinTriggerWords;
+            set { _checkinTriggerWords = value; OnPropertyChanged(); }
+        }
+
         public void RefreshFromConfig(MainConfig config)
         {
             IdCode = config.ID_CODE ?? "";
@@ -177,6 +191,8 @@ namespace MonsterOrderWindows
             TopPosY = config.TopPos.Y;
             DefaultMarqueeText = config.DEFAULT_MARQUEE_TEXT ?? "";
             TtsCacheDaysToKeep = config.TTS_CACHE_DAYS_TO_KEEP;
+            EnableCaptainCheckinAI = config.ENABLE_CAPTAIN_CHECKIN_AI;
+            CheckinTriggerWords = config.CHECKIN_TRIGGER_WORDS ?? "打卡,签到";
         }
 
         public void ApplyToConfig(MainConfig config)
@@ -199,6 +215,8 @@ namespace MonsterOrderWindows
             config.TopPos = new System.Windows.Point(TopPosX, TopPosY);
             config.DEFAULT_MARQUEE_TEXT = DefaultMarqueeText;
             config.TTS_CACHE_DAYS_TO_KEEP = TtsCacheDaysToKeep;
+            config.ENABLE_CAPTAIN_CHECKIN_AI = EnableCaptainCheckinAI;
+            config.CHECKIN_TRIGGER_WORDS = CheckinTriggerWords;
         }
     }
 

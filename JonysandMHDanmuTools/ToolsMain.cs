@@ -208,6 +208,14 @@ namespace MonsterOrderWindows
                 _Config.Config.DEFAULT_MARQUEE_TEXT = parts[1];
                 GlobalEventListener.Invoke("MarqueeTextChanged", parts[1]);
             }
+            else if (parts[0] == "ENABLE_CAPTAIN_CHECKIN_AI")
+            {
+                _Config.Config.ENABLE_CAPTAIN_CHECKIN_AI = parts[1] == "1";
+            }
+            else if (parts[0] == "CHECKIN_TRIGGER_WORDS")
+            {
+                _Config.Config.CHECKIN_TRIGGER_WORDS = parts[1];
+            }
             _Config.SaveConfig();
         }
 

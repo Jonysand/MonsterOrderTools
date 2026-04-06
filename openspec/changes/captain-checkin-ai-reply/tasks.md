@@ -1,5 +1,33 @@
 # Captain CheckIn AI Reply - Tasks
 
+## UnitTest 项目说明
+
+### 单元测试架构
+
+本项目 C++ 单元测试采用 **BliveManagerTests.vcxproj** 独立项目配置：
+
+- 测试文件：`*Tests.cpp`
+- 编译配置：UnitTest 模式编译，Release 模式排除
+- 依赖：主项目完整编译环境
+
+### 测试文件清单
+
+| 测试文件 | 所属项目 | 状态 |
+|---------|---------|------|
+| `ProfileManagerTests.cpp` | BliveManagerTests.vcxproj (UnitTest) | ⚠️ 需主项目环境 |
+| `AIChatProviderTests.cpp` | BliveManagerTests.vcxproj (UnitTest) | ⚠️ 需主项目环境 |
+| `TTSProviderTests.cpp` | BliveManagerTests.vcxproj (UnitTest) | ⚠️ 需主项目环境 |
+| `CaptainCheckInModuleTests.cpp` | MonsterOrderWilds.vcxproj (UnitTest) | ⚠️ 需主项目环境 |
+
+### 运行单元测试
+
+```bash
+MSBuild.exe BliveManagerTests.vcxproj -p:Configuration=UnitTest -p:Platform=x64 -t:Build
+MSBuild.exe MonsterOrderWilds.vcxproj -p:Configuration=UnitTest -p:Platform=x64 -t:Build
+```
+
+---
+
 ## Task 1: 配置字段 - ENABLE_CAPTAIN_CHECKIN_AI + CHECKIN_TRIGGER_WORDS
 
 **注意**：`AI_PROVIDER` 是 credential 字段，由 C++ `CredentialsManager` 独立管理（见 Task 2），不经过 ConfigManager。
@@ -45,7 +73,7 @@
 - [ ] 在 vcxproj 中添加测试文件，条件排除 Release 模式
 
 ### 验证
-- [ ] 编译验证：`MSBuild.exe MonsterOrderWilds.vcxproj -p:Configuration=Debug -p:Platform=x64 -t:Build`
+- [ ] 编译验证：`MSBuild.exe BliveManagerTests.vcxproj -p:Configuration=Debug -p:Platform=x64 -t:Build`
 - [ ] Git diff 检查：确认新增测试文件
 
 ---
@@ -82,7 +110,7 @@
 - [ ] 在 vcxproj 中添加测试文件，条件排除 Release 模式
 
 ### 验证
-- [ ] 编译验证：`MSBuild.exe MonsterOrderWilds.vcxproj -p:Configuration=Debug -p:Platform=x64 -t:Build`
+- [ ] 编译验证：`MSBuild.exe BliveManagerTests.vcxproj -p:Configuration=Debug -p:Platform=x64 -t:Build`
 - [ ] Git diff 检查：确认新增测试文件
 
 ---
@@ -121,7 +149,7 @@
 - [ ] 在 vcxproj 中添加测试文件，条件排除 Release 模式
 
 ### 验证
-- [ ] 编译验证：`MSBuild.exe MonsterOrderWilds.vcxproj -p:Configuration=Debug -p:Platform=x64 -t:Build`
+- [ ] 编译验证：`MSBuild.exe BliveManagerTests.vcxproj -p:Configuration=Debug -p:Platform=x64 -t:Build`
 - [ ] Git diff 检查：确认新增测试文件
 
 ---
@@ -177,7 +205,7 @@
 - [ ] 在 vcxproj 中添加测试文件，条件排除 Release 模式
 
 ### 验证
-- [ ] 编译验证：`MSBuild.exe MonsterOrderWilds.vcxproj -p:Configuration=Debug -p:Platform=x64 -t:Build`
+- [ ] 编译验证：`MSBuild.exe BliveManagerTests.vcxproj -p:Configuration=Debug -p:Platform=x64 -t:Build`
 - [ ] Git diff 检查：确认新增测试文件
 
 ---
@@ -210,7 +238,7 @@
 ## Task 3T: C# 配置层 - 数据结构单元测试
 
 ### Files
-- Create: `JonysandMHDanmuTools/ConfigCheckinTriggerWordsTests.cs`
+- Create: `JonysandMHDanmuTools.Tests/ConfigCheckinTriggerWordsTests.cs`
 
 ### Steps
 - [ ] 编写 `TestConfigDataSnapshot_CheckinTriggerWords` 测试：验证字段存在和默认值
@@ -219,7 +247,7 @@
 - [ ] 在 csproj 中添加测试文件
 
 ### 验证
-- [ ] 编译验证：`MSBuild.exe JonysandMHDanmuTools.csproj -p:Configuration=Debug -p:Platform=x64 -t:Build`
+- [ ] 编译验证：`dotnet build JonysandMHDanmuTools.Tests/JonysandMHDanmuTools.Tests.csproj`
 - [ ] Git diff 检查：确认新增测试文件
 
 ---
@@ -426,7 +454,7 @@ void CaptainCheckInModule::Init() {
 - [ ] 将 `AIChatProvider.h` 和 `MiniMaxAIChatProvider.cpp` 添加到项目（Filter: DataProcessing）
 - [ ] 将 `AIChatProviderFactory.cpp` 添加到项目（Filter: DataProcessing）
 - [ ] 将 `ITTSProvider.h`、`SapiTTSProvider.cpp`、`XiaomiTTSProvider.cpp`、`MiniMaxTTSProvider.cpp`、`TTSProviderFactory.cpp` 添加到项目（Filter: DataProcessing）
-- [ ] 添加 sqlite_orm 头文件包含路径 `$(ProjectDir)sqlite_orm\include`
+- [x] ~~添加 sqlite_orm 头文件包含路径~~ → 已改用 SQLite C API，添加 `$(ProjectDir)..\external` 包含路径
 - [ ] 添加 cppjieba 头文件包含路径 `$(ProjectDir)cppjieba\include`
 - [ ] 添加到 vcxproj 的 Header Files 和 Source Files 中
 - [ ] **同时更新 .vcxproj.filters 文件**，在对应的 `<Filter>` 节点下添加新文件（DataProcessing）

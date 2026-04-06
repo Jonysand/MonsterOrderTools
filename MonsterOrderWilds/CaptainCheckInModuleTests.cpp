@@ -1,0 +1,184 @@
+#include "CaptainCheckInModule.h"
+#include <iostream>
+#include <cassert>
+#include <sstream>
+
+#ifdef RUN_UNIT_TESTS
+
+void TestCaptainCheckInModule_SetEnabled()
+{
+    CaptainCheckInModule::Inst()->SetEnabled(true);
+    assert(CaptainCheckInModule::Inst()->IsEnabled() == true);
+    CaptainCheckInModule::Inst()->SetEnabled(false);
+    assert(CaptainCheckInModule::Inst()->IsEnabled() == false);
+    CaptainCheckInModule::Inst()->SetEnabled(true);
+    std::cout << "[PASS] TestCaptainCheckInModule_SetEnabled" << std::endl;
+}
+
+void TestCaptainCheckInModule_IsCheckinMessage()
+{
+    CaptainCheckInModule::Inst()->SetTriggerWords("打卡,签到");
+    assert(CaptainCheckInModule::Inst()->IsCheckinMessage("打卡") == true);
+    assert(CaptainCheckInModule::Inst()->IsCheckinMessage("签到") == true);
+    assert(CaptainCheckInModule::Inst()->IsCheckinMessage("点怪") == false);
+    std::cout << "[PASS] TestCaptainCheckInModule_IsCheckinMessage" << std::endl;
+}
+
+void TestCaptainCheckInModule_IsCheckinMessage_Custom()
+{
+    CaptainCheckInModule::Inst()->SetTriggerWords("报名,报道");
+    assert(CaptainCheckInModule::Inst()->IsCheckinMessage("报名") == true);
+    assert(CaptainCheckInModule::Inst()->IsCheckinMessage("报道") == true);
+    assert(CaptainCheckInModule::Inst()->IsCheckinMessage("打卡") == false);
+    std::cout << "[PASS] TestCaptainCheckInModule_IsCheckinMessage_Custom" << std::endl;
+}
+
+void TestCaptainCheckInModule_PushDanmuEvent()
+{
+    CaptainDanmuEvent evt;
+    evt.uid = 12345;
+    evt.username = "test_user";
+    evt.guardLevel = 3;
+    evt.content = "test content";
+    evt.serverTimestamp = 0;
+
+    CaptainCheckInModule::Inst()->SetEnabled(true);
+    CaptainCheckInModule::Inst()->PushDanmuEvent(evt);
+    std::cout << "[PASS] TestCaptainCheckInModule_PushDanmuEvent" << std::endl;
+}
+
+void TestCaptainCheckInModule_GetUserProfile()
+{
+    const UserProfile* profile = CaptainCheckInModule::Inst()->GetUserProfile(99999);
+    assert(profile == nullptr);
+    std::cout << "[PASS] TestCaptainCheckInModule_GetUserProfile" << std::endl;
+}
+
+void TestCaptainCheckInModule_GetTopKeywords()
+{
+    std::vector<std::string> keywords = CaptainCheckInModule::Inst()->GetUserTopKeywords(12345);
+    assert(keywords.size() == 0);
+    std::cout << "[PASS] TestCaptainCheckInModule_GetTopKeywords" << std::endl;
+}
+
+void TestGetFallbackAnswer_FirstDay()
+{
+    CheckinEvent evt;
+    evt.uid = 12345;
+    evt.username = "舰长A";
+    evt.continuousDays = 1;
+    evt.checkinDate = 20260406;
+    
+    std::string answer = CaptainCheckInModule::Inst()->GetFallbackAnswer(evt);
+    assert(answer == "舰长A打卡成功！");
+    std::cout << "[PASS] TestGetFallbackAnswer_FirstDay" << std::endl;
+}
+
+void TestGetFallbackAnswer_ConsecutiveDays()
+{
+    CheckinEvent evt;
+    evt.uid = 12345;
+    evt.username = "舰长B";
+    evt.continuousDays = 7;
+    evt.checkinDate = 20260406;
+    
+    std::string answer = CaptainCheckInModule::Inst()->GetFallbackAnswer(evt);
+    assert(answer == "舰长B今日第7天打卡！");
+    std::cout << "[PASS] TestGetFallbackAnswer_ConsecutiveDays" << std::endl;
+}
+
+void TestGetFallbackAnswer_ManyDays()
+{
+    CheckinEvent evt;
+    evt.uid = 12345;
+    evt.username = "舰长C";
+    evt.continuousDays = 100;
+    evt.checkinDate = 20260406;
+    
+    std::string answer = CaptainCheckInModule::Inst()->GetFallbackAnswer(evt);
+    assert(answer == "舰长C今日第100天打卡！");
+    std::cout << "[PASS] TestGetFallbackAnswer_ManyDays" << std::endl;
+}
+
+void TestGetFallbackAnswer_ZeroDays()
+{
+    CheckinEvent evt;
+    evt.uid = 12345;
+    evt.username = "舰长D";
+    evt.continuousDays = 0;
+    evt.checkinDate = 20260406;
+    
+    std::string answer = CaptainCheckInModule::Inst()->GetFallbackAnswer(evt);
+    assert(answer == "舰长D打卡成功！");
+    std::cout << "[PASS] TestGetFallbackAnswer_ZeroDays" << std::endl;
+}
+
+void TestIsCheckinMessage_EmptyTriggerWords()
+{
+    CaptainCheckInModule::Inst()->SetTriggerWords("");
+    assert(CaptainCheckInModule::Inst()->IsCheckinMessage("打卡") == false);
+    assert(CaptainCheckInModule::Inst()->IsCheckinMessage("签到") == false);
+    std::cout << "[PASS] TestIsCheckinMessage_EmptyTriggerWords" << std::endl;
+}
+
+void TestIsCheckinMessage_SingleWord()
+{
+    CaptainCheckInModule::Inst()->SetTriggerWords("打卡");
+    assert(CaptainCheckInModule::Inst()->IsCheckinMessage("打卡") == true);
+    assert(CaptainCheckInModule::Inst()->IsCheckinMessage("签到") == false);
+    std::cout << "[PASS] TestIsCheckinMessage_SingleWord" << std::endl;
+}
+
+void TestIsCheckinMessage_WithSpaces()
+{
+    CaptainCheckInModule::Inst()->SetTriggerWords(" 打卡 , 签到 ");
+    assert(CaptainCheckInModule::Inst()->IsCheckinMessage("打卡") == true);
+    assert(CaptainCheckInModule::Inst()->IsCheckinMessage("签到") == true);
+    std::cout << "[PASS] TestIsCheckinMessage_WithSpaces" << std::endl;
+}
+
+void TestSetTriggerWords_UpdatesCorrectly()
+{
+    CaptainCheckInModule::Inst()->SetTriggerWords("打卡,签到");
+    assert(CaptainCheckInModule::Inst()->IsCheckinMessage("打卡") == true);
+    
+    CaptainCheckInModule::Inst()->SetTriggerWords("报名,报道");
+    assert(CaptainCheckInModule::Inst()->IsCheckinMessage("打卡") == false);
+    assert(CaptainCheckInModule::Inst()->IsCheckinMessage("报名") == true);
+    std::cout << "[PASS] TestSetTriggerWords_UpdatesCorrectly" << std::endl;
+}
+
+void TestCalculateContinuousDays_ProfileManagerIntegration()
+{
+    uint64_t testUid = 888777666;
+    int32_t today = 20260406;
+    
+    ProfileManager::Inst()->RecordCheckin(testUid, "TestUser", today);
+    int32_t days = CaptainCheckInModule::Inst()->CalculateContinuousDays(testUid, today);
+    
+    assert(days >= 1);
+    std::cout << "[PASS] TestCalculateContinuousDays_ProfileManagerIntegration" << std::endl;
+}
+
+void RunCaptainCheckInModuleTests()
+{
+    std::cout << "========== CaptainCheckInModule Tests ==========" << std::endl;
+    TestCaptainCheckInModule_SetEnabled();
+    TestCaptainCheckInModule_IsCheckinMessage();
+    TestCaptainCheckInModule_IsCheckinMessage_Custom();
+    TestCaptainCheckInModule_PushDanmuEvent();
+    TestCaptainCheckInModule_GetUserProfile();
+    TestCaptainCheckInModule_GetTopKeywords();
+    TestGetFallbackAnswer_FirstDay();
+    TestGetFallbackAnswer_ConsecutiveDays();
+    TestGetFallbackAnswer_ManyDays();
+    TestGetFallbackAnswer_ZeroDays();
+    TestIsCheckinMessage_EmptyTriggerWords();
+    TestIsCheckinMessage_SingleWord();
+    TestIsCheckinMessage_WithSpaces();
+    TestSetTriggerWords_UpdatesCorrectly();
+    TestCalculateContinuousDays_ProfileManagerIntegration();
+    std::cout << "========== CaptainCheckInModule Tests: ALL PASS ==========" << std::endl;
+}
+
+#endif

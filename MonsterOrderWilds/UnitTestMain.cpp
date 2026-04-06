@@ -49,6 +49,10 @@ extern void RunAllDataBridgeTests();
 extern void RunAllCredentialsManagerTests();
 extern void TestTTSCacheManager();
 extern void TestDynamicComboConstants();
+extern void RunProfileManagerTests();
+extern void RunAIChatProviderTests();
+extern void RunTTSProviderTests();
+extern void RunCaptainCheckInModuleTests();
 
 int RunTests()
 {
@@ -97,6 +101,22 @@ int RunTests()
     
     TestLog("Running TextToSpeech tests...");
     TestDynamicComboConstants();
+    TestLog("");
+
+    TestLog("Running ProfileManager tests...");
+    RunProfileManagerTests();
+    TestLog("");
+
+    TestLog("Running AIChatProvider tests...");
+    RunAIChatProviderTests();
+    TestLog("");
+
+    TestLog("Running TTSProvider tests...");
+    RunTTSProviderTests();
+    TestLog("");
+
+    TestLog("Running CaptainCheckInModule tests...");
+    RunCaptainCheckInModuleTests();
     TestLog("");
     
     TestLog("========================================");

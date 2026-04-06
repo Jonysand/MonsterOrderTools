@@ -38,6 +38,10 @@ struct ConfigData
 
     // TTS缓存配置
     int ttsCacheDaysToKeep = 7;
+
+    // 舰长打卡AI配置
+    bool enableCaptainCheckinAI = true;
+    std::string checkinTriggerWords = "打卡,签到";
 };
 
 // 配置管理器 - 负责配置加载、保存和变更通知
@@ -77,6 +81,8 @@ public:
     void SetMimoSpeed(float value);
     void SetWindowPosition(double x, double y);
     void SetTtsCacheDaysToKeep(int value);
+    void SetEnableCaptainCheckinAI(bool value);
+    void SetCheckinTriggerWords(const std::string& value);
 
     // 通过 ConfigFieldMeta 设置配置值（用于 DataBridge）
     void SetValueByMeta(const ConfigFieldMeta* meta, const void* value);

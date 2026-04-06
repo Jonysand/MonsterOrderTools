@@ -100,7 +100,23 @@ private:
 public:
     using DanmuProcessedHandler = std::function<void(const DanmuProcessResult&)>;
     void AddDanmuProcessedListener(const DanmuProcessedHandler& handler);
+
+    // 舰长弹幕事件（用于 CaptainCheckInModule 学习）
+    struct CaptainDanmuEvent {
+        uint64_t uid = 0;
+        int32_t guardLevel = 0;
+        std::string username;
+        std::string content;
+        int64_t serverTimestamp = 0;
+        int32_t sendDate = 0;
+    };
+    using CaptainDanmuHandler = std::function<void(const CaptainDanmuEvent&)>;
+    void AddCaptainDanmuListener(const CaptainDanmuHandler& handler);
+    void Init();
+
 private:
     std::vector<DanmuProcessedHandler> danmuProcessedListeners_;
+    std::vector<CaptainDanmuHandler> captainDanmuListeners_;
     void NotifyDanmuProcessed(const DanmuProcessResult& result);
+    void NotifyCaptainDanmu(const CaptainDanmuEvent& event);
 };

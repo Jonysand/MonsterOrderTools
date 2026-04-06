@@ -14,7 +14,7 @@
 - 防刷屏机制：
   - 时间窗口：同用户 5 秒内只学习第一条
   - 内容去重：连续 3 条内容相同则跳过
-- 用户画像持久化到 SQLite 数据库（使用 sqlite_orm）
+- 用户画像持久化到 SQLite 数据库（使用 SQLite C API）
 
 **详见**: `keyword-extraction-spec.md`
 
@@ -38,7 +38,7 @@
 - Prompt 包含：用户名、连续打卡天数、用户关键词、最近发言
 - API 调用失败时回退到固定模板
 - API Key 为空时直接使用固定模板
-- **AI 回复通过 TTS 播报**，使用 `AI_PROVIDER` 中的 `tts_provider` 配置
+- **AI 回复通过 TTS 播报**，使用 `ConfigManager.ttsEngine` 配置（mimo/sapi/auto）
 
 **详见**: `ai-chat-provider-spec.md`
 
@@ -200,7 +200,6 @@ class CaptainCheckInModule {
 public:
     static CaptainCheckInModule& Inst();
     bool Init();
-    void Destroy();
     
     void PushDanmuEvent(const CaptainDanmuEvent& event);
     void GenerateCheckinAnswerAsync(const CheckinEvent& event, AnswerCallback callback);
@@ -209,6 +208,8 @@ public:
     const UserProfile* GetUserProfile(uint64_t uid) const;
     std::vector<std::string> GetUserTopKeywords(uint64_t uid) const;
     void SetTriggerWords(const std::string& words);
+    void SetEnabled(bool enabled);
+    bool IsEnabled() const;
     bool IsCheckinMessage(const std::string& content) const;
 };
 ```
@@ -218,12 +219,12 @@ public:
 - `keyword-extraction-spec.md` - 关键词提取模块规格（含安装包配置）
 - `ai-chat-provider-spec.md` - AI Chat Provider 接口规格
 - `tts-provider-spec.md` - TTS Provider 接口规格（**必须实现**）
-- **sqlite_orm** - SQLite ORM 库（头文件-only，https://github.com/fnc12/sqlite_orm）
+- **SQLite** - SQLite C API（https://www.sqlite.org/）
 
 ## 数据库
 
 - 数据库文件：`MonsterOrderWilds_configs/captain_profiles.db`
-- 使用 sqlite_orm 管理，存储用户画像和打卡记录
+- 使用 SQLite C API 管理，存储用户画像和打卡记录
 - 数据库在首次初始化时自动创建（`sync_schema`）
 
 **数据库 Schema**（与 `UserProfileRecord` 和 `CheckinRecordEntry` 结构体一一对应）：
