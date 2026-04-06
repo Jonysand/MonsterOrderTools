@@ -49,6 +49,11 @@ using json = nlohmann::json;
 #define USE_MIMO_TTS 1
 #endif
 
+// 本地测试宏 - 跳过舰长检测，方便本地测试 captain-checkin-ai-reply 功能
+#ifndef TEST_CAPTAIN_REPLY_LOCAL
+#define TEST_CAPTAIN_REPLY_LOCAL 0
+#endif
+
 #define APP_VERSION 15
 
 #ifdef UNICODE

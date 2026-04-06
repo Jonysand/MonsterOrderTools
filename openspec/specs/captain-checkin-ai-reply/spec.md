@@ -20,9 +20,10 @@
 
 ### FR-2: 打卡检测
 
-- 支持可配置的触发词列表（默认"打卡,签到"）
+- 支持可配置的触发词列表（**默认"打卡,签到"**）
 - 触发词用逗号分隔，支持中文和英文
 - 检测到打卡消息时触发 AI 回复生成
+- ⚠️ **重要**：如果配置为空或被删除，打卡检测功能将完全失效
 
 ### FR-3: 连续打卡天数计算
 
@@ -220,6 +221,16 @@ public:
 - `ai-chat-provider-spec.md` - AI Chat Provider 接口规格
 - `tts-provider-spec.md` - TTS Provider 接口规格（**必须实现**）
 - **SQLite** - SQLite C API（https://www.sqlite.org/）
+
+## 编译宏
+
+| 宏名 | 默认值 | 说明 |
+|------|--------|------|
+| `TEST_CAPTAIN_REPLY_LOCAL` | 0 | 本地测试宏。设为 1 时跳过舰长检测（guard_level >= 3）和防刷屏检查，方便本地测试 captain-checkin-ai-reply 功能。**测试完成后请改回 0** |
+
+**注意**：
+- `TEST_CAPTAIN_REPLY_LOCAL` 仅用于本地开发调试，**不要提交到正式版本**
+- 宏开启时，词典文件（`dict/*.utf8`）必须存在，否则会输出明确错误日志
 
 ## 数据库
 

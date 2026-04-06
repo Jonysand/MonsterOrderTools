@@ -13,6 +13,7 @@
 #include "cppjieba/Jieba.hpp"
 #include <set>
 #include <mutex>
+#include <fstream>
 
 #ifdef RUN_UNIT_TESTS
 #include <iostream>
@@ -97,6 +98,21 @@ bool CaptainCheckInModule::Init() {
     std::string userDict = "";
     std::string stopWords = dictPath + "/stop_words.utf8";
 
+#if TEST_CAPTAIN_REPLY_LOCAL
+    std::ifstream dictTest(jiebaDict);
+    if (!dictTest.good()) {
+        LOG_ERROR(TEXT("CaptainCheckInModule::Init ERROR: Dictionary file not found: %hs. Please ensure dict/jieba.dict.utf8 exists."), jiebaDict.c_str());
+    }
+    std::ifstream hmmTest(hmmModel);
+    if (!hmmTest.good()) {
+        LOG_ERROR(TEXT("CaptainCheckInModule::Init ERROR: Dictionary file not found: %hs. Please ensure dict/hmm_model.utf8 exists."), hmmModel.c_str());
+    }
+    std::ifstream stopTest(stopWords);
+    if (!stopTest.good()) {
+        LOG_ERROR(TEXT("CaptainCheckInModule::Init ERROR: Dictionary file not found: %hs. Please ensure dict/stop_words.utf8 exists."), stopWords.c_str());
+    }
+#endif
+
     try {
         jiebaContext_ = std::make_unique<JiebaContext>(jiebaDict, hmmModel, userDict, stopWords);
         LOG_INFO(TEXT("CaptainCheckInModule::Init cppjieba initialized successfully"));
@@ -165,6 +181,9 @@ bool CaptainCheckInModule::IsCheckinMessage(const std::string& content) const {
 }
 
 bool CaptainCheckInModule::ShouldLearn(const UserProfile& profile, const CaptainDanmuEvent& event) {
+#if TEST_CAPTAIN_REPLY_LOCAL
+    return true;  // 跳过防刷屏检查，方便本地测试
+#else
     int64_t now = GetCurrentTimestamp();
 
     if (now - profile.lastDanmuTimestamp < LEARN_TIME_WINDOW_MS) {
@@ -176,6 +195,7 @@ bool CaptainCheckInModule::ShouldLearn(const UserProfile& profile, const Captain
     }
 
     return true;
+#endif
 }
 
 bool CaptainCheckInModule::ShouldSkipDuplicateContent(const std::string& content) {
