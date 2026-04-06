@@ -8,6 +8,10 @@
 
 ### Requirement: DeepSeekAIChatProvider 继承 IAIChatProvider 接口
 
+#### Scenario: 编译时验证继承关系
+- **WHEN** 编译 `DeepSeekAIChatProvider`
+- **THEN** `static_assert(std::is_base_of<IAIChatProvider, DeepSeekAIChatProvider>::value)` 通过
+
 #### Scenario: Provider 名称返回 "deepseek"
 - **WHEN** 调用 `DeepSeekAIChatProvider::GetProviderName()`
 - **THEN** 返回字符串 `"deepseek"`
@@ -45,4 +49,12 @@
 
 #### Scenario: 空 API Key 返回 nullptr
 - **WHEN** 调用 `Create(R"({"chat_provider":"deepseek","chat_api_key":""})")`
+- **THEN** 返回 `nullptr`
+
+#### Scenario: 不支持的 Provider 返回 nullptr
+- **WHEN** 调用 `Create(R"({"chat_provider":"unknown","chat_api_key":"test_key"})")`
+- **THEN** 返回 `nullptr`
+
+#### Scenario: 无效 JSON 返回 nullptr
+- **WHEN** 调用 `Create("invalid json")`
 - **THEN** 返回 `nullptr`
