@@ -11,15 +11,17 @@
 ```cpp
 struct TTSRequest {
     std::string text;
-    std::string voiceId;
-    float speed;
-    float pitch;
-    float volume;
+    std::string voice;     // 音色 ID（如 "mimo_default"）
+    std::string style;    // 风格标签（如 "开心"），为空则使用默认风格
+    float speed;          // 语速（0.5-2.0，默认 1.0）
+    float pitch;          // 音调（-500-500，默认 0）
+    float volume;         // 音量（0.0-1.0，默认 1.0）
 };
 
 struct TTSResponse {
-    std::vector<uint8_t> audioData;
-    std::string errorMsg;
+    std::vector<uint8_t> audioData;  // 音频数据（mp3/wav）
+    bool success;                     // 请求是否成功
+    std::string errorMsg;             // 错误信息（成功时为空）
 };
 
 using TTSCallback = std::function<void(const TTSResponse&)>;
@@ -65,14 +67,16 @@ public:
     std::string GetLastError() const override { return lastError_; }
     
     void RequestTTS(const TTSRequest& request, TTSCallback callback) override {
-        std::wstring wtext = StringUtil::Utf8ToWide(request.text);
+        std::wstring wtext = StringProcessor::Utf8ToWstring(request.text);
         
-        if (TTSManager::Inst()->SpeakWithSapi(wtext.c_str())) {
+        if (TTSManager::Inst()->SpeakWithSapi(wtext)) {
             TTSResponse response;
+            response.success = true;
             response.audioData = {};  // SAPI 直接播放，无需返回音频数据
             callback(response);
         } else {
             TTSResponse response;
+            response.success = false;
             response.errorMsg = "SAPI speak failed";
             callback(response);
         }
@@ -221,13 +225,14 @@ public:
     void Speak(const std::string& text) {
         TTSRequest request;
         request.text = text;
-        request.voiceId = "male-qn-qingse";
+        request.voice = "male-qn-qingse";
+        request.style = "";  // 空表示使用默认风格
         request.speed = 1.0f;
         request.pitch = 0.0f;
         request.volume = 1.0f;
         
         ttsProvider_->RequestTTS(request, [this](const TTSResponse& response) {
-            if (!response.errorMsg.empty()) {
+            if (!response.success) {
                 LOG_ERROR("TTS failed: %s", response.errorMsg.c_str());
                 return;
             }
@@ -246,41 +251,6 @@ public:
 | `MonsterOrderWilds/XiaomiTTSProvider.cpp` | Xiaomi TTS 实现 |
 | `MonsterOrderWilds/MiniMaxTTSProvider.cpp` | MiniMax TTS 实现 |
 
-## 优化建议：复用现有 MimoTTSClient
+## 实现说明
 
-**问题**：`MimoTTSClient` 已经实现了完整的 Xiaomi TTS API 调用逻辑。
-
-**建议**：让 `XiaomiTTSProvider` 内部复用 `MimoTTSClient` 的实现，而不是重新实现一遍。
-
-```cpp
-// XiaomiTTSProvider 优化方案
-class XiaomiTTSProvider : public ITTSProvider {
-private:
-    std::unique_ptr<MimoTTSClient> mimoClient_;  // 复用现有客户端
-    
-public:
-    XiaomiTTSProvider(const std::string& apiKey) {
-        mimoClient_ = std::make_unique<MimoTTSClient>();
-    }
-    
-    void RequestTTS(const TTSRequest& request, TTSCallback callback) override {
-        // 转换 TTSRequest 到 MimoTTSClient::TTSRequest
-        MimoTTSClient::TTSRequest req;
-        req.text = request.text;
-        req.voice = request.voiceId;
-        req.speed = request.speed;
-        // ... 其他字段映射
-        
-        mimoClient_->RequestTTS(req, [callback](const MimoTTSClient::TTSResponse& resp) {
-            // 转换响应并调用 callback
-            TTSResponse result;
-            result.success = resp.success;
-            result.audioData = resp.audioData;
-            result.errorMessage = resp.errorMessage;
-            callback(result);
-        });
-    }
-};
-```
-
-**注意**：此为可选优化，不影响功能正确性。如果 `MimoTTSClient` 的接口不满足需求，可以保持独立实现。
+**注意**：`MimoTTSClient` 与 `XiaomiTTSProvider` 是独立实现的，因为两者的接口定义不同（TTSRequest/TTSResponse 结构体不同）。如果需要复用 MimoTTSClient 的网络请求逻辑，需要进行接口转换。
