@@ -13,7 +13,7 @@ public:
     bool CallAPI(const std::string& prompt, std::string& outResponse) override;
 
 private:
-    bool MakeSyncHttpsRequest(
+    DWORD MakeSyncHttpsRequest(
         const std::string& host,
         int port,
         const std::string& path,

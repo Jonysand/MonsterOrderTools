@@ -5,6 +5,26 @@
 
 #pragma comment(lib, "winhttp.lib")
 
+namespace {
+    std::string GetWinHttpErrorString(DWORD errorCode) {
+        LPWSTR buffer = nullptr;
+        DWORD len = FormatMessageW(
+            FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_HMODULE | FORMAT_MESSAGE_IGNORE_INSERTS,
+            GetModuleHandleW(L"winhttp.dll"),
+            errorCode,
+            MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+            (LPWSTR)&buffer,
+            0,
+            nullptr);
+        if (len == 0 || buffer == nullptr) {
+            return "Unknown WinHTTP error (code: " + std::to_string(errorCode) + ")";
+        }
+        std::wstring wstr(buffer, len);
+        LocalFree(buffer);
+        return std::string(wstr.begin(), wstr.end());
+    }
+}
+
 MiniMaxAIChatProvider::MiniMaxAIChatProvider(const std::string& apiKey)
     : apiKey_(apiKey), available_(false) {}
 
@@ -15,24 +35,25 @@ bool MiniMaxAIChatProvider::IsAvailable() const { return available_; }
 std::string MiniMaxAIChatProvider::GetLastError() const { return lastError_; }
 
 bool MiniMaxAIChatProvider::CallAPI(const std::string& prompt, std::string& outResponse) {
-    nlohmann::json j;
-    j["model"] = "M2-her";
-    j["messages"] = nlohmann::json::array();
-    j["messages"].push_back({{"role", "user"}, {"content", prompt}});
-    std::string body = j.dump();
+    nlohmann::json requestBody;
+    requestBody["model"] = "M2-her";
+    requestBody["messages"] = nlohmann::json::array();
+    requestBody["messages"].push_back({{"role", "user"}, {"content", prompt}});
+    std::string body = requestBody.dump();
 
     std::string headersStr =
         "Content-Type: application/json\r\n"
         "Authorization: Bearer " + apiKey_ + "\r\n";
 
-    if (!MakeSyncHttpsRequest(
+    DWORD httpError = MakeSyncHttpsRequest(
         "api.minimaxi.com",
         443,
         "/v1/text/chatcompletion_v2",
         headersStr,
         body,
-        outResponse)) {
-        lastError_ = "HTTP request failed";
+        outResponse);
+    if (httpError != 0) {
+        lastError_ = "HTTP request failed: " + GetWinHttpErrorString(httpError);
         available_ = false;
         return false;
     }
@@ -50,7 +71,7 @@ bool MiniMaxAIChatProvider::CallAPI(const std::string& prompt, std::string& outR
     }
 }
 
-bool MiniMaxAIChatProvider::MakeSyncHttpsRequest(
+DWORD MiniMaxAIChatProvider::MakeSyncHttpsRequest(
     const std::string& host,
     int port,
     const std::string& path,
@@ -65,7 +86,7 @@ bool MiniMaxAIChatProvider::MakeSyncHttpsRequest(
         WINHTTP_NO_PROXY_NAME,
         WINHTTP_NO_PROXY_BYPASS,
         0);
-    if (!hSession) return false;
+    if (!hSession) return ::GetLastError();
 
     HINTERNET hConnect = WinHttpConnect(
         hSession,
@@ -73,8 +94,9 @@ bool MiniMaxAIChatProvider::MakeSyncHttpsRequest(
         (INTERNET_PORT)port,
         0);
     if (!hConnect) {
+        DWORD err = ::GetLastError();
         WinHttpCloseHandle(hSession);
-        return false;
+        return err;
     }
 
     HINTERNET hRequest = WinHttpOpenRequest(
@@ -86,9 +108,10 @@ bool MiniMaxAIChatProvider::MakeSyncHttpsRequest(
         WINHTTP_DEFAULT_ACCEPT_TYPES,
         WINHTTP_FLAG_SECURE);
     if (!hRequest) {
+        DWORD err = ::GetLastError();
         WinHttpCloseHandle(hConnect);
         WinHttpCloseHandle(hSession);
-        return false;
+        return err;
     }
 
     std::wstring wHeaders(headers.begin(), headers.end());
@@ -102,18 +125,20 @@ bool MiniMaxAIChatProvider::MakeSyncHttpsRequest(
         0);
 
     if (!bResults) {
+        DWORD err = ::GetLastError();
         WinHttpCloseHandle(hRequest);
         WinHttpCloseHandle(hConnect);
         WinHttpCloseHandle(hSession);
-        return false;
+        return err;
     }
 
     bResults = WinHttpReceiveResponse(hRequest, nullptr);
     if (!bResults) {
+        DWORD err = ::GetLastError();
         WinHttpCloseHandle(hRequest);
         WinHttpCloseHandle(hConnect);
         WinHttpCloseHandle(hSession);
-        return false;
+        return err;
     }
 
     DWORD dwSize = 0;
@@ -136,5 +161,5 @@ bool MiniMaxAIChatProvider::MakeSyncHttpsRequest(
     WinHttpCloseHandle(hSession);
 
     outResponse = responseData;
-    return true;
+    return 0;
 }
