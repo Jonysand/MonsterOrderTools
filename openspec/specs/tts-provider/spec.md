@@ -254,3 +254,51 @@ public:
 ## 实现说明
 
 **注意**：`MimoTTSClient` 与 `XiaomiTTSProvider` 是独立实现的，因为两者的接口定义不同（TTSRequest/TTSResponse 结构体不同）。如果需要复用 MimoTTSClient 的网络请求逻辑，需要进行接口转换。
+
+## 网络实现机制
+
+所有 TTS Provider 使用 `Network::MakeHttpsRequestAsync` 发起异步 HTTP 请求，通过 `condition_variable` + `mutex` 同步等待完成后，再调用 `TTSCallback` 通知调用方。
+
+这种设计使得：
+1. 网络请求不会阻塞主线程
+2. 回调在请求完成后被调用，符合 `ITTSProvider` 接口约定
+3. 实现简洁，无需协程或复杂状态机
+
+### XiaomiTTSProvider 实现
+
+```cpp
+Network::MakeHttpsRequestAsync(
+    host, port, path, "POST", headers, body, useSSL,
+    [&](bool success, const std::string& response, DWORD error) {
+        // 存储结果，通知 condition_variable
+    });
+
+// 阻塞等待异步完成
+std::unique_lock<std::mutex> lock(mtx);
+cv.wait(lock, [&completed]() { return completed; });
+
+// 等待完成后调用 callback
+callback(resp);
+```
+
+### MiniMaxTTSProvider 实现
+
+MiniMaxTTSProvider 的网络实现与 XiaomiTTSProvider 相同，都使用 `Network::MakeHttpsRequestAsync` + `condition_variable` 模式。
+
+### MimoTTSClient 实现
+
+MimoTTSClient 使用带重试机制的异步请求：
+
+```cpp
+// 使用 shared_ptr 包装的 lambda 实现递归重试
+auto requestWithRetryPtr = std::make_shared<std::function<void(...)>>(
+    [requestWithRetryPtr, ...](...) {
+        if (!success && retryCount < maxRetries) {
+            retryCount++;
+            Network::MakeHttpsRequestAsync(..., *requestWithRetryPtr);
+        } else {
+            // 完成
+        }
+    });
+Network::MakeHttpsRequestAsync(..., *requestWithRetryPtr);
+```

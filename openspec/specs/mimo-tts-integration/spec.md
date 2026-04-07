@@ -42,7 +42,7 @@
 
 #### Scenario: 异步API调用
 - **WHEN** 系统需要合成语音
-- **THEN** 系统在后台协程中处理API请求，不阻塞主线程
+- **THEN** 系统通过 WinHTTP 异步 callback 处理API请求，不阻塞主线程
 
 #### Scenario: 请求队列管理
 - **WHEN** 多个语音合成请求同时到达

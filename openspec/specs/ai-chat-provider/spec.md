@@ -92,25 +92,40 @@ public:
             "Content-Type: application/json\r\n"
             "Authorization: Bearer " + apiKey_ + "\r\n";
         
-        // 使用 WinHTTP 同步请求（不依赖协程）
-        bool success = MakeSyncHttpsRequest(
-            "api.minimaxi.com",
+        std::mutex mtx;
+        std::condition_variable cv;
+        bool completed = false;
+        std::string response;
+        
+        Network::MakeHttpsRequestAsync(
+            utf8_to_wstring("api.minimaxi.com"),
             443,
-            "/v1/text/chatcompletion_v2",
+            utf8_to_wstring("/v1/text/chatcompletion_v2"),
+            TEXT("POST"),
             headersStr,
             body,
-            outResponse
+            true,
+            [&](bool success, const std::string& respBody, DWORD error) {
+                if (success) {
+                    response = respBody;
+                }
+                std::lock_guard<std::mutex> lock(mtx);
+                completed = true;
+                cv.notify_one();
+            }
         );
         
-        if (!success) {
+        std::unique_lock<std::mutex> lock(mtx);
+        cv.wait(lock, [&completed]() { return completed; });
+        
+        if (response.empty()) {
             lastError_ = "HTTP request failed";
             available_ = false;
             return false;
         }
         
-        // 解析 JSON 响应
         try {
-            json j = json::parse(outResponse);
+            json j = json::parse(response);
             outResponse = j["choices"][0]["message"]["content"].get<std::string>();
             available_ = true;
             return true;
@@ -122,22 +137,13 @@ public:
     }
     
 private:
-    // 同步 HTTPS 请求（封装 WinHTTP）
-    bool MakeSyncHttpsRequest(
-        const std::string& host,
-        int port,
-        const std::string& path,
-        const std::string& headers,
-        const std::string& body,
-        std::string& outResponse);
-    
     std::string apiKey_;
     std::string lastError_;
     bool available_;
 };
 ```
 
-**注意**: `MakeSyncHttpsRequest` 是新增的同步封装函数，内部使用 WinHTTP API 实现同步 HTTP 请求，不能使用 `Network::MakeHttpsRequest`（协程函数）。参考 `MimoTTSClient.cpp` 中的同步实现方式。
+**注意**: `CallAPI` 内部使用 `Network::MakeHttpsRequestAsync` 进行异步 HTTP 请求，通过 `condition_variable` 等待异步完成。接口语义保持同步，但内部实现为纯异步 callback 模式。
 
 ### Factory 实现
 
@@ -206,20 +212,4 @@ bool CaptainCheckInModule::GenerateAIAnswer(
 | 文件 | 职责 |
 |------|------|
 | `MonsterOrderWilds/AIChatProvider.h` | `IAIChatProvider` 接口和 `AIChatProviderFactory` |
-| `MonsterOrderWilds/MiniMaxAIChatProvider.cpp` | MiniMax API 实现（含同步 WinHTTP 封装） |
-
-## 同步请求实现要求
-
-`MakeSyncHttpsRequest` 必须使用 WinHTTP 同步 API 实现，不能使用 `Network::MakeHttpsRequest`（协程函数）。
-
-参考实现方式（参考 `MimoTTSClient.cpp`）：
-```cpp
-bool MiniMaxAIChatProvider::MakeSyncHttpsRequest(
-    const std::string& host, int port, const std::string& path,
-    const std::string& headers, const std::string& body,
-    std::string& outResponse) {
-    // 使用 WinHttpOpen, WinHttpConnect, WinHttpOpenRequest, WinHttpSendRequest, WinHttpReceiveResponse
-    // 实现同步 HTTP POST 请求
-    // 返回响应 body 到 outResponse
-}
-```
+| `MonsterOrderWilds/MiniMaxAIChatProvider.cpp` | MiniMax API 实现（使用 `Network::MakeHttpsRequestAsync`） |

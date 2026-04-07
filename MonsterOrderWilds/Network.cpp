@@ -2,6 +2,9 @@
 #include "BliveManager.h"
 #include "CredentialsManager.h"
 #include "WriteLog.h"
+#include <mutex>
+#include <thread>
+#include <condition_variable>
 
 // Protoco Utils
 namespace ProtoUtils
@@ -145,10 +148,101 @@ namespace ProtoUtils
     }
 }
 
+namespace Network
+{
+    namespace HttpsAsyncUtils {
+        struct HttpsAsyncContext {
+            HINTERNET hConnect = nullptr;
+            HINTERNET hRequest = nullptr;
+            std::string response;
+            DWORD error = 0;
+            Network::HttpsAsyncCallback callback;
+            bool completed = false;
+            std::mutex mtx;
+            std::atomic<bool> cleanupDone{false};
+        };
 
-namespace Network {
-    // MakeHttpsRequest
-    NetworkCoroutine MakeHttpsRequest(
+        void CALLBACK HttpsStatusCallback(
+            HINTERNET hInternet,
+            DWORD_PTR dwContext,
+            DWORD internetStatus,
+            LPVOID statusInfo,
+            DWORD statusInfoLength
+        ) {
+            auto* ctx = reinterpret_cast<HttpsAsyncContext*>(dwContext);
+            if (!ctx) return;
+            switch (internetStatus) {
+            case WINHTTP_CALLBACK_STATUS_REQUEST_ERROR:
+                {
+                    std::lock_guard<std::mutex> lock(ctx->mtx);
+                    if (statusInfoLength >= sizeof(WINHTTP_ASYNC_RESULT)) {
+                        ctx->error = ((WINHTTP_ASYNC_RESULT*)statusInfo)->dwError;
+                    } else {
+                        ctx->error = GetLastError();
+                    }
+                    ctx->completed = true;
+                }
+                std::thread([ctx]() {
+                    if (ctx->cleanupDone.exchange(true)) return;
+                    std::lock_guard<std::mutex> lock(ctx->mtx);
+                    if (ctx->callback) {
+                        try {
+                            ctx->callback(false, ctx->response, ctx->error);
+                        } catch (...) {
+                        }
+                    }
+                    if (ctx->hRequest) WinHttpCloseHandle(ctx->hRequest);
+                    if (ctx->hConnect) WinHttpCloseHandle(ctx->hConnect);
+                    delete ctx;
+                }).detach();
+                break;
+            case WINHTTP_CALLBACK_STATUS_RESPONSE_RECEIVED:
+                {
+                    std::lock_guard<std::mutex> lock(ctx->mtx);
+                    ctx->completed = true;
+                }
+                break;
+            default:
+                break;
+            }
+        }
+
+        DWORD ReadResponseData(HttpsAsyncContext* ctx) {
+            DWORD totalBytesRead = 0;
+            while (true) {
+                DWORD bytesAvailable = 0;
+                if (!WinHttpQueryDataAvailable(ctx->hRequest, &bytesAvailable) || bytesAvailable == 0)
+                    break;
+                std::vector<char> buffer(bytesAvailable);
+                DWORD bytesRead = 0;
+                if (!WinHttpReadData(ctx->hRequest, buffer.data(), bytesAvailable, &bytesRead)) {
+                    ctx->error = GetLastError();
+                    return ctx->error;
+                }
+                if (bytesRead > 0)
+                    ctx->response.append(buffer.data(), bytesRead);
+                if (bytesRead < bytesAvailable)
+                    break;
+            }
+            return 0;
+        }
+
+        HINTERNET GetSharedSession() {
+            static HINTERNET hSession = nullptr;
+            static std::once_flag flag;
+            std::call_once(flag, []() {
+                hSession = WinHttpOpen(HTTP_REQUEST_USER_AGENT, WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, WINHTTP_FLAG_ASYNC);
+                if (hSession) {
+                    WinHttpSetTimeouts(hSession, 5000, 5000, 5000, 5000);
+                }
+            });
+            return hSession;
+        }
+    }
+
+    void StartWebSocketReceive(HINTERNET hWebSocket, Network::WebsocketMessageCallback onMessage);
+
+    void MakeHttpsRequestAsync(
         const TString& host,
         const INTERNET_PORT& port,
         const TString& path,
@@ -156,68 +250,272 @@ namespace Network {
         const std::string& headers,
         const std::string& body,
         const bool ssl,
-        HTTPRequstCallback onResponse
+        Network::HttpsAsyncCallback onComplete
     ) {
-        HINTERNET hSession = WinHttpOpen(HTTP_REQUEST_USER_AGENT, WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
-        if (!hSession)
-        {
-            LOG_ERROR(TEXT("InternetOpen failed: %d"), GetLastError());
-            if (onResponse) onResponse("");
-            throw std::runtime_error("InternetOpen failed: " + std::to_string(GetLastError()));
+        auto* ctx = new HttpsAsyncUtils::HttpsAsyncContext();
+        ctx->callback = onComplete;
+
+        HINTERNET hSession = HttpsAsyncUtils::GetSharedSession();
+        if (!hSession) {
+            ctx->error = GetLastError();
+            std::thread([ctx]() {
+                if (ctx->callback) {
+                    try {
+                        ctx->callback(false, "", ctx->error);
+                    } catch (...) {
+                    }
+                }
+                delete ctx;
+            }).detach();
+            return;
         }
-        // set 5 seconds timeout
-        if (!WinHttpSetTimeouts(hSession, 5000, 5000, 5000, 5000)) {
-            LOG_ERROR(TEXT("WinHttpSetTimeouts failed: %d"), GetLastError());
-            if (onResponse) onResponse("");
-            WinHttpCloseHandle(hSession);
-            throw std::runtime_error("WinHttpSetTimeouts failed: " + std::to_string(GetLastError()));
-        }
+
         INTERNET_PORT realPort = port == 0 ? (ssl ? INTERNET_DEFAULT_HTTPS_PORT : INTERNET_DEFAULT_PORT) : port;
-        HINTERNET hConnect = WinHttpConnect(hSession, host.c_str(), realPort, 0);
-        if (!hConnect)
-        {
-            WinHttpCloseHandle(hSession);
-            LOG_ERROR(TEXT("InternetConnect failed: %s"), GetLastErrorAsTString().c_str());
-            if (onResponse) onResponse("");
-            throw std::runtime_error("InternetConnect failed: " + std::to_string(GetLastError()));
+        ctx->hConnect = WinHttpConnect(hSession, host.c_str(), realPort, 0);
+        if (!ctx->hConnect) {
+            ctx->error = GetLastError();
+            std::thread([ctx]() {
+                if (ctx->callback) {
+                    try {
+                        ctx->callback(false, "", ctx->error);
+                    } catch (...) {
+                    }
+                }
+                delete ctx;
+            }).detach();
+            return;
         }
 
         LPCTSTR szAccept[] = { TEXT("application/json"), NULL };
         DWORD FLAG = ssl ? WINHTTP_FLAG_SECURE : 0;
-        HINTERNET hRequest = WinHttpOpenRequest(hConnect, method.c_str(), path.c_str(), NULL, WINHTTP_NO_REFERER, szAccept, FLAG);
-        if (!hRequest)
-        {
-            WinHttpCloseHandle(hConnect);
-            WinHttpCloseHandle(hSession);
-            LOG_ERROR(TEXT("HttpOpenRequest failed: %s"), GetLastErrorAsTString().c_str());
-            if (onResponse) onResponse("");
-            throw std::runtime_error("HttpOpenRequest failed: " + std::to_string(GetLastError()));
+        ctx->hRequest = WinHttpOpenRequest(ctx->hConnect, method.c_str(), path.c_str(), NULL, WINHTTP_NO_REFERER, szAccept, FLAG);
+        if (!ctx->hRequest) {
+            ctx->error = GetLastError();
+            std::thread([ctx]() {
+                if (ctx->callback) {
+                    try {
+                        ctx->callback(false, "", ctx->error);
+                    } catch (...) {
+                    }
+                }
+                WinHttpCloseHandle(ctx->hConnect);
+                delete ctx;
+            }).detach();
+            return;
         }
 
-        if (!headers.empty())
-        {
-            TString tcharHeaders = ProtoUtils::ConvertToTCHAR(headers.c_str());
-            if (!WinHttpAddRequestHeaders(hRequest, tcharHeaders.c_str(), (DWORD)tcharHeaders.size(), WINHTTP_ADDREQ_FLAG_ADD | WINHTTP_ADDREQ_FLAG_REPLACE))
+        WinHttpSetStatusCallback(ctx->hRequest, HttpsAsyncUtils::HttpsStatusCallback, WINHTTP_CALLBACK_FLAG_ALL_NOTIFICATIONS, 0);
+        WinHttpSetOption(ctx->hRequest, WINHTTP_OPTION_CONTEXT_VALUE, &ctx, sizeof(ctx));
+
+        std::thread([ctx, headers, body]() {
+            if (!headers.empty()) {
+                TString tcharHeaders = ProtoUtils::ConvertToTCHAR(headers.c_str());
+                WinHttpAddRequestHeaders(ctx->hRequest, tcharHeaders.c_str(), (DWORD)tcharHeaders.size(), WINHTTP_ADDREQ_FLAG_ADD | WINHTTP_ADDREQ_FLAG_REPLACE);
+            }
+
+            BOOL sendResult = WinHttpSendRequest(
+                ctx->hRequest,
+                WINHTTP_NO_ADDITIONAL_HEADERS, 0,
+                body.empty() ? WINHTTP_NO_REQUEST_DATA : (LPVOID)body.data(),
+                (DWORD)body.size(),
+                (DWORD)body.size(),
+                reinterpret_cast<DWORD_PTR>(ctx)
+            );
+
+            if (!sendResult) {
+                ctx->error = GetLastError();
+                ctx->completed = true;
+            } else {
+                BOOL receiveResult = WinHttpReceiveResponse(ctx->hRequest, NULL);
+                if (!receiveResult) {
+                    ctx->error = GetLastError();
+                    ctx->completed = true;
+                } else {
+                    ctx->error = HttpsAsyncUtils::ReadResponseData(ctx);
+                    ctx->completed = true;
+                }
+            }
+
             {
+                if (ctx->cleanupDone.exchange(true)) return;
+                std::lock_guard<std::mutex> lock(ctx->mtx);
+                if (ctx->callback) {
+                    try {
+                        ctx->callback(ctx->error == 0, ctx->response, ctx->error);
+                    } catch (...) {
+                    }
+                }
+                if (ctx->hRequest) WinHttpCloseHandle(ctx->hRequest);
+                if (ctx->hConnect) WinHttpCloseHandle(ctx->hConnect);
+                delete ctx;
+            }
+        }).detach();
+    }
+
+    void StartWebSocketReceive(HINTERNET hWebSocket, Network::WebsocketMessageCallback onMessage);
+
+    void MakeWebSocketConnectionAsync(
+        const std::vector<std::string> serverAddresses,
+        const std::vector<uint8_t>& authBody,
+        Network::WebsocketMessageCallback onMessage,
+        Network::WebSocketAsyncCallback onConnect
+    ) {
+        std::thread([serverAddresses, authBody, onMessage, onConnect]() {
+            HINTERNET hSession = nullptr, hConnect = nullptr, hRequest = nullptr, hWebSocket = nullptr;
+
+            for (const auto& serverAddress : serverAddresses) {
+                URL_COMPONENTS urlComponents = { 0 };
+                urlComponents.dwStructSize = sizeof(URL_COMPONENTS);
+                WCHAR hostName[256] = { 0 };
+                WCHAR urlPath[256] = { 0 };
+                WCHAR scheme[16] = { 0 };
+                urlComponents.lpszHostName = hostName;
+                urlComponents.dwHostNameLength = ARRAYSIZE(hostName);
+                urlComponents.lpszUrlPath = urlPath;
+                urlComponents.dwUrlPathLength = ARRAYSIZE(urlPath);
+                urlComponents.lpszScheme = scheme;
+                urlComponents.dwSchemeLength = ARRAYSIZE(scheme);
+                std::wstring wideServerAddress = ProtoUtils::ConvertToTCHAR(serverAddress.c_str());
+                if (wideServerAddress.find(L"wss://") == 0)
+                    wideServerAddress.replace(0, 6, L"https://");
+                if (!WinHttpCrackUrl(wideServerAddress.c_str(), 0, ICU_DECODE, &urlComponents)) {
+                    LOG_ERROR(TEXT("Failed to parse URL: %s, Error: %d"), ProtoUtils::ConvertToTCHAR(serverAddress.c_str()).c_str(), GetLastError());
+                    continue;
+                }
+
+                hSession = WinHttpOpen(WEBSOCKET_USER_AGENT, WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+                if (!hSession) {
+                    LOG_ERROR(TEXT("WinHttpOpen failed: %d"), GetLastError());
+                    continue;
+                }
+
+                hConnect = WinHttpConnect(hSession, urlComponents.lpszHostName, urlComponents.nPort, 0);
+                if (!hConnect) {
+                    LOG_ERROR(TEXT("WinHttpConnect failed: %d"), GetLastError());
+                    WinHttpCloseHandle(hSession);
+                    continue;
+                }
+
+                hRequest = WinHttpOpenRequest(hConnect, L"GET", urlComponents.lpszUrlPath, NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
+                if (!hRequest) {
+                    LOG_ERROR(TEXT("WinHttpOpenRequest failed: %d"), GetLastError());
+                    WinHttpCloseHandle(hConnect);
+                    WinHttpCloseHandle(hSession);
+                    continue;
+                }
+
+                if (!WinHttpSetOption(hRequest, WINHTTP_OPTION_UPGRADE_TO_WEB_SOCKET, NULL, 0)) {
+                    LOG_ERROR(TEXT("WinHttpSetOption failed: %d"), GetLastError());
+                    WinHttpCloseHandle(hConnect);
+                    WinHttpCloseHandle(hSession);
+                    continue;
+                }
+
+                if (!WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0, 0, 0)) {
+                    LOG_ERROR(TEXT("WinHttpSendRequest failed: %d"), GetLastError());
+                    WinHttpCloseHandle(hRequest);
+                    WinHttpCloseHandle(hConnect);
+                    WinHttpCloseHandle(hSession);
+                    continue;
+                }
+
+                if (!WinHttpReceiveResponse(hRequest, NULL)) {
+                    LOG_ERROR(TEXT("WinHttpReceiveResponse failed: %d"), GetLastError());
+                    WinHttpCloseHandle(hRequest);
+                    WinHttpCloseHandle(hConnect);
+                    WinHttpCloseHandle(hSession);
+                    continue;
+                }
+
+                DWORD statusCode = 0;
+                DWORD statusCodeSize = sizeof(statusCode);
+                if (!WinHttpQueryHeaders(hRequest, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, WINHTTP_HEADER_NAME_BY_INDEX, &statusCode, &statusCodeSize, WINHTTP_NO_HEADER_INDEX)) {
+                    LOG_ERROR(TEXT("Failed to query status code: %d"), GetLastError());
+                    WinHttpCloseHandle(hRequest);
+                    WinHttpCloseHandle(hConnect);
+                    WinHttpCloseHandle(hSession);
+                    continue;
+                }
+                if (statusCode != 101) {
+                    LOG_ERROR(TEXT("WebSocket handshake failed with status code: %s, %d"), ProtoUtils::ConvertToTCHAR(serverAddress.c_str()).c_str(), statusCode);
+                    WinHttpCloseHandle(hRequest);
+                    WinHttpCloseHandle(hConnect);
+                    WinHttpCloseHandle(hSession);
+                    continue;
+                }
+
+                hWebSocket = WinHttpWebSocketCompleteUpgrade(hRequest, 0);
+                if (!hWebSocket) {
+                    LOG_ERROR(TEXT("WinHttpWebSocketCompleteUpgrade failed: %d"), GetLastError());
+                    WinHttpCloseHandle(hRequest);
+                    WinHttpCloseHandle(hConnect);
+                    WinHttpCloseHandle(hSession);
+                    continue;
+                }
+
                 WinHttpCloseHandle(hRequest);
                 WinHttpCloseHandle(hConnect);
                 WinHttpCloseHandle(hSession);
-                LOG_ERROR(TEXT("HttpAddRequestHeaders failed: %s"), GetLastErrorAsTString().c_str());
-                if (onResponse) onResponse("");
-                throw std::runtime_error("HttpAddRequestHeaders failed: " + std::to_string(GetLastError()));
+
+                if (WinHttpWebSocketSend(hWebSocket, WINHTTP_WEB_SOCKET_BINARY_MESSAGE_BUFFER_TYPE, (void*)authBody.data(), (DWORD)authBody.size()) != ERROR_SUCCESS) {
+                    LOG_ERROR(TEXT("WinHttpWebSocketSend auth failed: %d"), GetLastError());
+                    WinHttpCloseHandle(hWebSocket);
+                    if (onConnect) {
+                        try {
+                            onConnect(false, nullptr, GetLastError());
+                        } catch (...) {
+                        }
+                    }
+                    return;
+                }
+
+                StartWebSocketReceive(hWebSocket, onMessage);
+                if (onConnect) {
+                    try {
+                        onConnect(true, hWebSocket, 0);
+                    } catch (...) {
+                    }
+                }
+                return;
             }
-        }
-        
-        // Pass body directly (already UTF-8 encoded)
-        co_await HttpsCorouineUtils::SendRequestAsync(hRequest, body);
-        std::string response = co_await HttpsCorouineUtils::ReadResponseAsync(hRequest);
-        if (onResponse) onResponse(response);
-        WinHttpCloseHandle(hRequest);
-        WinHttpCloseHandle(hConnect);
-        WinHttpCloseHandle(hSession);
+
+            LOG_ERROR(TEXT("Failed to establish WebSocket connection to any server."));
+            if (onConnect) {
+                try {
+                    onConnect(false, nullptr, ERROR_CONNECTION_REFUSED);
+                } catch (...) {
+                }
+            }
+        }).detach();
     }
 
-    void StartWebSocketReceive(HINTERNET hWebSocket, WebsocketMessageCallback onMessage) {
+    void SendToWebsocketAsync(
+        HINTERNET hWebsocket,
+        const std::vector<uint8_t>& data,
+        std::function<void(bool success, DWORD error)> onComplete
+    ) {
+        std::thread([hWebsocket, data, onComplete]() {
+            DWORD result = WinHttpWebSocketSend(hWebsocket, WINHTTP_WEB_SOCKET_BINARY_MESSAGE_BUFFER_TYPE, (void*)data.data(), (DWORD)data.size());
+            if (result != ERROR_SUCCESS) {
+                LOG_ERROR(TEXT("WinHttpWebSocketSend failed: %d"), result);
+                if (onComplete) {
+                    try {
+                        onComplete(false, result);
+                    } catch (...) {
+                    }
+                }
+                return;
+            }
+            if (onComplete) {
+                try {
+                    onComplete(true, 0);
+                } catch (...) {
+                }
+            }
+        }).detach();
+    }
+
+    void StartWebSocketReceive(HINTERNET hWebSocket, Network::WebsocketMessageCallback onMessage) {
         std::thread([hWebSocket, onMessage]() {
             while (BliveManager::Inst()->IsConnected()) {
                 char headerBuffer[16];
@@ -240,9 +538,11 @@ namespace Network {
                 onePacket.body.resize(bodyLength);
                 result = WinHttpWebSocketReceive(hWebSocket, onePacket.body.data(), bodyLength, &bytesTransferred, &bufferType);
                 if (result == ERROR_SUCCESS) {
-                    if (bytesTransferred > 0 && onMessage) {
-                        // Pass the received message to the callback
-                        onMessage(hWebSocket, std::move(onePacket));
+                    if (bytesTransferred == bodyLength && onMessage) {
+                        try {
+                            onMessage(hWebSocket, std::move(onePacket));
+                        } catch (...) {
+                        }
                     }
                 }
                 else if (result == ERROR_WINHTTP_OPERATION_CANCELLED) {
@@ -253,200 +553,8 @@ namespace Network {
                     LOG_ERROR(TEXT("WinHttpWebSocketReceive failed: %d"), result);
                     break;
                 }
-                // Optional: Add a small delay to prevent busy-waiting
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
             }
         }).detach();
-    }
-
-    NetworkCoroutine MakeWebSocketConnection(
-        const std::vector<std::string> serverAddresses,
-        const std::vector<uint8_t>& authBody,
-        WebsocketMessageCallback onMessage
-    ) {
-        HINTERNET hSession = nullptr, hConnect = nullptr, hRequest = nullptr, hWebSocket = nullptr;
-
-        for (const auto& serverAddress : serverAddresses) {
-            // WinHttpCrackUrl
-            URL_COMPONENTS urlComponents = { 0 };
-            urlComponents.dwStructSize = sizeof(URL_COMPONENTS);
-            WCHAR hostName[256] = { 0 };
-            WCHAR urlPath[256] = { 0 };
-            WCHAR scheme[16] = { 0 };
-            urlComponents.lpszHostName = hostName;
-            urlComponents.dwHostNameLength = ARRAYSIZE(hostName);
-            urlComponents.lpszUrlPath = urlPath;
-            urlComponents.dwUrlPathLength = ARRAYSIZE(urlPath);
-            urlComponents.lpszScheme = scheme;
-            urlComponents.dwSchemeLength = ARRAYSIZE(scheme);
-            std::wstring wideServerAddress = ProtoUtils::ConvertToTCHAR(serverAddress.c_str());
-            if (wideServerAddress.find(L"wss://") == 0) {
-                wideServerAddress.replace(0, 6, L"https://");
-            }
-            if (!WinHttpCrackUrl(wideServerAddress.c_str(), 0, ICU_DECODE, &urlComponents)) {
-                LOG_ERROR(TEXT("Failed to parse URL: %s, Error: %d"), ProtoUtils::ConvertToTCHAR(serverAddress.c_str()).c_str(), GetLastError());
-                continue;
-            }
-
-            // Open a WinHTTP session
-            hSession = WinHttpOpen(WEBSOCKET_USER_AGENT, WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
-            if (!hSession) {
-                LOG_ERROR(TEXT("WinHttpOpen failed: %d"), GetLastError());
-                continue;
-            }
-
-            // Connect to the server
-            hConnect = WinHttpConnect(hSession, urlComponents.lpszHostName, urlComponents.nPort, 0);
-            if (!hConnect) {
-                LOG_ERROR(TEXT("WinHttpConnect failed: %d"), GetLastError());
-                WinHttpCloseHandle(hSession);
-                continue;
-            }
-
-            // Create an HTTP request handle
-            hRequest = WinHttpOpenRequest(hConnect, L"GET", urlComponents.lpszUrlPath, NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
-            if (!hRequest) {
-                LOG_ERROR(TEXT("WinHttpOpenRequest failed: %d"), GetLastError());
-                WinHttpCloseHandle(hConnect);
-                WinHttpCloseHandle(hSession);
-                continue;
-            }
-
-            if (!WinHttpSetOption(hRequest, WINHTTP_OPTION_UPGRADE_TO_WEB_SOCKET, NULL, 0)) {
-                LOG_ERROR(TEXT("WinHttpSetOption failed: %d"), GetLastError());
-                WinHttpCloseHandle(hConnect);
-                WinHttpCloseHandle(hSession);
-                continue;
-            }
-
-            // Send Handshake
-            if (!WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0, WINHTTP_NO_REQUEST_DATA, 0, 0, 0)) {
-                LOG_ERROR(TEXT("WinHttpSendRequest failed: %d"), GetLastError());
-                WinHttpCloseHandle(hRequest);
-                WinHttpCloseHandle(hConnect);
-                WinHttpCloseHandle(hSession);
-                continue;
-            }
-
-            // Receive Handshake response
-            if (!WinHttpReceiveResponse(hRequest, NULL)) {
-                LOG_ERROR(TEXT("WinHttpReceiveResponse failed: %d"), GetLastError());
-                WinHttpCloseHandle(hRequest);
-                WinHttpCloseHandle(hConnect);
-                WinHttpCloseHandle(hSession);
-                continue;
-            }
-
-            // Query the status code
-            DWORD statusCode = 0;
-            DWORD statusCodeSize = sizeof(statusCode);
-            if (!WinHttpQueryHeaders(hRequest, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, WINHTTP_HEADER_NAME_BY_INDEX, &statusCode, &statusCodeSize, WINHTTP_NO_HEADER_INDEX)) {
-                LOG_ERROR(TEXT("Failed to query status code: %d"), GetLastError());
-                WinHttpCloseHandle(hRequest);
-                WinHttpCloseHandle(hConnect);
-                WinHttpCloseHandle(hSession);
-                continue;
-            }
-            // Check if the status code indicates success
-            if (statusCode != 101) { // 101 is the expected status code for WebSocket upgrade
-                LOG_ERROR(TEXT("WebSocket handshake failed with status code: %s, %d"), ProtoUtils::ConvertToTCHAR(serverAddress.c_str()).c_str(), statusCode);
-                WinHttpCloseHandle(hRequest);
-                WinHttpCloseHandle(hConnect);
-                WinHttpCloseHandle(hSession);
-                continue;
-            }
-
-            // Upgrade the connection to a WebSocket
-            hWebSocket = WinHttpWebSocketCompleteUpgrade(hRequest, 0);
-            if (!hWebSocket) {
-                LOG_ERROR(TEXT("WinHttpWebSocketCompleteUpgrade failed: %d"), GetLastError());
-                WinHttpCloseHandle(hRequest);
-                WinHttpCloseHandle(hConnect);
-                WinHttpCloseHandle(hSession);
-                continue;
-            }
-
-            // Send the authentication body
-            if (WinHttpWebSocketSend(hWebSocket, WINHTTP_WEB_SOCKET_BINARY_MESSAGE_BUFFER_TYPE, (void*)authBody.data(), (DWORD)authBody.size()) != ERROR_SUCCESS) {
-                LOG_ERROR(TEXT("WinHttpWebSocketSend auth failed: %d"), GetLastError());
-                WinHttpCloseHandle(hWebSocket);
-                WinHttpCloseHandle(hConnect);
-                WinHttpCloseHandle(hSession);
-                continue;
-            }
-
-            // Read WebSocket messages
-            StartWebSocketReceive(hWebSocket, onMessage);
-            while (true) {
-                co_await std::suspend_always();
-            }
-
-            // Clean up
-            WinHttpCloseHandle(hWebSocket);
-            WinHttpCloseHandle(hRequest);
-            WinHttpCloseHandle(hConnect);
-            WinHttpCloseHandle(hSession);
-            co_return;
-        }
-
-        LOG_ERROR(TEXT("Failed to establish WebSocket connection to any server."));
-        co_return;
-    }
-
-    NetworkCoroutine SendToWebsocket(
-        HINTERNET hWebsocket,
-        const std::vector<uint8_t>& data
-    ) {
-        DWORD result = WinHttpWebSocketSend(hWebsocket, WINHTTP_WEB_SOCKET_BINARY_MESSAGE_BUFFER_TYPE, (void*)data.data(), (DWORD)data.size());
-        if (result != ERROR_SUCCESS) {
-            LOG_ERROR(TEXT("WinHttpWebSocketSend failed: %d"), result);
-            co_return;
-        }
-        co_return;
-    }
-
-    // private utils ------------------------------------
-    namespace HttpsCorouineUtils
-    {
-        // Async send request - body is already UTF-8 encoded
-        HttpsAwaiter SendRequestAsync(HINTERNET hRequest, const std::string& body) {
-            HttpsAwaiter awaiter{ hRequest };
-            if (!WinHttpSendRequest(
-                hRequest,
-                WINHTTP_NO_ADDITIONAL_HEADERS, 0,
-                body.empty() ? WINHTTP_NO_REQUEST_DATA : (LPVOID)body.data(),
-                (DWORD)body.size(),
-                (DWORD)body.size(),
-                0)) {
-                LOG_ERROR(TEXT("HttpSendRequest failed: %s"), GetLastErrorAsTString().c_str());
-            }
-            return awaiter;
-        }
-
-        // 异步读取响应
-        HttpsAwaiter ReadResponseAsync(HINTERNET hRequest) {
-            HttpsAwaiter awaiter{ hRequest };
-
-            DWORD bytesAvailable = 0;
-            if (!WinHttpReceiveResponse(hRequest, NULL)) {
-                LOG_ERROR(TEXT("ReadResponseAsync WinHttpReceiveResponse failed: %d"), GetLastError());
-                return awaiter;
-            }
-            do {
-                if (!WinHttpQueryDataAvailable(hRequest, &bytesAvailable)) {
-                    LOG_ERROR(TEXT("WinHttpQueryDataAvailable failed: %d"), GetLastError());
-                    break;
-                }
-                if (bytesAvailable > 0) {
-                    std::vector<char> buffer(bytesAvailable);
-                    DWORD bytesRead = 0;
-                    if (!WinHttpReadData(hRequest, buffer.data(), bytesAvailable, &bytesRead)) {
-                        LOG_ERROR(TEXT("WinHttpReadData failed: %d"), GetLastError());
-                    }
-                    awaiter.result.append(buffer.data(), bytesRead);
-                }
-            } while (bytesAvailable > 0);
-            return awaiter;
-        }
     }
 }

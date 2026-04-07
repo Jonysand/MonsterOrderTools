@@ -2,6 +2,8 @@
 #include "framework.h"
 #include "Network.h"
 #include "EventSystem.h"
+#include <mutex>
+#include <condition_variable>
 
 
 enum class ConnectionState {
@@ -63,7 +65,9 @@ public:
 	// Tick
     void Tick();
     // IsConnected
-    inline bool IsConnected() { return connectionState.load() == ConnectionState::Connected; };
+    inline bool IsConnected() { 
+        return !GetDestroyingFlag().load() && connectionState.load() == ConnectionState::Connected; 
+    };
     // Get connection state
     inline ConnectionState GetConnectionState() { return connectionState.load(); };
     inline DisconnectReason GetDisconnectReason() { return disconnectReason.load(); };
@@ -92,6 +96,22 @@ private:
     // 处理一般的弹幕、送礼等消息
     void HandleSmsReply(const std::string& msg);
 private:
+    // Async request wrapper for callback-based async operations
+    struct AsyncRequest {
+        enum Type { HTTP };
+        Type type;
+        Network::HttpsAsyncCallback httpCallback;
+        bool completed = false;
+        std::string response;
+        DWORD error = 0;
+
+        void Complete(bool success_, const std::string& response_, DWORD error_) {
+            if (success_) { response = response_; }
+            error = error_;
+            completed = true;
+        }
+    };
+
     // 直播身份码
     std::string idCode{ "" };
     // 本场次gameID
@@ -101,9 +121,11 @@ private:
     // auth体
 	std::string authBody;
     // 长链接
-    HINTERNET webSocket;
-    // 正在进行的http协程
-	std::list<Network::NetworkCoroutine> networkCoroutines;
+    HINTERNET webSocket = nullptr;
+    // 标记 BliveManager 是否正在销毁（用于防止 UAF）
+    std::atomic<bool> destroyed_{false};
+    // 正在进行的异步请求
+	std::list<std::shared_ptr<AsyncRequest>> networkRequests;
     // timer管理，延时触发
     struct delayTask
     {

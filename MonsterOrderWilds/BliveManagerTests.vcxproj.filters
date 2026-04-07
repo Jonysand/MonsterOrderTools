@@ -51,5 +51,8 @@
     <ClCompile Include="WriteLog.cpp">
       <Filter>UnitTests</Filter>
     </ClCompile>
+    <ClCompile Include="NetworkStub.cpp">
+      <Filter>UnitTests</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

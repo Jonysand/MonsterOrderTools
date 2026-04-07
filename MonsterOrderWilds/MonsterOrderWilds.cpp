@@ -28,7 +28,6 @@ UINT MonsterOrderWilds::HandleHwndMsg(HWND hWnd, UINT message, WPARAM wParam, LP
 	}
 	case WM_TIMER:
 		if (wParam == TIMER_ID)
-			//Tick coroutine
 			Tick();
 		break;
 	case WM_CREATE:

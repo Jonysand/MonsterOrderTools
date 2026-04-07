@@ -98,6 +98,7 @@
     <ClCompile Include="DeepSeekAIChatProvider.cpp" />
     <ClCompile Include="StringProcessor.cpp" />
     <ClCompile Include="WriteLog.cpp" />
+    <ClCompile Include="NetworkStub.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

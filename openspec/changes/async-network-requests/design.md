@@ -150,3 +150,63 @@ void Tick() {
 | Callback 生命周期 | 对象可能在 async 完成前销毁 | 使用 shared_ptr 管理状态 |
 | 错误处理分散 | 异步错误需要传递到外层 | 统一通过 `onComplete(false, "", error)` 传递 |
 | BliveManager 改造复杂度高 | 需要重构整个协程管理机制 | 分阶段实施，每阶段可运行验证 |
+
+## Implementation Notes
+
+### AsyncRequest 结构体
+
+实现与 Decision 3 设计一致（简化版）：
+- `enum Type { HTTP }`（WEBSOCKET_CONNECT/SEND 为死代码，已移除）
+- `httpCallback` 成员
+- `completed`, `response`, `error`, `websocket` 字段
+
+额外保留：
+- `Complete()` 方法：用于在异步操作完成时设置状态并标记 completed
+
+注意：`HttpsAsyncContext` 新增 `cleanupDone` 原子标志防止双重 delete。
+
+### HTTP 请求的 callback 模式
+
+HTTP 请求（Provider 的 CallAPI、BliveManager 的 Start/End/StartAppHeartBeat）：
+- Provider 内部使用 `condition_variable` 等待异步完成
+- BliveManager 的 HTTP 请求通过 `AsyncRequest` 管理，callback 在 Provider 内部调用 `request->Complete()`
+- `Tick()` 遍历 `networkRequests`，调用 type-specific callback，然后 erase completed 请求
+
+### WebSocket 特殊处理
+
+WebSocket 连接和发送：
+- `MakeWebSocketConnectionAsync` 是完全异步的（内部创建线程）
+- 连接成功后 `onConnect` callback 被立即调用
+- 当前实现中 WebSocket callback 不经过 `networkRequests` 管理
+- 这是因为 WebSocket 操作的异步特性与 HTTP 不同（连接建立后持续运行）
+
+### 与原始设计的差异
+
+| 方面 | 原始设计 | 实现 |
+|------|---------|------|
+| Tick() 驱动所有 callback | 是 | 仅 HTTP 请求通过 Tick() 处理 |
+| Provider 等待方式 | Tick() 驱动 | 内部 cv.wait |
+| WebSocket 管理 | networkRequests | 直接 callback |
+| Session 复用 | 未规划 | HTTP 请求复用共享 Session（提高性能） |
+| AsyncRequest Type 枚举 | HTTP + WEBSOCKET_CONNECT + WEBSOCKET_SEND | 仅 HTTP（后两者为死代码，已移除） |
+
+### 实现过程中发现并修复的 Bug
+
+| Bug | 严重性 | 描述 | 修复方案 |
+|-----|--------|------|---------|
+| ASYNC_RESULT 错误码提取错误 | Critical | `*(DWORD*)statusInfo` 应为 `((WINHTTP_ASYNC_RESULT*)statusInfo)->dwError`，且缺少长度检查 | 添加 `statusInfoLength >= sizeof(WINHTTP_ASYNC_RESULT)` 检查，使用 `->dwError` |
+| HttpsAsyncContext 双重 delete | Critical | `HttpsStatusCallback` 错误回调线程和 `MakeHttpsRequestAsync` 主线程可能同时 delete ctx | 添加 `cleanupDone` 原子标志，确保只有一个线程执行 delete |
+| WebSocket 句柄双重关闭 | Critical | `StartWebSocketReceive` 收到关闭帧后关闭句柄，但 `MakeWebSocketConnectionAsync` 仍传递已关闭句柄给调用者 | 移除 `StartWebSocketReceive` 中的 `WinHttpCloseHandle`，句柄所有权归调用者 |
+| callback 异常安全 | High | 所有 async callback 调用缺少异常处理，lambda 异常会导致 `std::terminate` | 在所有 callback 调用外添加 `try-catch (...)` |
+| WebSocket 消息体截断 | High | `WinHttpWebSocketReceive` 不保证一次返回完整 body，`bytesTransferred < bodyLength` 时仍处理不完整数据 | 添加 `bytesTransferred == bodyLength` 完整性检查 |
+| Use-After-Free (UAF) 风险 | Critical | `StartWebSocketReceive` 启动 detached 线程调用 `BliveManager::Inst()->IsConnected()`，当 `Destroy()` 被调用时 `__Instance` 被置为 `nullptr`，但 detached 线程可能仍在访问已销毁对象 | 新增 `GetDestroyingFlag()` 到单例宏，销毁时设置标志，`IsConnected()` 检查该标志防止 UAF |
+| EventSystem::Invoke 异常安全 | Medium | `Invoke` 遍历调用所有 handler 时，某 handler 异常会导致后续 handler 不被调用 | 在 handler 调用外添加 `try-catch (...)` |
+| TextToSpeech 状态机竞态 | Medium | `ProcessPlayingState` 访问 `req` 对象时缺少锁保护，与 HTTP 回调线程存在竞态 | 添加 `asyncMutex_` 锁保护 |
+
+### Session 复用实现
+
+`HttpsAsyncUtils::GetSharedSession()` 维护一个静态共享 Session：
+- 首次调用时创建 Session，设置 5 秒超时
+- 后续调用复用同一个 Session
+- Session 在进程结束时自动释放（静态对象）
+- 每次请求仍创建新的 Connect 和 Request，但复用 Session 可利用 WinHTTP 内部连接池

@@ -48,7 +48,6 @@ public:
     void RequestTTS(const TTSRequest& request, TTSCallback callback);
     bool IsAvailable() const;
     std::string GetLastError() const;
-    void CleanupCoroutines();
 
 private:
     void ExecuteWithRetry(const TTSRequest& request, TTSCallback callback, int maxRetries = 3);
@@ -56,7 +55,7 @@ private:
 public:
     std::string BuildRequestBody(const TTSRequest& request) const;
     std::string BuildRequestHeaders(const std::string& apiKey) const;
-    TTSResponse ParseResponse(const std::string& responseBody, int httpStatusCode) const;
+    static TTSResponse ParseResponse(const std::string& responseBody, int httpStatusCode);
 
     // API endpoint configuration
     static constexpr const char* API_ENDPOINT = "api.xiaomimimo.com";
@@ -64,5 +63,4 @@ public:
     static constexpr const char* API_PATH = "/v1/chat/completions";
 
     std::string lastError;
-    std::list<Network::NetworkCoroutine> activeCoroutines;
 };

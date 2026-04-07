@@ -2,9 +2,12 @@
 #include "ITTSProvider.h"
 #include "TTSProvider.h"
 #include "MimoTTSClient.h"
+#include "Network.h"
 #include <winhttp.h>
 #include <string>
 #include <algorithm>
+#include <condition_variable>
+#include <mutex>
 
 #pragma comment(lib, "winhttp.lib")
 
@@ -21,7 +24,31 @@ void XiaomiTTSProvider::RequestTTS(const TTSRequest& request, TTSCallback callba
     std::string headers = BuildRequestHeaders(apiKey_);
 
     std::string responseBody;
-    if (!MakeSyncHttpsRequest("api.xiaomimimo.com", 443, "/v1/chat/completions", headers, body, responseBody)) {
+    std::mutex mtx;
+    std::condition_variable cv;
+    bool completed = false;
+    DWORD httpError = 0;
+
+    Network::MakeHttpsRequestAsync(
+        TEXT("api.xiaomimimo.com"),
+        443,
+        TEXT("/v1/chat/completions"),
+        TEXT("POST"),
+        headers,
+        body,
+        true,
+        [&](bool success, const std::string& resp, DWORD error) {
+            std::lock_guard<std::mutex> lock(mtx);
+            responseBody = resp;
+            httpError = error;
+            completed = true;
+            cv.notify_one();
+        });
+
+    std::unique_lock<std::mutex> lock(mtx);
+    cv.wait(lock, [&completed]() { return completed; });
+
+    if (httpError != 0) {
         lastError_ = "HTTP request failed";
         available_ = false;
         TTSResponse resp;
@@ -94,54 +121,4 @@ std::vector<uint8_t> XiaomiTTSProvider::HexToBytes(const std::string& hex) const
         bytes.push_back(byte);
     }
     return bytes;
-}
-
-bool XiaomiTTSProvider::MakeSyncHttpsRequest(
-    const std::string& host, int port, const std::string& path,
-    const std::string& headers, const std::string& body,
-    std::string& outResponse) {
-    outResponse.clear();
-
-    HINTERNET hSession = WinHttpOpen(L"MonsterOrderWilds/1.0",
-        WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME,
-        WINHTTP_NO_PROXY_BYPASS, 0);
-    if (!hSession) return false;
-
-    HINTERNET hConnect = WinHttpConnect(hSession,
-        std::wstring(host.begin(), host.end()).c_str(),
-        (INTERNET_PORT)port, 0);
-    if (!hConnect) { WinHttpCloseHandle(hSession); return false; }
-
-    HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"POST",
-        std::wstring(path.begin(), path.end()).c_str(),
-        nullptr, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES,
-        WINHTTP_FLAG_SECURE);
-    if (!hRequest) { WinHttpCloseHandle(hConnect); WinHttpCloseHandle(hSession); return false; }
-
-    std::wstring wHeaders(headers.begin(), headers.end());
-    if (!WinHttpSendRequest(hRequest, wHeaders.c_str(), (DWORD)wHeaders.length(),
-        (LPVOID)body.c_str(), (DWORD)body.length(), (DWORD)body.length(), 0)) {
-        WinHttpCloseHandle(hRequest); WinHttpCloseHandle(hConnect); WinHttpCloseHandle(hSession); return false;
-    }
-
-    if (!WinHttpReceiveResponse(hRequest, nullptr)) {
-        WinHttpCloseHandle(hRequest); WinHttpCloseHandle(hConnect); WinHttpCloseHandle(hSession); return false;
-    }
-
-    std::string responseData;
-    DWORD dwSize = 0;
-    while (true) {
-        if (!WinHttpQueryDataAvailable(hRequest, &dwSize) || dwSize == 0) break;
-        std::vector<char> buffer(dwSize + 1);
-        DWORD dwRead = 0;
-        if (!WinHttpReadData(hRequest, buffer.data(), dwSize, &dwRead)) break;
-        buffer[dwRead] = '\0';
-        responseData.append(buffer.data(), dwRead);
-    }
-
-    WinHttpCloseHandle(hRequest);
-    WinHttpCloseHandle(hConnect);
-    WinHttpCloseHandle(hSession);
-    outResponse = responseData;
-    return true;
 }

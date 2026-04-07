@@ -1,7 +1,10 @@
 #include "framework.h"
 #include "MiniMaxAIChatProvider.h"
+#include "Network.h"
 #include <winhttp.h>
 #include <string>
+#include <condition_variable>
+#include <mutex>
 
 #pragma comment(lib, "winhttp.lib")
 
@@ -45,19 +48,38 @@ bool MiniMaxAIChatProvider::CallAPI(const std::string& prompt, std::string& outR
         "Content-Type: application/json\r\n"
         "Authorization: Bearer " + apiKey_ + "\r\n";
 
-    DWORD httpError = MakeSyncHttpsRequest(
-        "api.minimaxi.com",
+    std::string response;
+    DWORD httpError = 0;
+    std::mutex mtx;
+    std::condition_variable cv;
+    bool completed = false;
+
+    Network::MakeHttpsRequestAsync(
+        TEXT("api.minimaxi.com"),
         443,
-        "/v1/text/chatcompletion_v2",
+        TEXT("/v1/text/chatcompletion_v2"),
+        TEXT("POST"),
         headersStr,
         body,
-        outResponse);
+        true,
+        [&](bool success, const std::string& resp, DWORD error) {
+            std::lock_guard<std::mutex> lock(mtx);
+            response = resp;
+            httpError = error;
+            completed = true;
+            cv.notify_one();
+        });
+
+    std::unique_lock<std::mutex> lock(mtx);
+    cv.wait(lock, [&completed]() { return completed; });
+
     if (httpError != 0) {
         lastError_ = "HTTP request failed: " + GetWinHttpErrorString(httpError);
         available_ = false;
         return false;
     }
 
+    outResponse = response;
     try {
         auto responseJson = nlohmann::json::parse(outResponse);
         outResponse = responseJson["choices"][0]["message"]["content"].get<std::string>();
@@ -69,97 +91,4 @@ bool MiniMaxAIChatProvider::CallAPI(const std::string& prompt, std::string& outR
         available_ = false;
         return false;
     }
-}
-
-DWORD MiniMaxAIChatProvider::MakeSyncHttpsRequest(
-    const std::string& host,
-    int port,
-    const std::string& path,
-    const std::string& headers,
-    const std::string& body,
-    std::string& outResponse) {
-    outResponse.clear();
-
-    HINTERNET hSession = WinHttpOpen(
-        L"MonsterOrderWilds/1.0",
-        WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
-        WINHTTP_NO_PROXY_NAME,
-        WINHTTP_NO_PROXY_BYPASS,
-        0);
-    if (!hSession) return ::GetLastError();
-
-    HINTERNET hConnect = WinHttpConnect(
-        hSession,
-        std::wstring(host.begin(), host.end()).c_str(),
-        (INTERNET_PORT)port,
-        0);
-    if (!hConnect) {
-        DWORD err = ::GetLastError();
-        WinHttpCloseHandle(hSession);
-        return err;
-    }
-
-    HINTERNET hRequest = WinHttpOpenRequest(
-        hConnect,
-        L"POST",
-        std::wstring(path.begin(), path.end()).c_str(),
-        nullptr,
-        WINHTTP_NO_REFERER,
-        WINHTTP_DEFAULT_ACCEPT_TYPES,
-        WINHTTP_FLAG_SECURE);
-    if (!hRequest) {
-        DWORD err = ::GetLastError();
-        WinHttpCloseHandle(hConnect);
-        WinHttpCloseHandle(hSession);
-        return err;
-    }
-
-    std::wstring wHeaders(headers.begin(), headers.end());
-    BOOL bResults = WinHttpSendRequest(
-        hRequest,
-        wHeaders.c_str(),
-        (DWORD)wHeaders.length(),
-        (LPVOID)body.c_str(),
-        (DWORD)body.length(),
-        (DWORD)body.length(),
-        0);
-
-    if (!bResults) {
-        DWORD err = ::GetLastError();
-        WinHttpCloseHandle(hRequest);
-        WinHttpCloseHandle(hConnect);
-        WinHttpCloseHandle(hSession);
-        return err;
-    }
-
-    bResults = WinHttpReceiveResponse(hRequest, nullptr);
-    if (!bResults) {
-        DWORD err = ::GetLastError();
-        WinHttpCloseHandle(hRequest);
-        WinHttpCloseHandle(hConnect);
-        WinHttpCloseHandle(hSession);
-        return err;
-    }
-
-    DWORD dwSize = 0;
-    std::string responseData;
-    while (true) {
-        if (!WinHttpQueryDataAvailable(hRequest, &dwSize) || dwSize == 0)
-            break;
-
-        std::vector<char> buffer(dwSize + 1);
-        DWORD dwRead = 0;
-        if (!WinHttpReadData(hRequest, buffer.data(), dwSize, &dwRead))
-            break;
-
-        buffer[dwRead] = '\0';
-        responseData.append(buffer.data(), dwRead);
-    }
-
-    WinHttpCloseHandle(hRequest);
-    WinHttpCloseHandle(hConnect);
-    WinHttpCloseHandle(hSession);
-
-    outResponse = responseData;
-    return 0;
 }

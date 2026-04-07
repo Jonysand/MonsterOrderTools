@@ -47,6 +47,11 @@ void BliveManager::Disconnect()
     reconnectAttemptCount.store(0);
     SetConnectionState(ConnectionState::Disconnected, DisconnectReason::None);
     
+    if (webSocket) {
+        WinHttpCloseHandle(webSocket);
+        webSocket = nullptr;
+    }
+    
     if (!gameId.empty())
     {
         End(gameId, false, false);
@@ -106,7 +111,20 @@ void BliveManager::Start(const std::string& IdCode)
     }
     std::string params = "{\"code\":\"" + idCode + "\",\"app_id\":" + GetAPP_ID() + "}";
     std::string signedHeader = ProtoUtils::Sign(params);
-    networkCoroutines.push_front(std::move(Network::MakeHttpsRequest(
+
+    auto request = std::make_shared<AsyncRequest>();
+    request->type = AsyncRequest::HTTP;
+    request->httpCallback = [this](bool success, const std::string& response, DWORD error) {
+        if (success) {
+            OnReceiveStartResponse(response);
+        } else {
+            LOG_ERROR(TEXT("Start request failed with error: %d"), error);
+            SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::NetworkError);
+        }
+    };
+    networkRequests.push_back(request);
+
+    Network::MakeHttpsRequestAsync(
         BLIVE_URL,
         0,
         BLIVE_START_API,
@@ -114,15 +132,29 @@ void BliveManager::Start(const std::string& IdCode)
         signedHeader,
         params,
         true,
-        [this](const std::string& response) { OnReceiveStartResponse(response); }
-    )));
+        [request](bool success, const std::string& response, DWORD error) {
+            request->Complete(success, response, error);
+        }
+    );
 }
 
 void BliveManager::End(const std::string& GameId, bool instantly, bool restart)
 {
     std::string params = "{\"game_id\":\"" + (GameId.empty() ? gameId : GameId) + "\",\"app_id\":" + GetAPP_ID() + "}";
     std::string signedHeader = ProtoUtils::Sign(params);
-    Network::NetworkCoroutine request = Network::MakeHttpsRequest(
+
+    auto request = std::make_shared<AsyncRequest>();
+    request->type = AsyncRequest::HTTP;
+    request->httpCallback = [this, restart](bool success, const std::string& response, DWORD error) {
+        if (success) {
+            LOG_DEBUG(TEXT("Stop response: %s"), ProtoUtils::Decode(response).c_str());
+        }
+        if (restart)
+            Start();
+    };
+    networkRequests.push_back(request);
+
+    Network::MakeHttpsRequestAsync(
         BLIVE_URL,
         0,
         BLIVE_END_API,
@@ -130,31 +162,13 @@ void BliveManager::End(const std::string& GameId, bool instantly, bool restart)
         signedHeader,
         params,
         true,
-        [this, restart](const std::string& response) {
-            LOG_DEBUG(TEXT("Stop response: %s"), ProtoUtils::Decode(response).c_str());
-            if (restart)
-                Start();
-        });
-    if (instantly)
-    {
-        while (request.resume())
-            continue;
-    }
-    else
-        networkCoroutines.push_front(std::move(request));
+        [request](bool success, const std::string& response, DWORD error) {
+            request->Complete(success, response, error);
+        }
+    );
 }
 
 void BliveManager::Tick() {
-    // 网络协程
-    if (!networkCoroutines.empty()) {
-        auto it = networkCoroutines.begin();
-        while (it != networkCoroutines.end()) {
-            if (!it->resume())
-                it = networkCoroutines.erase(it);
-            else
-                ++it;
-        }
-    }
     // 延时任务
     if (!delayedTasks.empty()) {
         auto it = delayedTasks.begin();
@@ -165,14 +179,36 @@ void BliveManager::Tick() {
                 ++it;
         }
     }
+    // 处理已完成的异步请求
+    if (!networkRequests.empty()) {
+        for (auto it = networkRequests.begin(); it != networkRequests.end(); ) {
+            if ((*it)->completed) {
+                auto& req = *it;
+                if (req->httpCallback) {
+                    try {
+                        req->httpCallback(req->error == 0, req->response, req->error);
+                    } catch (...) {
+                        LOG_ERROR(TEXT("[BliveManager] httpCallback exception"));
+                    }
+                }
+                it = networkRequests.erase(it);
+            } else {
+                ++it;
+            }
+        }
+    }
     // websocket 信息
     HandleWSMessage();
 }
 
 BliveManager::~BliveManager()
 {
-    if (!gameId.empty())
-        End("", true);
+    if (webSocket) {
+        WinHttpCloseHandle(webSocket);
+        webSocket = nullptr;
+    }
+    networkRequests.clear();
+    delayedTasks.clear();
 }
 
 void BliveManager::OnReceiveStartResponse(const std::string& response)
@@ -210,11 +246,19 @@ void BliveManager::OnReceiveStartResponse(const std::string& response)
         packet.op = OP_AUTH;
         packet.body = authBody;
         std::vector<uint8_t> packedData = packet.pack();
-        networkCoroutines.push_front(std::move(Network::MakeWebSocketConnection(
+
+        Network::MakeWebSocketConnectionAsync(
             serverAddresses,
             packedData,
-            [this](HINTERNET hWebsocket, ProtoUtils::Packet packet) { OnReceiveWSMessage(hWebsocket, std::move(packet)); }
-        )));
+            [this](HINTERNET hWebsocket, ProtoUtils::Packet packet) { OnReceiveWSMessage(hWebsocket, std::move(packet)); },
+            [this](bool success, HINTERNET websocket, DWORD error) {
+                if (!success) {
+                    LOG_ERROR(TEXT("WebSocket connection failed with error: %d"), error);
+                    SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::NetworkError);
+                    delayedTasks.push_back({ [this]() { Start(); }, 1000 });
+                }
+            }
+        );
         // 开始app心跳
         delayedTasks.push_back({ [this]() { StartAppHeartBeat(); }, 5000 });
         break;
@@ -236,7 +280,20 @@ void BliveManager::StartAppHeartBeat()
         return;
     std::string heartbeatParams = "{\"game_id\":\"" + gameId + "\"}";
     std::string signedHeartbeatHeader = ProtoUtils::Sign(heartbeatParams);
-    auto heartBeatCoroutine = Network::MakeHttpsRequest(
+
+    auto request = std::make_shared<AsyncRequest>();
+    request->type = AsyncRequest::HTTP;
+    request->httpCallback = [this](bool success, const std::string& response, DWORD error) {
+        if (success) {
+            OnReceiveAppHeartbeatResponse(response);
+        } else {
+            LOG_ERROR(TEXT("Heartbeat request failed with error: %d"), error);
+            SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::NetworkError);
+        }
+    };
+    networkRequests.push_back(request);
+
+    Network::MakeHttpsRequestAsync(
         BLIVE_URL,
         0,
         BLIVE_HEARTBEAT_API,
@@ -244,9 +301,10 @@ void BliveManager::StartAppHeartBeat()
         signedHeartbeatHeader,
         heartbeatParams,
         true,
-        [this](const std::string& response) { OnReceiveAppHeartbeatResponse(response); }
+        [request](bool success, const std::string& response, DWORD error) {
+            request->Complete(success, response, error);
+        }
     );
-    networkCoroutines.push_front(std::move(heartBeatCoroutine));
 }
 
 void BliveManager::OnReceiveAppHeartbeatResponse(const std::string& response)
@@ -295,11 +353,25 @@ void BliveManager::StartWebsocketHeartBeat()
     ProtoUtils::Packet packet;
     packet.op = OP_HEARTBEAT;
     std::vector<uint8_t> packedData = packet.pack();
-    auto heartBeatCoroutine = Network::SendToWebsocket(
-        webSocket,
-        packedData
-    );
-    networkCoroutines.push_front(std::move(heartBeatCoroutine));
+
+    HINTERNET ws = nullptr;
+    {
+        wsMsgLock.lock();
+        ws = webSocket;
+        wsMsgLock.unlock();
+    }
+
+    if (ws) {
+        Network::SendToWebsocketAsync(
+            ws,
+            packedData,
+            [this](bool success, DWORD error) {
+                if (!success) {
+                    LOG_ERROR(TEXT("WebSocket heartbeat send failed with error: %d"), error);
+                }
+            }
+        );
+    }
 }
 
 void BliveManager::OnReceiveWSMessage(HINTERNET hWebsocket, ProtoUtils::Packet packet)

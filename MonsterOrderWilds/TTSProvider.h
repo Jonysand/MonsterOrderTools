@@ -25,8 +25,6 @@ public:
     TTSResponse ParseResponse(const std::string& responseBody, int httpStatusCode) const;
 private:
     std::vector<uint8_t> HexToBytes(const std::string& hex) const;
-    bool MakeSyncHttpsRequest(const std::string& host, int port, const std::string& path,
-        const std::string& headers, const std::string& body, std::string& outResponse);
     std::string apiKey_;
     std::string lastError_;
     bool available_;
@@ -44,8 +42,6 @@ public:
     TTSResponse ParseResponse(const std::string& responseBody) const;
 private:
     std::vector<uint8_t> HexToBytes(const std::string& hex) const;
-    bool MakeSyncHttpsRequest(const std::string& host, int port, const std::string& path,
-        const std::string& headers, const std::string& body, std::string& outResponse);
     std::string apiKey_;
     std::string lastError_;
     bool available_;

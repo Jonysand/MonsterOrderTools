@@ -24,7 +24,6 @@
 #include <sstream>
 #include <iomanip>
 #include <iostream>
-#include <coroutine>
 #include <exception>
 #include <vector>
 #include <queue>
@@ -79,6 +78,7 @@ typedef std::string TString;
 #define DECLARE_SINGLETON(CLASS) public: \
 									static CLASS* Inst(); \
 									void Destroy(); \
+									static std::atomic<bool>& GetDestroyingFlag(); \
 								private: \
 									static CLASS* __Instance;
 #define DEFINE_SINGLETON(CLASS) CLASS* CLASS::__Instance = nullptr; \
@@ -86,7 +86,12 @@ typedef std::string TString;
 									if (!__Instance) __Instance = new CLASS(); \
 									return __Instance; } \
 								void CLASS::Destroy() { \
+									GetDestroyingFlag().store(true); \
 									if (__Instance) { delete __Instance; __Instance = nullptr; } \
+								} \
+								std::atomic<bool>& CLASS::GetDestroyingFlag() { \
+									static std::atomic<bool> __Destroying{false}; \
+									return __Destroying; \
 								}
 
 class Lock

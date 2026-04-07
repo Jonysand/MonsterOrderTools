@@ -26,7 +26,10 @@ public:
 
     void Invoke(Args... args) {
         for (const auto& [id, handler] : _handlers) {
-            handler(args...);
+            try {
+                handler(args...);
+            } catch (...) {
+            }
         }
     }
 

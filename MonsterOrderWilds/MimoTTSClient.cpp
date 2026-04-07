@@ -2,7 +2,9 @@
 #include "WriteLog.h"
 #include "CredentialsManager.h"
 #include "StringUtils.h"
+#include "Network.h"
 #include <mutex>
+#include <condition_variable>
 
 MimoTTSClient::MimoTTSClient()
 {
@@ -10,12 +12,6 @@ MimoTTSClient::MimoTTSClient()
 
 MimoTTSClient::~MimoTTSClient()
 {
-    CleanupCoroutines();
-}
-
-void MimoTTSClient::CleanupCoroutines()
-{
-    activeCoroutines.clear();
 }
 
 void MimoTTSClient::RequestTTS(const TTSRequest& request, TTSCallback callback)
@@ -82,7 +78,7 @@ std::string MimoTTSClient::BuildRequestHeaders(const std::string& apiKey) const
     return headers;
 }
 
-MimoTTSClient::TTSResponse MimoTTSClient::ParseResponse(const std::string& responseBody, int httpStatusCode) const
+MimoTTSClient::TTSResponse MimoTTSClient::ParseResponse(const std::string& responseBody, int httpStatusCode)
 {
     TTSResponse response;
     response.httpStatusCode = httpStatusCode;
@@ -187,69 +183,77 @@ void MimoTTSClient::ExecuteWithRetry(const TTSRequest& request, TTSCallback call
     std::string requestBody = BuildRequestBody(request);
     std::string requestHeaders = BuildRequestHeaders(apiKey);
 
-    bool useSSL = true;   // Production server uses HTTPS
+    bool useSSL = true;
 
-    int retryCount = 0;
-    bool callbackInvoked = false;
+    auto callbackPtr = std::make_shared<std::function<void(const TTSResponse&)>>(callback);
+    auto requestBodyCopy = requestBody;
+    auto requestHeadersCopy = requestHeaders;
+    struct RetryContext {
+        int retryCount = 0;
+        std::mutex mtx;
+        std::condition_variable cv;
+        bool completed = false;
+        TTSResponse finalResponse;
+    };
+    auto ctx = std::make_shared<RetryContext>();
 
-    std::function<void(const std::string&)> requestWithRetry;
-    requestWithRetry = [this, &request, callback, requestBody, requestHeaders, useSSL, maxRetries, &retryCount, &callbackInvoked, &requestWithRetry](const std::string& responseBody) {
+    std::shared_ptr<std::function<void(bool, const std::string&, DWORD)>> requestWithRetryPtr;
+    requestWithRetryPtr = std::make_shared<std::function<void(bool, const std::string&, DWORD)>>(
+        [requestWithRetryPtr, callbackPtr, requestBodyCopy, requestHeadersCopy, useSSL, maxRetries, ctx](bool success, const std::string& responseBody, DWORD error) {
         TTSResponse response;
-        if (!responseBody.empty()) {
+        if (success && !responseBody.empty()) {
             response = ParseResponse(responseBody, 200);
         } else {
             response.success = false;
-            response.errorMessage = "Empty response from server";
-            response.httpStatusCode = 0;
+            response.errorMessage = error != 0 ? "HTTP error: " + std::to_string(error) : "Empty response from server";
         }
-        response.retryCount = retryCount;
+        response.retryCount = ctx->retryCount;
 
-        if (!response.success && retryCount < maxRetries) {
-            retryCount++;
-            LOG_ERROR(TEXT("MiMo TTS request failed, retrying (%d/%d)..."), retryCount, maxRetries);
-            
-            auto coroutine = Network::MakeHttpsRequest(
+        if (!response.success && ctx->retryCount < maxRetries) {
+            ctx->retryCount++;
+            LOG_ERROR(TEXT("MiMo TTS request failed, retrying (%d/%d)..."), ctx->retryCount, maxRetries);
+
+            Network::MakeHttpsRequestAsync(
                 utf8_to_wstring(API_ENDPOINT),
                 API_PORT,
                 utf8_to_wstring(API_PATH),
                 TEXT("POST"),
-                requestHeaders,
-                requestBody,
+                requestHeadersCopy,
+                requestBodyCopy,
                 useSSL,
-                requestWithRetry
+                *requestWithRetryPtr
             );
-            while (coroutine.resume()) {
-                Sleep(10);
-            }
         } else {
             if (!response.success) {
-                lastError = response.errorMessage;
                 LOG_ERROR(TEXT("MiMo TTS request failed after %d retries: %s"),
                     maxRetries, utf8_to_wstring(response.errorMessage).c_str());
             }
-            if (callback) {
-                callback(response);
-            }
-            callbackInvoked = true;
+            std::lock_guard<std::mutex> lock(ctx->mtx);
+            ctx->finalResponse = response;
+            ctx->completed = true;
+            ctx->cv.notify_one();
         }
-    };
+    });
 
-    auto coroutine = Network::MakeHttpsRequest(
+    Network::MakeHttpsRequestAsync(
         utf8_to_wstring(API_ENDPOINT),
         API_PORT,
         utf8_to_wstring(API_PATH),
         TEXT("POST"),
-        requestHeaders,
-        requestBody,
+        requestHeadersCopy,
+        requestBodyCopy,
         useSSL,
-        requestWithRetry
+        *requestWithRetryPtr
     );
-    
-    // Synchronously wait for coroutine to complete
-    // This is required because the callback needs to be invoked before returning
-    while (coroutine.resume()) {
-        // Keep resuming until coroutine is done
-        Sleep(10);
+
+    std::unique_lock<std::mutex> lock(ctx->mtx);
+    ctx->cv.wait(lock, [&ctx]() { return ctx->completed; });
+
+    if (*callbackPtr) {
+        try {
+            (*callbackPtr)(ctx->finalResponse);
+        } catch (...) {
+        }
     }
 #endif
 }

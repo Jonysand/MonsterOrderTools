@@ -518,6 +518,8 @@ void TTSManager::ProcessRequestingState(AsyncTTSRequest& req)
 
 void TTSManager::ProcessPlayingState(AsyncTTSRequest& req)
 {
+    std::lock_guard<std::mutex> lock(asyncMutex_);
+    
     if (audioPlayer == NULL) {
         req.state = AsyncTTSState::Failed;
         req.errorMessage = "audioPlayer is NULL";
