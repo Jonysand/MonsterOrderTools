@@ -290,7 +290,7 @@ namespace Network
         }
 
         WinHttpSetStatusCallback(ctx->hRequest, HttpsAsyncUtils::HttpsStatusCallback, WINHTTP_CALLBACK_FLAG_ALL_NOTIFICATIONS, 0);
-        WinHttpSetOption(ctx->hRequest, WINHTTP_OPTION_CONTEXT_VALUE, ctx, sizeof(ctx));
+        WinHttpSetOption(ctx->hRequest, WINHTTP_OPTION_CONTEXT_VALUE, ctx, sizeof(*ctx));
 
         std::thread([ctx, headers, body]() {
             if (!headers.empty()) {
