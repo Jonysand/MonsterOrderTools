@@ -182,19 +182,6 @@ namespace Network
                     }
                     ctx->completed = true;
                 }
-                std::thread([ctx]() {
-                    if (ctx->cleanupDone.exchange(true)) return;
-                    std::lock_guard<std::mutex> lock(ctx->mtx);
-                    if (ctx->callback) {
-                        try {
-                            ctx->callback(false, ctx->response, ctx->error);
-                        } catch (...) {
-                        }
-                    }
-                    if (ctx->hRequest) WinHttpCloseHandle(ctx->hRequest);
-                    if (ctx->hConnect) WinHttpCloseHandle(ctx->hConnect);
-                    delete ctx;
-                }).detach();
                 break;
             case WINHTTP_CALLBACK_STATUS_RESPONSE_RECEIVED:
                 {
@@ -303,7 +290,7 @@ namespace Network
         }
 
         WinHttpSetStatusCallback(ctx->hRequest, HttpsAsyncUtils::HttpsStatusCallback, WINHTTP_CALLBACK_FLAG_ALL_NOTIFICATIONS, 0);
-        WinHttpSetOption(ctx->hRequest, WINHTTP_OPTION_CONTEXT_VALUE, &ctx, sizeof(ctx));
+        WinHttpSetOption(ctx->hRequest, WINHTTP_OPTION_CONTEXT_VALUE, ctx, sizeof(ctx));
 
         std::thread([ctx, headers, body]() {
             if (!headers.empty()) {

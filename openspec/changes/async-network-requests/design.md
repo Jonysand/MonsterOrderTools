@@ -213,6 +213,16 @@ WebSocket 连接和发送：
 | networkRequests 迭代器失效 | Medium | `Tick()` 中 callback 执行期间，其他线程可能修改 `networkRequests` | 添加 `networkRequestsLock` 锁保护 |
 | destroyed_ 死代码 | Low | `BliveManager.h` 中 `destroyed_` 成员变量未被使用 | 删除 `destroyed_` 成员变量 |
 
+### PUA 多轮检查发现并修复的问题（2026-04-07）
+
+| Bug | 严重性 | 描述 | 修复方案 |
+|-----|--------|------|---------|
+| WinHttpSetOption Context 指针错误 | Critical | 传递 `&ctx`（指针变量地址）而非 `ctx`（堆对象地址），导致回调接收到错误的上下文指针 | 修改为 `WinHttpSetOption(..., ctx, sizeof(ctx))` |
+| REQUEST_ERROR 回调双重 callback | Critical | `WINHTTP_CALLBACK_STATUS_REQUEST_ERROR` 处理启动新线程调用 callback，但主线程 cleanup 块也会调用 callback | 移除 REQUEST_ERROR 分支中的线程启动，仅设置 completed=true，由主线程统一处理 |
+| AsyncRequest::Complete 重复调用 | Critical | `Complete()` 无防重复检查，可能被多次调用导致 callback 被执行多次 | 添加 `if (completed) return;` 检查 |
+| Tick() callback 死锁风险 | Critical | `Tick()` 在持有 `networkRequestsLock` 时调用 callback，如果 callback 内部调用 `Start()`/`End()` 等方法会尝试重新获取锁导致死锁 | 将 callback 收集到列表，锁外统一执行 |
+| lambda 捕获悬空引用 | Critical | `auto& req = *it` 导致 lambda 按引用捕获，在 `erase(it)` 后 req 成为悬空引用 | 改为 `auto req = *it` 值拷贝 shared_ptr，延长生命周期 |
+
 ### Session 复用实现
 
 `HttpsAsyncUtils::GetSharedSession()` 维护一个静态共享 Session：

@@ -106,6 +106,7 @@ private:
         DWORD error = 0;
 
         void Complete(bool success_, const std::string& response_, DWORD error_) {
+            if (completed) return;
             if (success_) { response = response_; }
             error = error_;
             completed = true;

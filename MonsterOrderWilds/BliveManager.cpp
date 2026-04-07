@@ -193,21 +193,32 @@ void BliveManager::Tick() {
     }
     // 处理已完成的异步请求
     if (!networkRequests.empty()) {
-        std::lock_guard<Lock> lock(networkRequestsLock);
-        for (auto it = networkRequests.begin(); it != networkRequests.end(); ) {
-            if ((*it)->completed) {
-                auto& req = *it;
-                if (req->httpCallback) {
-                    try {
-                        req->httpCallback(req->error == 0, req->response, req->error);
-                    } catch (...) {
-                        LOG_ERROR(TEXT("[BliveManager] httpCallback exception"));
+        std::list<std::function<void()>> callbacksToInvoke;
+        {
+            std::lock_guard<Lock> lock(networkRequestsLock);
+            for (auto it = networkRequests.begin(); it != networkRequests.end(); ) {
+                if ((*it)->completed) {
+                    auto req = *it;
+                    if (req->httpCallback) {
+                        bool success = req->error == 0;
+                        std::string response = req->response;
+                        DWORD error = req->error;
+                        callbacksToInvoke.push_back([req, success, response, error]() {
+                            try {
+                                req->httpCallback(success, response, error);
+                            } catch (...) {
+                                LOG_ERROR(TEXT("[BliveManager] httpCallback exception"));
+                            }
+                        });
                     }
+                    it = networkRequests.erase(it);
+                } else {
+                    ++it;
                 }
-                it = networkRequests.erase(it);
-            } else {
-                ++it;
             }
+        }
+        for (const auto& callback : callbacksToInvoke) {
+            callback();
         }
     }
     // websocket 信息

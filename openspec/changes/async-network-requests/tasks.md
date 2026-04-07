@@ -273,3 +273,43 @@
 - [x] 所有锁保护完整
 - [x] 设计与实现一致
 
+## 21. 第十一轮审查（2026-04-07 PUA 多轮检查 - 第四轮）
+
+**审查轮次**：2026-04-07（第四轮）
+
+### 问题修复
+
+- [x] 21.1 修复 `WinHttpSetOption` Context 指针错误（`&ctx` → `ctx`）
+- [x] 21.2 修复 REQUEST_ERROR 回调双重 callback 调用（移除多余线程启动）
+- [x] 21.3 修复 `AsyncRequest::Complete` 缺少防重复调用检查（添加 `if (completed) return;`）
+- [x] 21.4 修复 `BliveManager::Tick()` 中 callback 在锁内执行导致死锁风险（移到锁外执行）
+- [x] 21.5 修复 `BliveManager::Tick()` 中 lambda 捕获悬空引用（`auto& req` → `auto req` 值拷贝 shared_ptr）
+
+**验收标准**：
+- [x] MSBuild 编译成功（Release x64）
+- [x] 所有发现的 Critical 问题已修复
+- [x] callback 执行无死锁风险
+- [x] lambda 捕获安全（无 use-after-free）
+
+## 22. 最终审查总结（2026-04-07 PUA 多轮检查）
+
+**多轮检查轮次**：共 4 轮（每轮 3 个 subagent）
+
+**发现并修复的问题**：
+- Critical: 5 个（Context 指针、双重 callback、Complete 重复调用、死锁风险、悬空引用）
+- High: 0 个（之前轮次已修复）
+- Medium: 0 个（之前轮次已修复）
+- Low: 0 个（之前轮次已修复）
+
+**锁保护完整性**：
+- `networkRequestsLock`: 所有访问有锁保护
+- `delayedTasksLock`: 所有访问有锁保护
+- `wsMsgLock`: 已确认正确使用
+
+**最终验收标准**：
+- [x] MSBuild 编译成功（Release x64）
+- [x] 所有 Critical 问题已修复
+- [x] 代码无死锁风险
+- [x] lambda 捕获安全
+- [x] 设计与实现一致
+
