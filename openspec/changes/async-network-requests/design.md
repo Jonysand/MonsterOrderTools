@@ -230,3 +230,12 @@ WebSocket 连接和发送：
 - 后续调用复用同一个 Session
 - Session 在进程结束时自动释放（静态对象）
 - 每次请求仍创建新的 Connect 和 Request，但复用 Session 可利用 WinHTTP 内部连接池
+
+### 多轮检查发现的额外问题（2026-04-07 第五轮）
+
+| Bug | 严重性 | 描述 | 修复方案 |
+|-----|--------|------|---------|
+| Lock 类 spinlock 互斥失效 | Critical | `compare_exchange_weak` 失败后未重置 `expectedWriting`，导致多个线程可同时获得锁 | 在 CAS 失败后添加 `expectedWriting = false` 重置 |
+| AsyncRequest::Complete 数据写入顺序 | High | `response`/`error` 写入在 CAS 之后，不受 release-acquire 同步保护 | 将数据写入移到 CAS 之前 |
+| ReadResponseData 共享数据写入无锁 | Medium | `ctx->error` 和 `ctx->response` 写入未持 `ctx->mtx` 锁 | 添加 `std::lock_guard<std::mutex> lock(ctx->mtx)` 保护 |
+| HttpsAsyncContext::error 数据竞争 | Critical | `ctx->error` 为普通 `DWORD`，在 detach 线程和回调线程之间存在数据竞争 | 改为 `std::atomic<DWORD>`，所有读写使用 `.store()`/`.load()` |

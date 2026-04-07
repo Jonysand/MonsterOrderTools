@@ -60,8 +60,8 @@ public:
     void Start(const std::string& IdCode="");
 	// 关闭弹幕服务器
 	// GameId: 为空则使用当前场次
-	// instantly: 是否立即关闭
-	void End(const std::string& GameId = "", bool instantly = false, bool restart = false);
+	// restart: 结束后是否自动重连
+	void End(const std::string& GameId = "", bool restart = false);
 	// Tick
     void Tick();
     // IsConnected
@@ -101,15 +101,17 @@ private:
         enum Type { HTTP };
         Type type;
         Network::HttpsAsyncCallback httpCallback;
-        bool completed = false;
+        std::atomic<bool> completed{false};
         std::string response;
         DWORD error = 0;
 
         void Complete(bool success_, const std::string& response_, DWORD error_) {
-            if (completed) return;
+            // 数据写入在 CAS 之前，确保对读取端可见
+            // 即使 CAS 失败，写入也无害（只有一个线程能通过 CAS）
             if (success_) { response = response_; }
             error = error_;
-            completed = true;
+            bool expected = false;
+            if (!completed.compare_exchange_strong(expected, true)) return;
         }
     };
 

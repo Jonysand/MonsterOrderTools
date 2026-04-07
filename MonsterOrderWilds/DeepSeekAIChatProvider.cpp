@@ -83,7 +83,18 @@ bool DeepSeekAIChatProvider::CallAPI(const std::string& prompt, std::string& out
     outResponse = response;
     try {
         auto responseJson = nlohmann::json::parse(outResponse);
-        outResponse = responseJson["choices"][0]["message"]["content"].get<std::string>();
+        if (!responseJson.contains("choices") || !responseJson["choices"].is_array() || responseJson["choices"].empty()) {
+            lastError_ = "No choices in response";
+            available_ = false;
+            return false;
+        }
+        auto& choice = responseJson["choices"][0];
+        if (!choice.contains("message") || !choice["message"].contains("content")) {
+            lastError_ = "No message content in response";
+            available_ = false;
+            return false;
+        }
+        outResponse = choice["message"]["content"].get<std::string>();
         available_ = true;
         return true;
     }

@@ -150,14 +150,16 @@ namespace ProtoUtils
 
 namespace Network
 {
+    // Forward declaration
+    void StartWebSocketReceive(HINTERNET hWebSocket, Network::WebsocketMessageCallback onMessage);
+
     namespace HttpsAsyncUtils {
         struct HttpsAsyncContext {
             HINTERNET hConnect = nullptr;
             HINTERNET hRequest = nullptr;
             std::string response;
-            DWORD error = 0;
+            std::atomic<DWORD> error{0};
             Network::HttpsAsyncCallback callback;
-            bool completed = false;
             std::mutex mtx;
             std::atomic<bool> cleanupDone{false};
         };
@@ -169,28 +171,27 @@ namespace Network
             LPVOID statusInfo,
             DWORD statusInfoLength
         ) {
-            auto* ctx = reinterpret_cast<HttpsAsyncContext*>(dwContext);
-            if (!ctx) return;
-            switch (internetStatus) {
-            case WINHTTP_CALLBACK_STATUS_REQUEST_ERROR:
-                {
-                    std::lock_guard<std::mutex> lock(ctx->mtx);
-                    if (statusInfoLength >= sizeof(WINHTTP_ASYNC_RESULT)) {
-                        ctx->error = ((WINHTTP_ASYNC_RESULT*)statusInfo)->dwError;
-                    } else {
-                        ctx->error = GetLastError();
+            try {
+                auto* ctx = reinterpret_cast<HttpsAsyncContext*>(dwContext);
+                if (!ctx) return;
+                switch (internetStatus) {
+                case WINHTTP_CALLBACK_STATUS_REQUEST_ERROR:
+                    {
+                        std::lock_guard<std::mutex> lock(ctx->mtx);
+                        if (statusInfoLength >= sizeof(WINHTTP_ASYNC_RESULT)) {
+                            ctx->error.store(((WINHTTP_ASYNC_RESULT*)statusInfo)->dwError);
+                        } else {
+                            ctx->error.store(GetLastError());
+                        }
                     }
-                    ctx->completed = true;
+                    break;
+                case WINHTTP_CALLBACK_STATUS_RESPONSE_RECEIVED:
+                    break;
+                default:
+                    break;
                 }
-                break;
-            case WINHTTP_CALLBACK_STATUS_RESPONSE_RECEIVED:
-                {
-                    std::lock_guard<std::mutex> lock(ctx->mtx);
-                    ctx->completed = true;
-                }
-                break;
-            default:
-                break;
+            } catch (...) {
+                // C回调函数不能抛出异常，静默处理
             }
         }
 
@@ -203,11 +204,15 @@ namespace Network
                 std::vector<char> buffer(bytesAvailable);
                 DWORD bytesRead = 0;
                 if (!WinHttpReadData(ctx->hRequest, buffer.data(), bytesAvailable, &bytesRead)) {
-                    ctx->error = GetLastError();
-                    return ctx->error;
+                    DWORD err = GetLastError();
+                    std::lock_guard<std::mutex> lock(ctx->mtx);
+                    ctx->error.store(err);
+                    return err;
                 }
-                if (bytesRead > 0)
+                if (bytesRead > 0) {
+                    std::lock_guard<std::mutex> lock(ctx->mtx);
                     ctx->response.append(buffer.data(), bytesRead);
+                }
                 if (bytesRead < bytesAvailable)
                     break;
             }
@@ -242,12 +247,13 @@ namespace Network
 
         HINTERNET hSession = HttpsAsyncUtils::GetSharedSession();
         if (!hSession) {
-            ctx->error = GetLastError();
+            ctx->error.store(GetLastError());
             std::thread([ctx]() {
                 if (ctx->callback) {
                     try {
-                        ctx->callback(false, "", ctx->error);
+                        ctx->callback(false, "", ctx->error.load());
                     } catch (...) {
+                        LOG_ERROR(TEXT("[Network] HttpsRequest callback exception (session init failed)"));
                     }
                 }
                 delete ctx;
@@ -258,12 +264,13 @@ namespace Network
         INTERNET_PORT realPort = port == 0 ? (ssl ? INTERNET_DEFAULT_HTTPS_PORT : INTERNET_DEFAULT_PORT) : port;
         ctx->hConnect = WinHttpConnect(hSession, host.c_str(), realPort, 0);
         if (!ctx->hConnect) {
-            ctx->error = GetLastError();
+            ctx->error.store(GetLastError());
             std::thread([ctx]() {
                 if (ctx->callback) {
                     try {
-                        ctx->callback(false, "", ctx->error);
+                        ctx->callback(false, "", ctx->error.load());
                     } catch (...) {
+                        LOG_ERROR(TEXT("[Network] HttpsRequest callback exception (connect failed)"));
                     }
                 }
                 delete ctx;
@@ -275,12 +282,13 @@ namespace Network
         DWORD FLAG = ssl ? WINHTTP_FLAG_SECURE : 0;
         ctx->hRequest = WinHttpOpenRequest(ctx->hConnect, method.c_str(), path.c_str(), NULL, WINHTTP_NO_REFERER, szAccept, FLAG);
         if (!ctx->hRequest) {
-            ctx->error = GetLastError();
+            ctx->error.store(GetLastError());
             std::thread([ctx]() {
                 if (ctx->callback) {
                     try {
-                        ctx->callback(false, "", ctx->error);
+                        ctx->callback(false, "", ctx->error.load());
                     } catch (...) {
+                        LOG_ERROR(TEXT("[Network] HttpsRequest callback exception (request init failed)"));
                     }
                 }
                 WinHttpCloseHandle(ctx->hConnect);
@@ -308,16 +316,13 @@ namespace Network
             );
 
             if (!sendResult) {
-                ctx->error = GetLastError();
-                ctx->completed = true;
+                ctx->error.store(GetLastError());
             } else {
                 BOOL receiveResult = WinHttpReceiveResponse(ctx->hRequest, NULL);
                 if (!receiveResult) {
-                    ctx->error = GetLastError();
-                    ctx->completed = true;
+                    ctx->error.store(GetLastError());
                 } else {
-                    ctx->error = HttpsAsyncUtils::ReadResponseData(ctx);
-                    ctx->completed = true;
+                    ctx->error.store(HttpsAsyncUtils::ReadResponseData(ctx));
                 }
             }
 
@@ -326,8 +331,9 @@ namespace Network
                 std::lock_guard<std::mutex> lock(ctx->mtx);
                 if (ctx->callback) {
                     try {
-                        ctx->callback(ctx->error == 0, ctx->response, ctx->error);
+                        ctx->callback(ctx->error.load() == 0, ctx->response, ctx->error.load());
                     } catch (...) {
+                        LOG_ERROR(TEXT("[Network] HttpsRequest callback exception (completion)"));
                     }
                 }
                 if (ctx->hRequest) WinHttpCloseHandle(ctx->hRequest);
@@ -336,8 +342,6 @@ namespace Network
             }
         }).detach();
     }
-
-    void StartWebSocketReceive(HINTERNET hWebSocket, Network::WebsocketMessageCallback onMessage);
 
     void MakeWebSocketConnectionAsync(
         const std::vector<std::string> serverAddresses,
@@ -391,6 +395,7 @@ namespace Network
 
                 if (!WinHttpSetOption(hRequest, WINHTTP_OPTION_UPGRADE_TO_WEB_SOCKET, NULL, 0)) {
                     LOG_ERROR(TEXT("WinHttpSetOption failed: %d"), GetLastError());
+                    WinHttpCloseHandle(hRequest);
                     WinHttpCloseHandle(hConnect);
                     WinHttpCloseHandle(hSession);
                     continue;
@@ -438,7 +443,7 @@ namespace Network
                     continue;
                 }
 
-                WinHttpCloseHandle(hRequest);
+                // hRequest 所有权已转移给 hWebSocket，不应再关闭
                 WinHttpCloseHandle(hConnect);
                 WinHttpCloseHandle(hSession);
 
@@ -449,6 +454,7 @@ namespace Network
                         try {
                             onConnect(false, nullptr, GetLastError());
                         } catch (...) {
+                            LOG_ERROR(TEXT("[Network] WebSocket onConnect callback exception (auth failed)"));
                         }
                     }
                     return;
@@ -459,6 +465,7 @@ namespace Network
                     try {
                         onConnect(true, hWebSocket, 0);
                     } catch (...) {
+                        LOG_ERROR(TEXT("[Network] WebSocket onConnect callback exception (connected)"));
                     }
                 }
                 return;
@@ -469,6 +476,7 @@ namespace Network
                 try {
                     onConnect(false, nullptr, ERROR_CONNECTION_REFUSED);
                 } catch (...) {
+                    LOG_ERROR(TEXT("[Network] WebSocket onConnect callback exception (connection failed)"));
                 }
             }
         }).detach();
@@ -487,6 +495,7 @@ namespace Network
                     try {
                         onComplete(false, result);
                     } catch (...) {
+                        LOG_ERROR(TEXT("[Network] WebSocket send onComplete callback exception"));
                     }
                 }
                 return;
@@ -495,6 +504,7 @@ namespace Network
                 try {
                     onComplete(true, 0);
                 } catch (...) {
+                    LOG_ERROR(TEXT("[Network] WebSocket send onComplete callback exception (success path)"));
                 }
             }
         }).detach();
@@ -531,6 +541,7 @@ namespace Network
                         try {
                             onMessage(hWebSocket, std::move(onePacket));
                         } catch (...) {
+                            LOG_ERROR(TEXT("[Network] WebSocket onMessage callback exception"));
                         }
                     }
                 }

@@ -36,16 +36,13 @@ void BliveManager::SetConnectionState(ConnectionState state, DisconnectReason re
         OnBliveConnected.Invoke();
     }
     else if (oldState == ConnectionState::Connected && state != ConnectionState::Connected) {
-        if (reason != DisconnectReason::None) {
-            OnBliveDisconnected.Invoke();
-        }
+        OnBliveDisconnected.Invoke();
     }
 }
 
 void BliveManager::Disconnect()
 {
     reconnectAttemptCount.store(0);
-    SetConnectionState(ConnectionState::Disconnected, DisconnectReason::None);
     
     {
         std::lock_guard<Lock> lock(wsMsgLock);
@@ -57,9 +54,11 @@ void BliveManager::Disconnect()
     
     if (!gameId.empty())
     {
-        End(gameId, false, false);
+        End(gameId, false);
         gameId.clear();
     }
+    
+    SetConnectionState(ConnectionState::Disconnected, DisconnectReason::None);
 }
 
 void BliveManager::Reconnect()
@@ -108,7 +107,7 @@ void BliveManager::Start(const std::string& IdCode)
     
     if (!gameId.empty())
     {
-        End(gameId, false, true);
+        End(gameId, true);
         gameId.clear();
         return;
     }
@@ -144,7 +143,7 @@ void BliveManager::Start(const std::string& IdCode)
     );
 }
 
-void BliveManager::End(const std::string& GameId, bool instantly, bool restart)
+void BliveManager::End(const std::string& GameId, bool restart)
 {
     std::string params = "{\"game_id\":\"" + (GameId.empty() ? gameId : GameId) + "\",\"app_id\":" + GetAPP_ID() + "}";
     std::string signedHeader = ProtoUtils::Sign(params);
@@ -192,12 +191,12 @@ void BliveManager::Tick() {
         }
     }
     // 处理已完成的异步请求
-    if (!networkRequests.empty()) {
+    {
         std::list<std::function<void()>> callbacksToInvoke;
         {
             std::lock_guard<Lock> lock(networkRequestsLock);
             for (auto it = networkRequests.begin(); it != networkRequests.end(); ) {
-                if ((*it)->completed) {
+                if ((*it)->completed.load()) {
                     auto req = *it;
                     if (req->httpCallback) {
                         bool success = req->error == 0;
@@ -254,22 +253,23 @@ void BliveManager::OnReceiveStartResponse(const std::string& response)
         if (jsonResponse.contains("code"))
             code = jsonResponse["code"];
     }
-    catch (const json::parse_error& e) {
-		LOG_ERROR(TEXT("JSON parse error: %s"), ProtoUtils::Decode(e.what()).c_str());
+    catch (const json::exception& e) {
+		LOG_ERROR(TEXT("JSON error: %s"), ProtoUtils::Decode(e.what()).c_str());
         {
             std::lock_guard<Lock> lock(delayedTasksLock);
             delayedTasks.push_back({ [this]() { Start(); }, 1000 });
         }
         return;
 	}
+    try {
     switch (code)
     {
     case 0:
     {
         TString decodedGameID = ProtoUtils::Decode(jsonResponse["data"]["game_info"]["game_id"].get<std::string>());
         LOG_INFO(TEXT("Game ID: %s"), decodedGameID.c_str());
-        SetConnectionState(ConnectionState::Connected, DisconnectReason::None);
         gameId = ProtoUtils::ConvertTCharToString(decodedGameID.c_str());
+        SetConnectionState(ConnectionState::Connected, DisconnectReason::None);
         // 准备建立websocket
         serverAddresses.clear();
         for (const auto& server : jsonResponse["data"]["websocket_info"]["wss_link"]) {
@@ -316,6 +316,14 @@ void BliveManager::OnReceiveStartResponse(const std::string& response)
             delayedTasks.push_back({ [this]() { Start(); }, 1000 });
         }
         break;
+    }
+    } catch (const json::exception& e) {
+        LOG_ERROR(TEXT("JSON access error in OnReceiveStartResponse: %s"), ProtoUtils::Decode(e.what()).c_str());
+        SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::NetworkError);
+        {
+            std::lock_guard<Lock> lock(delayedTasksLock);
+            delayedTasks.push_back({ [this]() { Start(); }, 1000 });
+        }
     }
 }
 
@@ -378,30 +386,34 @@ void BliveManager::OnReceiveAppHeartbeatResponse(const std::string& response)
         jsonResponse = json::parse(response);
         if (jsonResponse.contains("code"))
             code = jsonResponse["code"];
-    }
-    catch (const json::parse_error& e) {
-        LOG_ERROR(TEXT("JSON parse error: %s"), ProtoUtils::Decode(e.what()).c_str());
-        return;
-    }
-    switch (code)
-    {
-    case 0:
-    {
-        reconnectAttemptCount.store(0);
+        switch (code)
         {
-            std::lock_guard<Lock> lock(delayedTasksLock);
-            delayedTasks.push_back({ [this]() { StartAppHeartBeat(); }, HEARTBEAT_INTERVAL_MINISECONDS });
+        case 0:
+        {
+            reconnectAttemptCount.store(0);
+            {
+                std::lock_guard<Lock> lock(delayedTasksLock);
+                delayedTasks.push_back({ [this]() { StartAppHeartBeat(); }, HEARTBEAT_INTERVAL_MINISECONDS });
+            }
+            break;
         }
-        break;
+        default:
+            SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::HeartbeatTimeout);
+            LOG_ERROR(TEXT("Error OnReceiveAppHeartbeatResponse: %s"), ProtoUtils::Decode(response).c_str());
+            {
+                std::lock_guard<Lock> lock(delayedTasksLock);
+                delayedTasks.push_back({ [this]() { Start(); }, 1000 });
+            }
+            break;
+        }
     }
-    default:
+    catch (const json::exception& e) {
+        LOG_ERROR(TEXT("JSON error in OnReceiveAppHeartbeatResponse: %s"), ProtoUtils::Decode(e.what()).c_str());
         SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::HeartbeatTimeout);
-        LOG_ERROR(TEXT("Error OnReceiveAppHeartbeatResponse: %s"), ProtoUtils::Decode(response).c_str());
         {
             std::lock_guard<Lock> lock(delayedTasksLock);
             delayedTasks.push_back({ [this]() { Start(); }, 1000 });
         }
-        break;
     }
 }
 
@@ -413,9 +425,8 @@ void BliveManager::StartWebsocketHeartBeat()
 
     HINTERNET ws = nullptr;
     {
-        wsMsgLock.lock();
+        std::lock_guard<Lock> lock(wsMsgLock);
         ws = webSocket;
-        wsMsgLock.unlock();
     }
 
     if (ws) {
@@ -435,23 +446,25 @@ void BliveManager::OnReceiveWSMessage(HINTERNET hWebsocket, ProtoUtils::Packet p
 {
     if (connectionState.load() != ConnectionState::Connected)
         return;
-    // 说有版本有压缩body，这里处理解压缩
-    wsMsgLock.lock();
+    std::lock_guard<Lock> lock(wsMsgLock);
     webSocket = hWebsocket;
     wsMessages.push(packet);
-    wsMsgLock.unlock();
 }
 
 void BliveManager::HandleWSMessage()
 {
     uint8_t count = 0;
-    wsMsgLock.lock();
-    // 暂且每帧最多处理10条消息
-    while (count < 10 && !wsMessages.empty())
+    while (count < 10)
     {
-        ProtoUtils::Packet& packet = wsMessages.front();
+        ProtoUtils::Packet packet;
+        {
+            std::lock_guard<Lock> lock(wsMsgLock);
+            if (wsMessages.empty())
+                break;
+            packet = wsMessages.front();
+            wsMessages.pop();
+        }
         WEBSOCKET_OP op = (WEBSOCKET_OP)packet.op;
-        bool heartBeatSuccess = true;
         switch (op)
         {
         case OP_HEARTBEAT:
@@ -487,9 +500,7 @@ void BliveManager::HandleWSMessage()
             break;
         }
         ++count;
-        wsMessages.pop();
     }
-    wsMsgLock.unlock();
 }
 
 void BliveManager::HandleSmsReply(const std::string& msg)

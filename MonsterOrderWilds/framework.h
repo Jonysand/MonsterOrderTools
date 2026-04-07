@@ -100,8 +100,10 @@ public:
 	inline void lock()
 	{
 		bool expectedWriting = false;
-		while (!_lock.compare_exchange_weak(expectedWriting, true))
+		while (!_lock.compare_exchange_weak(expectedWriting, true)) {
+			expectedWriting = false;
 			std::this_thread::yield();
+		}
 	}
 	inline void unlock()
 	{

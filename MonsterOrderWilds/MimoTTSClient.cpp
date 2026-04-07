@@ -253,6 +253,7 @@ void MimoTTSClient::ExecuteWithRetry(const TTSRequest& request, TTSCallback call
         try {
             (*callbackPtr)(ctx->finalResponse);
         } catch (...) {
+            LOG_ERROR(TEXT("[MimoTTSClient] TTS callback exception"));
         }
     }
 #endif
