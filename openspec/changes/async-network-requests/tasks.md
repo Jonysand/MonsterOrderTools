@@ -313,3 +313,40 @@
 - [x] lambda 捕获安全
 - [x] 设计与实现一致
 
+## 23. 第十三轮审查（2026-04-07 PUA 多轮检查 - 第五轮）
+
+**审查轮次**：2026-04-07（第五轮）
+
+### 问题修复
+
+- [x] 23.1 修复 `WinHttpSetOption` sizeof 参数错误（`sizeof(ctx)` → `sizeof(*ctx)`）
+
+**问题说明**：
+- `sizeof(ctx)` 返回指针大小（x64 上为 8 字节）
+- 应传递结构体实际大小 `sizeof(*ctx)` 等于 `sizeof(HttpsAsyncContext)`
+- 此问题在第十一轮审查中被发现但未完全修复（仅修复了指针变量地址 vs 堆对象地址的问题，未修复 sizeof 参数）
+
+**验收标准**：
+- [x] MSBuild 编译成功（Release x64）
+- [x] WinHttpSetOption sizeof 参数正确
+
+## 24. 最终审查总结（2026-04-07 PUA 多轮检查）
+
+**多轮检查轮次**：共 5 轮（每轮 3 个 subagent）
+
+**本轮发现并修复的问题**：
+- Critical: 1 个（WinHttpSetOption sizeof 参数）
+
+**累计发现并修复的问题**：
+- Critical: 6 个（Context 指针 vs 堆地址、sizeof 参数、双重 callback、Complete 重复调用、死锁风险、悬空引用）
+- High: 0 个
+- Medium: 0 个
+- Low: 0 个
+
+**最终验收标准**：
+- [x] MSBuild 编译成功（Release x64）
+- [x] 所有 Critical 问题已修复
+- [x] 代码无死锁风险
+- [x] lambda 捕获安全
+- [x] 设计与实现一致
+
