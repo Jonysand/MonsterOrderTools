@@ -109,6 +109,40 @@ namespace ProtoUtils
 }
 
 namespace Network {
+    using WebsocketMessageCallback = std::function<void(HINTERNET hWebsocket, ProtoUtils::Packet)>;
+    using HTTPRequstCallback = std::function<void(const std::string&)>;
+
+    // 异步回调类型
+    using HttpsAsyncCallback = std::function<void(bool success, const std::string& response, DWORD error)>;
+    using WebSocketAsyncCallback = std::function<void(bool success, HINTERNET websocket, DWORD error)>;
+
+    // 异步 HTTP 请求
+    void MakeHttpsRequestAsync(
+        const TString& host,
+        const INTERNET_PORT& port,
+        const TString& path,
+        const TString& method,
+        const std::string& headers = "",
+        const std::string& body = "",
+        const bool ssl = true,
+        HttpsAsyncCallback onComplete = nullptr
+    );
+
+    // 异步建立 WebSocket 连接
+    void MakeWebSocketConnectionAsync(
+        const std::vector<std::string> serverAddresses,
+        const std::vector<uint8_t>& authBody,
+        WebsocketMessageCallback onMessage,
+        WebSocketAsyncCallback onConnect = nullptr
+    );
+
+    // 异步发送 WebSocket 消息
+    void SendToWebsocketAsync(
+        HINTERNET hWebsocket,
+        const std::vector<uint8_t>& data,
+        std::function<void(bool success, DWORD error)> onComplete = nullptr
+    );
+
     // 网络协程
     struct NetworkCoroutine {
         struct promise_type {

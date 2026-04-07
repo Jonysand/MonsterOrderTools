@@ -164,7 +164,7 @@
       <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)../ExternalLibs/Foundation/include;$(ProjectDir)../ExternalLibs/Net/include;$(ProjectDir)external;$(ProjectDir)..;$(ProjectDir)..\external/cppjieba/include;$(ProjectDir)..\external/cppjieba/deps/limonp/include;$(ProjectDir)../ExternalLibs</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)../ExternalLibs/Foundation/include;$(ProjectDir)../ExternalLibs/Net/include;$(ProjectDir)external;$(ProjectDir)..;$(ProjectDir)..\external;$(ProjectDir)..\external/cppjieba/include;$(ProjectDir)..\external/cppjieba/deps/limonp/include;$(ProjectDir)../ExternalLibs</AdditionalIncludeDirectories>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile />
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
