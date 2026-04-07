@@ -122,10 +122,10 @@ private:
 	std::string authBody;
     // 长链接
     HINTERNET webSocket = nullptr;
-    // 标记 BliveManager 是否正在销毁（用于防止 UAF）
-    std::atomic<bool> destroyed_{false};
     // 正在进行的异步请求
 	std::list<std::shared_ptr<AsyncRequest>> networkRequests;
+    // 保护 networkRequests 的锁
+    Lock networkRequestsLock;
     // timer管理，延时触发
     struct delayTask
     {
@@ -158,6 +158,8 @@ private:
         }
     };
     std::list<delayTask> delayedTasks;
+    // 保护 delayedTasks 的锁
+    Lock delayedTasksLock;
     // websocket 信息
     std::queue<ProtoUtils::Packet> wsMessages;
     Lock wsMsgLock;

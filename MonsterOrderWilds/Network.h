@@ -5,7 +5,7 @@
 #define WEBSOCKET_USER_AGENT TEXT("MonsterOrderWilds Websocket/0.1")
 
 
-#define HEARBEAT_INTERVAL_MINISECONDS 20000 //
+#define HEARTBEAT_INTERVAL_MINISECONDS 20000 //
 
 // consts
 const static TString BLIVE_URL = TEXT("live-open.biliapi.com");
@@ -110,7 +110,6 @@ namespace ProtoUtils
 
 namespace Network {
     using WebsocketMessageCallback = std::function<void(HINTERNET hWebsocket, ProtoUtils::Packet)>;
-    using HTTPRequstCallback = std::function<void(const std::string&)>;
 
     // 异步回调类型
     using HttpsAsyncCallback = std::function<void(bool success, const std::string& response, DWORD error)>;

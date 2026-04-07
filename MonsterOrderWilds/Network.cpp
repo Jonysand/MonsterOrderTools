@@ -240,8 +240,6 @@ namespace Network
         }
     }
 
-    void StartWebSocketReceive(HINTERNET hWebSocket, Network::WebsocketMessageCallback onMessage);
-
     void MakeHttpsRequestAsync(
         const TString& host,
         const INTERNET_PORT& port,
@@ -528,6 +526,10 @@ namespace Network
                     if (bufferType == WINHTTP_WEB_SOCKET_CLOSE_BUFFER_TYPE) {
                         LOG_ERROR(TEXT("WebSocket connection closed by the server."));
                         return;
+                    }
+                    if (bytesTransferred != 16) {
+                        LOG_ERROR(TEXT("Incomplete WebSocket header: %d/16 bytes"), bytesTransferred);
+                        continue;
                     }
                     if (!onePacket.unpackHeader((uint8_t*)headerBuffer))
                         continue;

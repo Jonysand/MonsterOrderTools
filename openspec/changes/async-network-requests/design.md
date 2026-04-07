@@ -202,6 +202,16 @@ WebSocket 连接和发送：
 | Use-After-Free (UAF) 风险 | Critical | `StartWebSocketReceive` 启动 detached 线程调用 `BliveManager::Inst()->IsConnected()`，当 `Destroy()` 被调用时 `__Instance` 被置为 `nullptr`，但 detached 线程可能仍在访问已销毁对象 | 新增 `GetDestroyingFlag()` 到单例宏，销毁时设置标志，`IsConnected()` 检查该标志防止 UAF |
 | EventSystem::Invoke 异常安全 | Medium | `Invoke` 遍历调用所有 handler 时，某 handler 异常会导致后续 handler 不被调用 | 在 handler 调用外添加 `try-catch (...)` |
 | TextToSpeech 状态机竞态 | Medium | `ProcessPlayingState` 访问 `req` 对象时缺少锁保护，与 HTTP 回调线程存在竞态 | 添加 `asyncMutex_` 锁保护 |
+| wsMsgLock 竞态条件 | Medium | `Disconnect()` 和 `~BliveManager()` 访问 `webSocket` 时缺少锁保护 | 添加 `wsMsgLock` 锁保护 |
+| WebSocket header 完整性未验证 | Medium | `StartWebSocketReceive` 未验证 `bytesTransferred == 16` | 添加 `bytesTransferred != 16` 检查 |
+
+### 多轮检查发现的额外问题（2026-04-07）
+
+| Bug | 严重性 | 描述 | 修复方案 |
+|-----|--------|------|---------|
+| delayedTasks 并发安全问题 | Medium | `delayedTasks` 在多处被访问但无锁保护，与 `Tick()` 遍历存在竞态 | 添加 `delayedTasksLock` 锁保护所有访问 |
+| networkRequests 迭代器失效 | Medium | `Tick()` 中 callback 执行期间，其他线程可能修改 `networkRequests` | 添加 `networkRequestsLock` 锁保护 |
+| destroyed_ 死代码 | Low | `BliveManager.h` 中 `destroyed_` 成员变量未被使用 | 删除 `destroyed_` 成员变量 |
 
 ### Session 复用实现
 

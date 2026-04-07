@@ -47,9 +47,12 @@ void BliveManager::Disconnect()
     reconnectAttemptCount.store(0);
     SetConnectionState(ConnectionState::Disconnected, DisconnectReason::None);
     
-    if (webSocket) {
-        WinHttpCloseHandle(webSocket);
-        webSocket = nullptr;
+    {
+        std::lock_guard<Lock> lock(wsMsgLock);
+        if (webSocket) {
+            WinHttpCloseHandle(webSocket);
+            webSocket = nullptr;
+        }
     }
     
     if (!gameId.empty())
@@ -122,7 +125,10 @@ void BliveManager::Start(const std::string& IdCode)
             SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::NetworkError);
         }
     };
-    networkRequests.push_back(request);
+    {
+        std::lock_guard<Lock> lock(networkRequestsLock);
+        networkRequests.push_back(request);
+    }
 
     Network::MakeHttpsRequestAsync(
         BLIVE_URL,
@@ -152,7 +158,10 @@ void BliveManager::End(const std::string& GameId, bool instantly, bool restart)
         if (restart)
             Start();
     };
-    networkRequests.push_back(request);
+    {
+        std::lock_guard<Lock> lock(networkRequestsLock);
+        networkRequests.push_back(request);
+    }
 
     Network::MakeHttpsRequestAsync(
         BLIVE_URL,
@@ -170,17 +179,21 @@ void BliveManager::End(const std::string& GameId, bool instantly, bool restart)
 
 void BliveManager::Tick() {
     // 延时任务
-    if (!delayedTasks.empty()) {
-        auto it = delayedTasks.begin();
-        while (it != delayedTasks.end()) {
-            if (it->checkInvoke())
-                it = delayedTasks.erase(it);
-            else
-                ++it;
+    {
+        std::lock_guard<Lock> lock(delayedTasksLock);
+        if (!delayedTasks.empty()) {
+            auto it = delayedTasks.begin();
+            while (it != delayedTasks.end()) {
+                if (it->checkInvoke())
+                    it = delayedTasks.erase(it);
+                else
+                    ++it;
+            }
         }
     }
     // 处理已完成的异步请求
     if (!networkRequests.empty()) {
+        std::lock_guard<Lock> lock(networkRequestsLock);
         for (auto it = networkRequests.begin(); it != networkRequests.end(); ) {
             if ((*it)->completed) {
                 auto& req = *it;
@@ -203,12 +216,21 @@ void BliveManager::Tick() {
 
 BliveManager::~BliveManager()
 {
-    if (webSocket) {
-        WinHttpCloseHandle(webSocket);
-        webSocket = nullptr;
+    {
+        std::lock_guard<Lock> lock(wsMsgLock);
+        if (webSocket) {
+            WinHttpCloseHandle(webSocket);
+            webSocket = nullptr;
+        }
     }
-    networkRequests.clear();
-    delayedTasks.clear();
+    {
+        std::lock_guard<Lock> lock(networkRequestsLock);
+        networkRequests.clear();
+    }
+    {
+        std::lock_guard<Lock> lock(delayedTasksLock);
+        delayedTasks.clear();
+    }
 }
 
 void BliveManager::OnReceiveStartResponse(const std::string& response)
@@ -221,9 +243,12 @@ void BliveManager::OnReceiveStartResponse(const std::string& response)
         if (jsonResponse.contains("code"))
             code = jsonResponse["code"];
     }
-	catch (const json::parse_error& e) {
+    catch (const json::parse_error& e) {
 		LOG_ERROR(TEXT("JSON parse error: %s"), ProtoUtils::Decode(e.what()).c_str());
-        delayedTasks.push_back({ [this]() { Start(); }, 1000 });
+        {
+            std::lock_guard<Lock> lock(delayedTasksLock);
+            delayedTasks.push_back({ [this]() { Start(); }, 1000 });
+        }
         return;
 	}
     switch (code)
@@ -255,12 +280,18 @@ void BliveManager::OnReceiveStartResponse(const std::string& response)
                 if (!success) {
                     LOG_ERROR(TEXT("WebSocket connection failed with error: %d"), error);
                     SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::NetworkError);
-                    delayedTasks.push_back({ [this]() { Start(); }, 1000 });
+                    {
+                        std::lock_guard<Lock> lock(delayedTasksLock);
+                        delayedTasks.push_back({ [this]() { Start(); }, 1000 });
+                    }
                 }
             }
         );
         // 开始app心跳
-        delayedTasks.push_back({ [this]() { StartAppHeartBeat(); }, 5000 });
+        {
+            std::lock_guard<Lock> lock(delayedTasksLock);
+            delayedTasks.push_back({ [this]() { StartAppHeartBeat(); }, 5000 });
+        }
         break;
     }
     case 7001:
@@ -269,7 +300,10 @@ void BliveManager::OnReceiveStartResponse(const std::string& response)
     default:
         LOG_ERROR(TEXT("Error OnStartResponse: %s"), ProtoUtils::Decode(response).c_str());
         SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::NetworkError);
-        delayedTasks.push_back({ [this]() { Start(); }, 1000 });
+        {
+            std::lock_guard<Lock> lock(delayedTasksLock);
+            delayedTasks.push_back({ [this]() { Start(); }, 1000 });
+        }
         break;
     }
 }
@@ -291,7 +325,10 @@ void BliveManager::StartAppHeartBeat()
             SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::NetworkError);
         }
     };
-    networkRequests.push_back(request);
+    {
+        std::lock_guard<Lock> lock(networkRequestsLock);
+        networkRequests.push_back(request);
+    }
 
     Network::MakeHttpsRequestAsync(
         BLIVE_URL,
@@ -318,7 +355,10 @@ void BliveManager::OnReceiveAppHeartbeatResponse(const std::string& response)
     if (response.empty())
     {
         LOG_ERROR(TEXT("Error OnReceiveAppHeartbeatResponse: empty response"));
-        delayedTasks.push_back({ [this]() { StartAppHeartBeat(); }, HEARBEAT_INTERVAL_MINISECONDS });
+        {
+            std::lock_guard<Lock> lock(delayedTasksLock);
+            delayedTasks.push_back({ [this]() { StartAppHeartBeat(); }, HEARTBEAT_INTERVAL_MINISECONDS });
+        }
         return;
     }
     DWORD code = -1;
@@ -337,13 +377,19 @@ void BliveManager::OnReceiveAppHeartbeatResponse(const std::string& response)
     case 0:
     {
         reconnectAttemptCount.store(0);
-        delayedTasks.push_back({ [this]() { StartAppHeartBeat(); }, HEARBEAT_INTERVAL_MINISECONDS });
+        {
+            std::lock_guard<Lock> lock(delayedTasksLock);
+            delayedTasks.push_back({ [this]() { StartAppHeartBeat(); }, HEARTBEAT_INTERVAL_MINISECONDS });
+        }
         break;
     }
     default:
         SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::HeartbeatTimeout);
         LOG_ERROR(TEXT("Error OnReceiveAppHeartbeatResponse: %s"), ProtoUtils::Decode(response).c_str());
-        delayedTasks.push_back({ [this]() { Start(); }, 1000 });
+        {
+            std::lock_guard<Lock> lock(delayedTasksLock);
+            delayedTasks.push_back({ [this]() { Start(); }, 1000 });
+        }
         break;
     }
 }
@@ -402,7 +448,10 @@ void BliveManager::HandleWSMessage()
             break;
         case OP_HEARTBEAT_REPLY:
             reconnectAttemptCount.store(0);
-            delayedTasks.push_back({ [this]() { StartWebsocketHeartBeat(); }, HEARBEAT_INTERVAL_MINISECONDS });
+            {
+                std::lock_guard<Lock> lock(delayedTasksLock);
+                delayedTasks.push_back({ [this]() { StartWebsocketHeartBeat(); }, HEARTBEAT_INTERVAL_MINISECONDS });
+            }
             break;
         case OP_SEND_SMS_REPLY:
             HandleSmsReply(packet.body);
@@ -412,12 +461,18 @@ void BliveManager::HandleWSMessage()
             break;
         case OP_AUTH_REPLY:
             LOG_DEBUG(TEXT("OP_AUTH_REPLY"));
-            delayedTasks.push_back({ [this]() { StartWebsocketHeartBeat(); }, 2000 });
+            {
+                std::lock_guard<Lock> lock(delayedTasksLock);
+                delayedTasks.push_back({ [this]() { StartWebsocketHeartBeat(); }, 2000 });
+            }
             break;
         default:
             SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::NetworkError);
             LOG_ERROR(TEXT("Receive UNKNOWN from server websocket: %s"), ProtoUtils::Decode(packet.body).c_str());
-            delayedTasks.push_back({ [this]() { Start(); }, 1000 });
+            {
+                std::lock_guard<Lock> lock(delayedTasksLock);
+                delayedTasks.push_back({ [this]() { Start(); }, 1000 });
+            }
             break;
         }
         ++count;
@@ -464,7 +519,10 @@ void BliveManager::HandleSmsReply(const std::string& msg)
             {
                 gameId.clear();
                 SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::ServerClose);
-                delayedTasks.push_back({ [this]() { Start(); }, 1000 });
+                {
+                    std::lock_guard<Lock> lock(delayedTasksLock);
+                    delayedTasks.push_back({ [this]() { Start(); }, 1000 });
+                }
             }
         }
 
