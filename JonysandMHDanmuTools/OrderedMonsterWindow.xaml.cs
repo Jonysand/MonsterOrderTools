@@ -424,10 +424,10 @@ namespace MonsterOrderWindows
                 timer.Stop();
             }
             _bubbleTimers.Clear();
+            var enterStory = (Storyboard)FindResource("BubbleEnterStoryboard");
+            var exitStory = (Storyboard)FindResource("BubbleExitStoryboard");
             foreach (var bubble in _bubbles)
             {
-                var enterStory = (Storyboard)FindResource("BubbleEnterStoryboard");
-                var exitStory = (Storyboard)FindResource("BubbleExitStoryboard");
                 if (enterStory != null) enterStory.Stop(bubble);
                 if (exitStory != null) exitStory.Stop(bubble);
             }

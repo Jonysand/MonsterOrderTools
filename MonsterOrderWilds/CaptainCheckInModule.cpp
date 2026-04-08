@@ -287,6 +287,7 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
                 try {
                     callback(usernameCopy.c_str(), contentCopy.c_str(), userData);
                 } catch (...) {
+                    LOG_ERROR(TEXT("AIReplyCallback threw exception"));
                 }
             }
 
