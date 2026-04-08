@@ -169,7 +169,7 @@ public:
 |------|------|
 | 库类型 | 原生 C API |
 | 头文件 | `sqlite3.h` |
-| 依赖 | libsqlite3.lib / sqlite3.dll |
+| 依赖 | SQLite3Lib.lib（静态链接，无外部 DLL 依赖） |
 | 许可证 | 公共领域 |
 | 主要功能 | CRUD、事务、预处理语句 |
 

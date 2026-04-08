@@ -16,6 +16,9 @@
     <Filter Include="Resource Files">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
     </Filter>
+    <Filter Include="External">
+      <UniqueIdentifier>{1E3D4C5A-6B7D-8E9F-0A1B-2C3D4E5F6A7B}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="framework.h">
@@ -276,6 +279,9 @@
     </ClCompile>
     <ClCompile Include="UnitTestMain.cpp">
       <Filter>UnitTests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\external\sqlite3.cpp">
+      <Filter>External</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
