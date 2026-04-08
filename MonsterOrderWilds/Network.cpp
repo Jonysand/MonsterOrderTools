@@ -161,7 +161,7 @@ namespace Network
             std::atomic<DWORD> error{0};
             Network::HttpsAsyncCallback callback;
             std::mutex mtx;
-            std::atomic<bool> cleanupDone{false};
+            std::weak_ptr<std::atomic<bool>> cleanupFlag;
         };
 
         void CALLBACK HttpsStatusCallback(
@@ -174,6 +174,8 @@ namespace Network
             try {
                 auto* ctx = reinterpret_cast<HttpsAsyncContext*>(dwContext);
                 if (!ctx) return;
+                auto flag = ctx->cleanupFlag.lock();
+                if (!flag || flag->load()) return;
                 switch (internetStatus) {
                 case WINHTTP_CALLBACK_STATUS_REQUEST_ERROR: {
                     auto* errorInfo = reinterpret_cast<WINHTTP_ASYNC_RESULT*>(statusInfo);
@@ -196,16 +198,28 @@ namespace Network
             DWORD totalBytesRead = 0;
             while (true) {
                 DWORD bytesAvailable = 0;
-                if (!WinHttpQueryDataAvailable(ctx->hRequest, &bytesAvailable) || bytesAvailable == 0)
-                    break;
-                std::vector<char> buffer(bytesAvailable);
-                DWORD bytesRead = 0;
-                if (!WinHttpReadData(ctx->hRequest, buffer.data(), bytesAvailable, &bytesRead)) {
+                if (!WinHttpQueryDataAvailable(ctx->hRequest, &bytesAvailable)) {
                     DWORD err = GetLastError();
+                    LOG_DEBUG(TEXT("ReadResponseData: WinHttpQueryDataAvailable failed, error: %d"), err);
                     std::lock_guard<std::mutex> lock(ctx->mtx);
                     ctx->error.store(err);
                     return err;
                 }
+                if (bytesAvailable == 0) {
+                    LOG_DEBUG(TEXT("ReadResponseData: bytesAvailable is 0, breaking"));
+                    break;
+                }
+                LOG_DEBUG(TEXT("ReadResponseData: bytesAvailable = %d"), bytesAvailable);
+                std::vector<char> buffer(bytesAvailable);
+                DWORD bytesRead = 0;
+                if (!WinHttpReadData(ctx->hRequest, buffer.data(), bytesAvailable, &bytesRead)) {
+                    DWORD err = GetLastError();
+                    LOG_DEBUG(TEXT("ReadResponseData: WinHttpReadData failed, error: %d"), err);
+                    std::lock_guard<std::mutex> lock(ctx->mtx);
+                    ctx->error.store(err);
+                    return err;
+                }
+                LOG_DEBUG(TEXT("ReadResponseData: bytesRead = %d"), bytesRead);
                 if (bytesRead > 0) {
                     std::lock_guard<std::mutex> lock(ctx->mtx);
                     ctx->response.append(buffer.data(), bytesRead);
@@ -213,6 +227,7 @@ namespace Network
                 if (bytesRead < bytesAvailable)
                     break;
             }
+            LOG_DEBUG(TEXT("ReadResponseData: totalBytesRead = %d, response size = %d"), totalBytesRead, (int)ctx->response.size());
             return 0;
         }
 
@@ -220,7 +235,7 @@ namespace Network
             static HINTERNET hSession = nullptr;
             static std::once_flag flag;
             std::call_once(flag, []() {
-                hSession = WinHttpOpen(HTTP_REQUEST_USER_AGENT, WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, WINHTTP_FLAG_ASYNC);
+                hSession = WinHttpOpen(HTTP_REQUEST_USER_AGENT, WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
                 if (hSession) {
                     WinHttpSetTimeouts(hSession, 5000, 5000, 5000, 5000);
                 }
@@ -239,8 +254,10 @@ namespace Network
         const bool ssl,
         Network::HttpsAsyncCallback onComplete
     ) {
-        auto* ctx = new HttpsAsyncUtils::HttpsAsyncContext();
+        auto ctx = std::make_shared<HttpsAsyncUtils::HttpsAsyncContext>();
         ctx->callback = onComplete;
+        auto cleanupFlag = std::make_shared<std::atomic<bool>>(false);
+        ctx->cleanupFlag = cleanupFlag;
 
         HINTERNET hSession = HttpsAsyncUtils::GetSharedSession();
         if (!hSession) {
@@ -253,7 +270,6 @@ namespace Network
                         LOG_ERROR(TEXT("[Network] HttpsRequest callback exception (session init failed)"));
                     }
                 }
-                delete ctx;
             }).detach();
             return;
         }
@@ -270,7 +286,6 @@ namespace Network
                         LOG_ERROR(TEXT("[Network] HttpsRequest callback exception (connect failed)"));
                     }
                 }
-                delete ctx;
             }).detach();
             return;
         }
@@ -289,15 +304,14 @@ namespace Network
                     }
                 }
                 WinHttpCloseHandle(ctx->hConnect);
-                delete ctx;
             }).detach();
             return;
         }
 
         WinHttpSetStatusCallback(ctx->hRequest, HttpsAsyncUtils::HttpsStatusCallback, WINHTTP_CALLBACK_FLAG_ALL_NOTIFICATIONS, 0);
-        WinHttpSetOption(ctx->hRequest, WINHTTP_OPTION_CONTEXT_VALUE, ctx, sizeof(*ctx));
+        WinHttpSetOption(ctx->hRequest, WINHTTP_OPTION_CONTEXT_VALUE, ctx.get(), sizeof(*ctx));
 
-        std::thread([ctx, headers, body]() {
+        std::thread([ctx, cleanupFlag, headers, body]() {
             if (!headers.empty()) {
                 TString tcharHeaders = ProtoUtils::ConvertToTCHAR(headers.c_str());
                 WinHttpAddRequestHeaders(ctx->hRequest, tcharHeaders.c_str(), (DWORD)tcharHeaders.size(), WINHTTP_ADDREQ_FLAG_ADD | WINHTTP_ADDREQ_FLAG_REPLACE);
@@ -309,7 +323,7 @@ namespace Network
                 body.empty() ? WINHTTP_NO_REQUEST_DATA : (LPVOID)body.data(),
                 (DWORD)body.size(),
                 (DWORD)body.size(),
-                reinterpret_cast<DWORD_PTR>(ctx)
+                reinterpret_cast<DWORD_PTR>(ctx.get())
             );
 
             if (!sendResult) {
@@ -319,12 +333,12 @@ namespace Network
                 if (!receiveResult) {
                     ctx->error.store(GetLastError());
                 } else {
-                    ctx->error.store(HttpsAsyncUtils::ReadResponseData(ctx));
+                    ctx->error.store(HttpsAsyncUtils::ReadResponseData(ctx.get()));
                 }
             }
 
             {
-                if (ctx->cleanupDone.exchange(true)) return;
+                if (cleanupFlag->exchange(true)) return;
                 std::lock_guard<std::mutex> lock(ctx->mtx);
                 if (ctx->callback) {
                     try {
@@ -333,9 +347,9 @@ namespace Network
                         LOG_ERROR(TEXT("[Network] HttpsRequest callback exception (completion)"));
                     }
                 }
+                WinHttpSetStatusCallback(ctx->hRequest, NULL, WINHTTP_CALLBACK_FLAG_ALL_NOTIFICATIONS, 0);
                 if (ctx->hRequest) WinHttpCloseHandle(ctx->hRequest);
                 if (ctx->hConnect) WinHttpCloseHandle(ctx->hConnect);
-                delete ctx;
             }
         }).detach();
     }

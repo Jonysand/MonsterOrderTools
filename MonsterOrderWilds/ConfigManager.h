@@ -13,7 +13,7 @@ struct ConfigData
     bool enableVoice = false;
     int speechRate = 0;
     int speechPitch = 0;
-    int speechVolume = 0;
+    int speechVolume = 50;
     bool onlySpeekWearingMedal = false;
     int onlySpeekGuardLevel = 0;
     bool onlySpeekPaidGift = false;

@@ -323,13 +323,32 @@ bool TTSManager::SpeakWithSapi(const TString& text)
 {
     std::lock_guard<std::mutex> lock(sapiMutex_);
 
+    LOG_DEBUG(TEXT("SpeakWithSapi: pVoice=%p"), pVoice);
+
     if (pVoice == NULL) {
+        LOG_ERROR(TEXT("SpeakWithSapi: pVoice is NULL, cannot speak"));
         return false;
     }
 
-    pVoice->SetRate(ConfigManager::Inst()->GetConfig().speechRate);
-    pVoice->SetVolume(ConfigManager::Inst()->GetConfig().speechVolume);
+    {
+        ISpObjectToken* pChineseToken = NULL;
+        HRESULT hrToken = SpFindBestToken(SPCAT_VOICES, L"Language=804", NULL, &pChineseToken);
+        if (SUCCEEDED(hrToken) && pChineseToken) {
+            pVoice->SetVoice(pChineseToken);
+            LOG_DEBUG(TEXT("SpeakWithSapi: Set Chinese voice"));
+            pChineseToken->Release();
+        } else {
+            LOG_DEBUG(TEXT("SpeakWithSapi: Chinese voice not found, hr=0x%08X"), hrToken);
+        }
+    }
+
+    int speechRate = ConfigManager::Inst()->GetConfig().speechRate;
+    int speechVolume = ConfigManager::Inst()->GetConfig().speechVolume;
     int pitch = ConfigManager::Inst()->GetConfig().speechPitch;
+    LOG_DEBUG(TEXT("SpeakWithSapi: rate=%d, volume=%d, pitch=%d"), speechRate, speechVolume, pitch);
+
+    pVoice->SetRate(speechRate);
+    pVoice->SetVolume(speechVolume);
     std::wstring pitchStr = (pitch >= 0 ? L"+" : L"") + std::to_wstring(pitch) + L"st";
 
     // Escape '<' and '&' in text to prevent SSML/XML parsing issues
@@ -351,7 +370,9 @@ bool TTSManager::SpeakWithSapi(const TString& text)
     }
 
     std::wstring ssml = L"<speak version='1.0' xml:lang='zh-CN'><prosody pitch='" + pitchStr + L"'>" + safeText + L"</prosody></speak>";
-    return SUCCEEDED(pVoice->Speak(ssml.c_str(), SPF_IS_XML | SPF_ASYNC, NULL));
+    HRESULT hr = pVoice->Speak(ssml.c_str(), SPF_IS_XML | SPF_ASYNC, NULL);
+    LOG_DEBUG(TEXT("SpeakWithSapi: Speak result=0x%08X"), hr);
+    return SUCCEEDED(hr);
 }
 
 #if USE_MIMO_TTS
@@ -394,7 +415,6 @@ void TTSManager::ProcessAsyncTTS()
     // 处理当前请求
     if (hasCurrentRequest_ && !asyncPendingQueue_.empty()) {
         AsyncTTSRequest& req = asyncPendingQueue_.front();
-        LOG_DEBUG(TEXT("=== ProcessAsyncTTS: hasCurrentRequest_=true, state=%d ==="), (int)req.state);
         switch (req.state) {
         case AsyncTTSState::Pending:
             ProcessPendingRequest(req);
@@ -413,8 +433,6 @@ void TTSManager::ProcessAsyncTTS()
             hasCurrentRequest_ = false;
             break;
         }
-    } else {
-        LOG_DEBUG(TEXT("=== ProcessAsyncTTS: hasCurrentRequest_=%d, queue size=%zu ==="), hasCurrentRequest_, asyncPendingQueue_.size());
     }
 
     // 如果当前没有请求，从队列取下一个

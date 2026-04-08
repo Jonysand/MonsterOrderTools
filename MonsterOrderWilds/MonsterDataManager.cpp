@@ -69,7 +69,6 @@ bool MonsterDataManager::LoadJsonData(const std::string& configPath)
                     cp.pattern = std::wregex(wnickname);
                     cp.monsterName = key;
                     compiledPatterns_.push_back(cp);
-                    LOGW_DEBUG(L"MonsterDataManager: Compiled pattern '%s' for monster '%s'", wnickname.c_str(), wkey.c_str());
                 }
                 catch (const std::regex_error& e)
                 {
