@@ -52,10 +52,14 @@ void BliveManager::Disconnect()
         }
     }
     
-    if (!gameId.empty())
+    std::string currentGameId;
     {
-        End(gameId, false);
+        std::lock_guard<std::mutex> lock(gameIdLock);
+        currentGameId = gameId;
         gameId.clear();
+    }
+    if (!currentGameId.empty()) {
+        End(currentGameId, false);
     }
     
     SetConnectionState(ConnectionState::Disconnected, DisconnectReason::None);
@@ -105,10 +109,14 @@ void BliveManager::Start(const std::string& IdCode)
     
     SetConnectionState(ConnectionState::Connecting, DisconnectReason::None);
     
-    if (!gameId.empty())
+    std::string currentGameId;
     {
-        End(gameId, true);
+        std::lock_guard<std::mutex> lock(gameIdLock);
+        currentGameId = gameId;
         gameId.clear();
+    }
+    if (!currentGameId.empty()) {
+        End(currentGameId, true);
         return;
     }
     std::string params = "{\"code\":\"" + idCode + "\",\"app_id\":" + GetAPP_ID() + "}";
@@ -117,6 +125,7 @@ void BliveManager::Start(const std::string& IdCode)
     auto request = std::make_shared<AsyncRequest>();
     request->type = AsyncRequest::HTTP;
     request->httpCallback = [this](bool success, const std::string& response, DWORD error) {
+        if (destroying_.load()) return;
         if (success) {
             OnReceiveStartResponse(response);
         } else {
@@ -145,12 +154,17 @@ void BliveManager::Start(const std::string& IdCode)
 
 void BliveManager::End(const std::string& GameId, bool restart)
 {
-    std::string params = "{\"game_id\":\"" + (GameId.empty() ? gameId : GameId) + "\",\"app_id\":" + GetAPP_ID() + "}";
+    std::string idToUse = GameId.empty() ? [this]() {
+        std::lock_guard<std::mutex> lock(gameIdLock);
+        return gameId;
+    }() : GameId;
+    std::string params = "{\"game_id\":\"" + idToUse + "\",\"app_id\":" + GetAPP_ID() + "}";
     std::string signedHeader = ProtoUtils::Sign(params);
 
     auto request = std::make_shared<AsyncRequest>();
     request->type = AsyncRequest::HTTP;
     request->httpCallback = [this, restart](bool success, const std::string& response, DWORD error) {
+        if (destroying_.load()) return;
         if (success) {
             LOG_DEBUG(TEXT("Stop response: %s"), ProtoUtils::Decode(response).c_str());
         }
@@ -226,6 +240,7 @@ void BliveManager::Tick() {
 
 BliveManager::~BliveManager()
 {
+    destroying_.store(true);
     {
         std::lock_guard<Lock> lock(wsMsgLock);
         if (webSocket) {
@@ -268,7 +283,10 @@ void BliveManager::OnReceiveStartResponse(const std::string& response)
     {
         TString decodedGameID = ProtoUtils::Decode(jsonResponse["data"]["game_info"]["game_id"].get<std::string>());
         LOG_INFO(TEXT("Game ID: %s"), decodedGameID.c_str());
-        gameId = ProtoUtils::ConvertTCharToString(decodedGameID.c_str());
+        {
+            std::lock_guard<std::mutex> lock(gameIdLock);
+            gameId = ProtoUtils::ConvertTCharToString(decodedGameID.c_str());
+        }
         SetConnectionState(ConnectionState::Connected, DisconnectReason::None);
         // 准备建立websocket
         serverAddresses.clear();
@@ -329,14 +347,22 @@ void BliveManager::OnReceiveStartResponse(const std::string& response)
 
 void BliveManager::StartAppHeartBeat()
 {
-    if (gameId.empty())
+    std::string currentGameId;
+    {
+        std::lock_guard<std::mutex> lock(gameIdLock);
+        currentGameId = gameId;
+    }
+    if (currentGameId.empty()) {
+        LOG_DEBUG(TEXT("StartAppHeartBeat skipped: gameId is empty"));
         return;
-    std::string heartbeatParams = "{\"game_id\":\"" + gameId + "\"}";
+    }
+    std::string heartbeatParams = "{\"game_id\":\"" + currentGameId + "\"}";
     std::string signedHeartbeatHeader = ProtoUtils::Sign(heartbeatParams);
 
     auto request = std::make_shared<AsyncRequest>();
     request->type = AsyncRequest::HTTP;
     request->httpCallback = [this](bool success, const std::string& response, DWORD error) {
+        if (destroying_.load()) return;
         if (success) {
             OnReceiveAppHeartbeatResponse(response);
         } else {
@@ -366,10 +392,13 @@ void BliveManager::StartAppHeartBeat()
 void BliveManager::OnReceiveAppHeartbeatResponse(const std::string& response)
 {
     LOG_DEBUG(TEXT("OnReceiveAppHeartbeatResponse: %s"), ProtoUtils::Decode(response).c_str());
-    if (gameId.empty())
     {
-        LOG_DEBUG(TEXT("OnReceiveAppHeartbeatResponse: ignored due to empty gameId"));
-        return;
+        std::lock_guard<std::mutex> lock(gameIdLock);
+        if (gameId.empty())
+        {
+            LOG_DEBUG(TEXT("OnReceiveAppHeartbeatResponse: ignored due to empty gameId"));
+            return;
+        }
     }
     if (response.empty())
     {
@@ -434,6 +463,7 @@ void BliveManager::StartWebsocketHeartBeat()
             ws,
             packedData,
             [this](bool success, DWORD error) {
+                if (destroying_.load()) return;
                 if (!success) {
                     LOG_ERROR(TEXT("WebSocket heartbeat send failed with error: %d"), error);
                 }
@@ -537,19 +567,22 @@ void BliveManager::HandleSmsReply(const std::string& msg)
         else if (cmd == "LIVE_OPEN_PLATFORM_INTERACTION_END")
         {
             const std::string& disconnectedGameId = jsonResponse["data"]["game_id"].get<std::string>();
-            if (disconnectedGameId == gameId)
             {
-                gameId.clear();
-                SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::ServerClose);
+                std::lock_guard<std::mutex> lock(gameIdLock);
+                if (disconnectedGameId == gameId)
                 {
-                    std::lock_guard<Lock> lock(delayedTasksLock);
-                    delayedTasks.push_back({ [this]() { Start(); }, 1000 });
+                    gameId.clear();
+                    SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::ServerClose);
+                    {
+                        std::lock_guard<Lock> lock(delayedTasksLock);
+                        delayedTasks.push_back({ [this]() { Start(); }, 1000 });
+                    }
                 }
             }
         }
 
         if (cmd == "LIVE_OPEN_PLATFORM_DM") {
-            DanmuProcessor::Inst()->ProcessDanmu(DanmuProcessor::Inst()->ParseDanmuJson(msg));
+            DanmuProcessor::Inst()->ProcessDanmu(DanmuProcessor::Inst()->ParseDanmuJson(jsonResponse));
         }
     }
     catch (const std::exception& e) {

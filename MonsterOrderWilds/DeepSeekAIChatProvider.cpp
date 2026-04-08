@@ -64,11 +64,15 @@ bool DeepSeekAIChatProvider::CallAPI(const std::string& prompt, std::string& out
         body,
         true,
         [&](bool success, const std::string& resp, DWORD error) {
-            std::lock_guard<std::mutex> lock(mtx);
-            response = resp;
-            httpError = error;
-            completed = true;
-            cv.notify_one();
+            try {
+                std::lock_guard<std::mutex> lock(mtx);
+                response = resp;
+                httpError = error;
+                completed = true;
+                cv.notify_one();
+            } catch (...) {
+                // Mutex operations should not throw, but handle defensively
+            }
         });
 
     std::unique_lock<std::mutex> lock(mtx);

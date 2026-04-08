@@ -38,11 +38,15 @@ void MiniMaxTTSProvider::RequestTTS(const TTSRequest& request, TTSCallback callb
         body,
         true,
         [&](bool success, const std::string& resp, DWORD error) {
-            std::lock_guard<std::mutex> lock(mtx);
-            responseBody = resp;
-            httpError = error;
-            completed = true;
-            cv.notify_one();
+            try {
+                std::lock_guard<std::mutex> lock(mtx);
+                responseBody = resp;
+                httpError = error;
+                completed = true;
+                cv.notify_one();
+            } catch (...) {
+                // Mutex operations should not throw, but handle defensively
+            }
         });
 
     std::unique_lock<std::mutex> lock(mtx);
@@ -113,7 +117,7 @@ TTSResponse MiniMaxTTSProvider::ParseResponse(const std::string& responseBody) c
             return result;
         }
 
-        if (j.contains("data") && j["data"].contains("audio")) {
+        if (j.contains("data") && j["data"].contains("audio") && j["data"]["audio"].is_string()) {
             std::string audioBase64 = j["data"]["audio"].get<std::string>();
             result.audioData = Base64ToBytes(audioBase64);
             result.success = true;

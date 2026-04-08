@@ -212,7 +212,24 @@ DanmuData DanmuProcessor::ParseDanmuJson(const std::string& jsonStr) const
     try
     {
         json j = json::parse(jsonStr);
+        return ParseDanmuJson(j);
+    }
+    catch (const json::parse_error& e)
+    {
+        LOG_ERROR(TEXT("[ParseDanmuJson] JSON parse error at byte %d: %s"), (int)e.byte, e.what());
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR(TEXT("[ParseDanmuJson] ParseDanmuJson exception: %s"), e.what());
+    }
+    return data;
+}
 
+DanmuData DanmuProcessor::ParseDanmuJson(const json& j) const
+{
+    DanmuData data;
+    try
+    {
         json dataObj = j;
         if (j.contains("cmd") && j.contains("data"))
         {
@@ -243,13 +260,9 @@ DanmuData DanmuProcessor::ParseDanmuJson(const std::string& jsonStr) const
         if (dataObj.contains("guard_level"))
             data.guardLevel = dataObj["guard_level"].get<int>();
     }
-    catch (const json::parse_error& e)
-    {
-        LOG_ERROR(TEXT("[ParseDanmuJson] JSON parse error at byte %d: %s"), (int)e.byte, e.what());
-    }
     catch (const std::exception& e)
     {
-        LOG_ERROR(TEXT("[ParseDanmuJson] ParseDanmuJson exception: %s"), e.what());
+        LOG_ERROR(TEXT("[ParseDanmuJson] ParseDanmuJson (json overload) exception: %s"), e.what());
     }
     return data;
 }

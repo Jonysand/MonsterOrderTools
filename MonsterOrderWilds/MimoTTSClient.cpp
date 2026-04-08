@@ -90,7 +90,7 @@ MimoTTSClient::TTSResponse MimoTTSClient::ParseResponse(const std::string& respo
             
             if (resultJson.contains("choices") && resultJson["choices"].is_array() && !resultJson["choices"].empty()) {
                 auto& choice = resultJson["choices"][0];
-                if (choice.contains("message") && choice["message"].contains("audio")) {
+                if (choice.is_object() && choice.contains("message") && choice["message"].contains("audio")) {
                     auto& audio = choice["message"]["audio"];
                     if (audio.contains("data") && audio["data"].is_string()) {
                         std::string base64Audio = audio["data"].get<std::string>();
@@ -153,7 +153,7 @@ MimoTTSClient::TTSResponse MimoTTSClient::ParseResponse(const std::string& respo
             if (errorJson.contains("error")) {
                 if (errorJson["error"].is_string()) {
                     response.errorMessage = errorJson["error"].get<std::string>();
-                } else if (errorJson["error"].contains("message")) {
+                } else if (errorJson["error"].contains("message") && errorJson["error"]["message"].is_string()) {
                     response.errorMessage = errorJson["error"]["message"].get<std::string>();
                 }
             }
@@ -200,38 +200,42 @@ void MimoTTSClient::ExecuteWithRetry(const TTSRequest& request, TTSCallback call
     std::shared_ptr<std::function<void(bool, const std::string&, DWORD)>> requestWithRetryPtr;
     requestWithRetryPtr = std::make_shared<std::function<void(bool, const std::string&, DWORD)>>(
         [requestWithRetryPtr, callbackPtr, requestBodyCopy, requestHeadersCopy, useSSL, maxRetries, ctx](bool success, const std::string& responseBody, DWORD error) {
-        TTSResponse response;
-        if (success && !responseBody.empty()) {
-            response = ParseResponse(responseBody, 200);
-        } else {
-            response.success = false;
-            response.errorMessage = error != 0 ? "HTTP error: " + std::to_string(error) : "Empty response from server";
-        }
-        response.retryCount = ctx->retryCount;
-
-        if (!response.success && ctx->retryCount < maxRetries) {
-            ctx->retryCount++;
-            LOG_ERROR(TEXT("MiMo TTS request failed, retrying (%d/%d)..."), ctx->retryCount, maxRetries);
-
-            Network::MakeHttpsRequestAsync(
-                utf8_to_wstring(API_ENDPOINT),
-                API_PORT,
-                utf8_to_wstring(API_PATH),
-                TEXT("POST"),
-                requestHeadersCopy,
-                requestBodyCopy,
-                useSSL,
-                *requestWithRetryPtr
-            );
-        } else {
-            if (!response.success) {
-                LOG_ERROR(TEXT("MiMo TTS request failed after %d retries: %s"),
-                    maxRetries, utf8_to_wstring(response.errorMessage).c_str());
+        try {
+            TTSResponse response;
+            if (success && !responseBody.empty()) {
+                response = ParseResponse(responseBody, 200);
+            } else {
+                response.success = false;
+                response.errorMessage = error != 0 ? "HTTP error: " + std::to_string(error) : "Empty response from server";
             }
-            std::lock_guard<std::mutex> lock(ctx->mtx);
-            ctx->finalResponse = response;
-            ctx->completed = true;
-            ctx->cv.notify_one();
+            response.retryCount = ctx->retryCount;
+
+            if (!response.success && ctx->retryCount < maxRetries) {
+                ctx->retryCount++;
+                LOG_ERROR(TEXT("MiMo TTS request failed, retrying (%d/%d)..."), ctx->retryCount, maxRetries);
+
+                Network::MakeHttpsRequestAsync(
+                    utf8_to_wstring(API_ENDPOINT),
+                    API_PORT,
+                    utf8_to_wstring(API_PATH),
+                    TEXT("POST"),
+                    requestHeadersCopy,
+                    requestBodyCopy,
+                    useSSL,
+                    *requestWithRetryPtr
+                );
+            } else {
+                if (!response.success) {
+                    LOG_ERROR(TEXT("MiMo TTS request failed after %d retries: %s"),
+                        maxRetries, utf8_to_wstring(response.errorMessage).c_str());
+                }
+                std::lock_guard<std::mutex> lock(ctx->mtx);
+                ctx->finalResponse = response;
+                ctx->completed = true;
+                ctx->cv.notify_one();
+            }
+        } catch (...) {
+            LOG_ERROR(TEXT("MimoTTSClient retry callback exception"));
         }
     });
 

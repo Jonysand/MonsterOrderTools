@@ -2,6 +2,7 @@
 #include "framework.h"
 #include "Network.h"
 #include "EventSystem.h"
+#include "WriteLog.h"
 #include <mutex>
 #include <condition_variable>
 
@@ -117,8 +118,9 @@ private:
 
     // 直播身份码
     std::string idCode{ "" };
-    // 本场次gameID
+    // 本场次gameID（需要锁保护）
 	std::string gameId;
+	mutable std::mutex gameIdLock;
 	// 直播服务器地址
 	std::vector<std::string> serverAddresses;
     // auth体
@@ -156,7 +158,14 @@ private:
                 timeStamp = currentTimestamp;
                 return false;
             }
-            func();
+            try {
+                func();
+            } catch (const std::exception& e) {
+                std::string errMsg = e.what();
+                LOG_ERROR(TEXT("[BliveManager] delayedTasks callback exception: %s"), ProtoUtils::Decode(errMsg).c_str());
+            } catch (...) {
+                LOG_ERROR(TEXT("[BliveManager] delayedTasks callback unknown exception"));
+            }
             return true;
         }
     };
@@ -170,6 +179,7 @@ private:
     std::atomic<ConnectionState> connectionState{ ConnectionState::Disconnected };
     std::atomic<DisconnectReason> disconnectReason{ DisconnectReason::None };
     std::atomic<int> reconnectAttemptCount{ 0 };
+    std::atomic<bool> destroying_{ false };
 
     /*
     * 事件监听 ----------------------------------------------------------------------------------------

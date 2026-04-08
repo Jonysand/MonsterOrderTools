@@ -366,7 +366,7 @@ extern "C" {
     {
         try
         {
-            auto danmu = DataBridge::GetDanmuProcessor()->ParseDanmuJson(jsonStr);
+            auto danmu = DataBridge::GetDanmuProcessor()->ParseDanmuJson(std::string(jsonStr));
             DataBridge::GetDanmuProcessor()->ProcessDanmu(danmu);
         }
         catch (const std::exception& e)

@@ -175,16 +175,13 @@ namespace Network
                 auto* ctx = reinterpret_cast<HttpsAsyncContext*>(dwContext);
                 if (!ctx) return;
                 switch (internetStatus) {
-                case WINHTTP_CALLBACK_STATUS_REQUEST_ERROR:
-                    {
-                        std::lock_guard<std::mutex> lock(ctx->mtx);
-                        if (statusInfoLength >= sizeof(WINHTTP_ASYNC_RESULT)) {
-                            ctx->error.store(((WINHTTP_ASYNC_RESULT*)statusInfo)->dwError);
-                        } else {
-                            ctx->error.store(GetLastError());
-                        }
+                case WINHTTP_CALLBACK_STATUS_REQUEST_ERROR: {
+                    auto* errorInfo = reinterpret_cast<WINHTTP_ASYNC_RESULT*>(statusInfo);
+                    if (errorInfo && ctx) {
+                        ctx->error.store(static_cast<DWORD>(errorInfo->dwError));
                     }
                     break;
+                }
                 case WINHTTP_CALLBACK_STATUS_RESPONSE_RECEIVED:
                     break;
                 default:
@@ -382,6 +379,7 @@ namespace Network
                 if (!hConnect) {
                     LOG_ERROR(TEXT("WinHttpConnect failed: %d"), GetLastError());
                     WinHttpCloseHandle(hSession);
+                    hSession = nullptr;
                     continue;
                 }
 

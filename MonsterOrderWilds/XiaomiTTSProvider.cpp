@@ -38,11 +38,15 @@ void XiaomiTTSProvider::RequestTTS(const TTSRequest& request, TTSCallback callba
         body,
         true,
         [&](bool success, const std::string& resp, DWORD error) {
-            std::lock_guard<std::mutex> lock(mtx);
-            responseBody = resp;
-            httpError = error;
-            completed = true;
-            cv.notify_one();
+            try {
+                std::lock_guard<std::mutex> lock(mtx);
+                responseBody = resp;
+                httpError = error;
+                completed = true;
+                cv.notify_one();
+            } catch (...) {
+                // Mutex operations should not throw, but handle defensively
+            }
         });
 
     std::unique_lock<std::mutex> lock(mtx);

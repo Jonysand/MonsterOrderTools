@@ -239,3 +239,39 @@ WebSocket 连接和发送：
 | AsyncRequest::Complete 数据写入顺序 | High | `response`/`error` 写入在 CAS 之后，不受 release-acquire 同步保护 | 将数据写入移到 CAS 之前 |
 | ReadResponseData 共享数据写入无锁 | Medium | `ctx->error` 和 `ctx->response` 写入未持 `ctx->mtx` 锁 | 添加 `std::lock_guard<std::mutex> lock(ctx->mtx)` 保护 |
 | HttpsAsyncContext::error 数据竞争 | Critical | `ctx->error` 为普通 `DWORD`，在 detach 线程和回调线程之间存在数据竞争 | 改为 `std::atomic<DWORD>`，所有读写使用 `.store()`/`.load()` |
+
+### PUA 多轮检查发现并修复的问题（2026-04-07 第六轮）
+
+| Bug | 严重性 | 描述 | 修复方案 |
+|-----|--------|------|---------|
+| WinHttpSetOption sizeof 参数错误 | Critical | `sizeof(ctx)` 返回指针大小而非结构体大小，导致 WinHTTP 回调接收错误上下文 | 修改为 `sizeof(*ctx)` |
+
+### PUA 多轮检查发现并修复的问题（2026-04-07 第七轮）
+
+| Bug | 严重性 | 描述 | 修复方案 |
+|-----|--------|------|---------|
+| MiniMaxTTSProvider 音频解码错误 | Critical | 使用 `HexToBytes` 解码音频数据，但实际编码为 Base64 | 修改为 `Base64ToBytes` |
+
+### PUA 多轮检查发现并修复的问题（2026-04-08）
+
+| Bug | 严重性 | 描述 | 修复方案 |
+|-----|--------|------|----------|
+| delayTask::checkInvoke 异常安全 | Medium | `func()` 调用无 try-catch，lambda 异常导致锁析构时栈展开未定义 | 添加 try-catch 保护 |
+| gameId 数据竞争 | Critical | `gameId` 被多线程访问但无同步保护 | 添加 `gameIdLock` mutex 保护 |
+| Provider callback 异常安全 | Medium | Network callback 无 try-catch | 添加 try-catch 保护 |
+
+### PUA Loop 第1轮检查发现并修复的问题（2026-04-08）
+
+| Bug | 严重性 | 描述 | 修复方案 |
+|-----|--------|------|----------|
+| MimoTTSClient JSON 类型检查缺失 | Medium | `error.message` 只检查 `contains()` 未检查类型，非 string 类型会导致异常 | 添加 `is_string()` 类型检查 |
+| BliveManager httpCallback UAF 风险 | Critical | `Tick()` 释放锁后执行 callbacks，如果此时 `Destroy()` 被调用，callbacks 访问已删除的 `this` | 添加 `destroying_` 标志，callback 执行前检查 |
+
+### PUA Loop 第2轮检查发现并修复的问题（2026-04-08）
+
+| Bug | 严重性 | 描述 | 修复方案 |
+|-----|--------|------|----------|
+| BliveManager gameId TOCTOU 竞态 | High | `Disconnect()` 和 `Start()` 中 `gameId.empty()` 检查在锁外，存在竞态条件 | 将检查移入 `gameIdLock` 锁内 |
+| MimoTTSClient retry lambda 无异常保护 | Medium | retry callback 无 try-catch，异常可能导致程序行为不确定 | 添加 try-catch 保护 |
+| MiniMaxTTSProvider audio 类型检查缺失 | Low | `j["data"]["audio"].get<std::string>()` 前未检查类型 | 添加 `is_string()` 检查 |
+| MimoTTSClient choice 对象类型检查缺失 | Low | `resultJson["choices"][0]` 未验证是否为 object | 添加 `is_object()` 检查 |

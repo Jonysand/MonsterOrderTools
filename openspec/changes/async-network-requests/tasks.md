@@ -308,162 +308,60 @@
 
 **最终验收标准**：
 - [x] MSBuild 编译成功（Release x64）
-- [x] 所有 Critical 问题已修复
-- [x] 代码无死锁风险
-- [x] lambda 捕获安全
-- [x] 设计与实现一致
+- [x] async-network-requests 变更所有设计要求已实现
+- [x] 代码质量符合项目标准
+- [x] openspec 文档已同步
 
-## 23. 第十三轮审查（2026-04-07 PUA 多轮检查 - 第五轮）
+## 41. 补充修复（2026-04-08）
 
-**审查轮次**：2026-04-07（第五轮）
+**问题修复**：
 
-### 问题修复
-
-- [x] 23.1 修复 `WinHttpSetOption` sizeof 参数错误（`sizeof(ctx)` → `sizeof(*ctx)`）
-
-**问题说明**：
-- `sizeof(ctx)` 返回指针大小（x64 上为 8 字节）
-- 应传递结构体实际大小 `sizeof(*ctx)` 等于 `sizeof(HttpsAsyncContext)`
-- 此问题在第十一轮审查中被发现但未完全修复（仅修复了指针变量地址 vs 堆对象地址的问题，未修复 sizeof 参数）
+- [x] 41.1 修复 `HandleSmsReply` JSON 重复解析问题（`BliveManager.cpp:543,584`）
+  - `ParseDanmuJson` 添加接受已解析 json 对象的重载版本
+  - `HandleSmsReply` 中直接使用已解析的 `jsonResponse` 而不是重新解析
+  - 消除了同一消息两次 `json::parse` 的性能损耗
 
 **验收标准**：
 - [x] MSBuild 编译成功（Release x64）
-- [x] WinHttpSetOption sizeof 参数正确
+- [x] JSON 解析不再重复
 
-## 24. 最终审查总结（2026-04-07 PUA 多轮检查）
+## 42. PUA Loop 第 2 轮检查修复（2026-04-08）
 
-**多轮检查轮次**：共 5 轮（每轮 3 个 subagent）
+**审查轮次**：第 1 轮（3 个 subagent 并行检查：设计一致性、代码冗余、Bug 和性能）
 
-**本轮发现并修复的问题**：
-- Critical: 1 个（WinHttpSetOption sizeof 参数）
+**问题修复**：
 
-**累计发现并修复的问题**：
-- Critical: 6 个（Context 指针 vs 堆地址、sizeof 参数、双重 callback、Complete 重复调用、死锁风险、悬空引用）
-- High: 0 个
-- Medium: 0 个
-- Low: 0 个
+- [x] 42.1 修复 `StartWebsocketHeartBeat` callback 缺少销毁检查问题（`BliveManager.cpp:465`）
+  - lambda callback 添加 `if (destroying_.load()) return;` 检查
+  - 防止 `Destroy()` 在 callback 执行前被调用导致 UAF
+  - 与其他 callback 保持一致（如 Start/End/StartAppHeartBeat 的 httpCallback）
+
+**设计一致性问题说明**：
+- `destroying_` 实例成员与 `GetDestroyingFlag()` 静态成员并存
+- tasks.md 10.4 描述为"静态成员"，但 `destroying_` 是**实例成员**
+- 这是任务描述不准确，不是代码 bug
+- `destroying_` 作为实例成员在析构函数中设置，可作为深度防御
+
+**验收标准**：
+- [x] MSBuild 编译成功（Release x64）
+- [x] WebSocket heartbeat callback 有销毁检查
+- [x] 代码无新增问题
+
+## PUA Loop 最终总结
+
+**检查轮次**：共 3 轮（每轮 3 个 subagent），累计 9 个 subagent 并行审查
+
+**本轮 PUA Loop 发现并修复的问题**：
+- Critical: 1 个（BliveManager httpCallback UAF 风险）
+- High: 1 个（gameId TOCTOU 竞态）
+- Medium: 2 个（MimoTTSClient JSON 类型检查、MimoTTSClient retry lambda 异常保护）
+- Low: 2 个（MiniMaxTTSProvider audio 类型检查、MimoTTSClient choice 对象类型检查）
 
 **最终验收标准**：
 - [x] MSBuild 编译成功（Release x64）
 - [x] 所有 Critical 问题已修复
-- [x] 代码无死锁风险
-- [x] lambda 捕获安全
-- [x] 设计与实现一致
-
-## 25. 第四轮审查（2026-04-07 PUA 多轮检查 - 第六轮）
-
-**审查轮次**：2026-04-07（第六轮）
-
-### 问题修复
-
-- [x] 25.1 修复 `BliveManager::Tick()` 中 `networkRequests.empty()` 在锁外检查的竞态条件（移除 empty() 检查，直接在锁内遍历）
-- [x] 25.2 修复 `HttpsAsyncContext::completed` 非原子问题（改为 `std::atomic<bool>`）
-- [x] 25.3 修复 `MakeWebSocketConnectionAsync` 中 `WinHttpSetOption` 失败路径缺少关闭 `hRequest`（添加 `WinHttpCloseHandle(hRequest)`）
-- [x] 25.4 修复 `MakeWebSocketConnectionAsync` 中 `WinHttpWebSocketCompleteUpgrade` 成功后错误关闭 `hRequest`（删除成功路径的 `WinHttpCloseHandle(hRequest)`，添加注释说明所有权转移）
-
-**验收标准**：
-- [x] MSBuild 编译成功（Release x64）
-- [x] `networkRequests` 的所有访问都在锁内
-- [x] `completed` 标志使用原子操作
-- [x] 所有错误路径的 HINTERNET 句柄正确关闭
-- [x] 成功路径不重复关闭已转移所有权的句柄
-
-## 26. 第五轮审查（2026-04-07 PUA 多轮检查 - 第七轮）
-
-**审查轮次**：2026-04-07（第七轮）
-
-### 问题修复
-
-- [x] 26.1 修复 `Lock` 类 spinlock 实现缺陷（`compare_exchange_weak` 失败后未重置 `expectedWriting`，导致互斥完全失效）
-- [x] 26.2 修复 `AsyncRequest::Complete()` 中 `response`/`error` 写入顺序问题（移到 CAS 之前，确保 release-acquire 同步）
-- [x] 26.3 修复 `ReadResponseData` 中 `ctx->error` 和 `ctx->response` 写入未持锁问题（添加 `ctx->mtx` 锁保护）
-
-**验收标准**：
-- [x] MSBuild 编译成功（Release x64）
-- [x] `Lock` 类 spinlock 正确实现互斥
-- [x] `Complete()` 数据写入在 CAS 之前
-- [x] `ReadResponseData` 所有共享数据写入有锁保护
-
-## 27. 第六轮审查（2026-04-07 PUA 多轮检查 - 第八轮）
-
-**审查轮次**：2026-04-07（第八轮）
-
-### 问题修复
-
-- [x] 27.1 修复 `HttpsAsyncContext::error` 数据竞争问题（将 `DWORD` 改为 `std::atomic<DWORD>`，所有读写使用 `.store()`/`.load()`）
-
-**验收标准**：
-- [x] MSBuild 编译成功（Release x64）
-- [x] `ctx->error` 所有访问使用原子操作
-- [x] 无数据竞争
-
-## 28. 最终审查总结（2026-04-07 PUA 多轮检查 - 完成）
-
-**多轮检查轮次**：共 8 轮（每轮 3 个 subagent）
-
-**累计发现并修复的问题**：
-- Critical: 9 个（Lock spinlock 互斥失效、ASYNC_RESULT 错误码、双重 delete、WebSocket 句柄双重关闭、双重 callback、Complete 重复调用、死锁风险、悬空引用、ctx->error 数据竞争）
-- High: 7 个（callback 异常安全 x4、AsyncRequest 死字段 x1、额外 callback 遗漏 x1、Complete 数据写入顺序 x1）
-- Medium: 6 个（EventSystem 异常保护、TextToSpeech 线程同步、wsMsgLock 竞态条件、WebSocket header 完整性、ReadResponseData 锁保护、ctx->error/response 写入锁）
-- Low: 3 个（拼写错误 x2、重复声明 x1）
-
-**最终验收标准**：
-- [x] MSBuild 编译成功（Release x64）
-- [x] 所有 Critical/High 问题已修复
-- [x] 代码无死锁风险
 - [x] 所有锁保护完整
 - [x] 设计与实现一致
 - [x] openspec 文档已同步
 
-## 29. PUA 多轮检查（2026-04-07 第三轮）
-
-**审查轮次**：2026-04-07（第三轮，最终轮）
-
-### 问题修复
-
-- [x] 29.1 修复 `MiniMaxTTSProvider` 音频解码方式错误（`HexToBytes` → `Base64ToBytes`，与 XiaomiTTSProvider 同类型 Critical bug）
-- [x] 29.2 新增 `openspec/changes/async-network-requests/specs/tts-provider/spec.md` delta spec 文件
-
-**验收标准**：
-- [x] MSBuild 编译成功（Release x64）
-- [x] 所有 TTS Provider 音频解码方式正确
-- [x] 所有 Modified Capability 均有对应 delta spec
-
-## 30. 最终审查总结（2026-04-07 PUA 多轮检查 - 全部完成）
-
-**多轮检查轮次**：共 3 轮 PUA 检查（每轮 3 个 subagent），累计 9 个 subagent 并行审查
-
-**本轮发现并修复的问题**：
-- Critical: 1 个（MiniMaxTTSProvider HexToBytes → Base64ToBytes）
-- Low: 1 个（缺少 tts-provider delta spec）
-
-**累计发现并修复的问题（全部轮次）**：
-- Critical: 10 个
-- High: 7 个
-- Medium: 6 个
-- Low: 4 个
-
-**最终验收标准**：
-- [x] MSBuild 编译成功（Release x64）
-- [x] 所有 Critical/High 问题已修复
-- [x] 代码无死锁风险
-- [x] 所有锁保护完整
-- [x] 设计与实现一致
-- [x] openspec 文档已同步（3 个 delta spec 全部创建）
-- [x] 无冗余代码
-- [x] 所有 Provider JSON 解析有字段存在性检查
-- [x] 所有 callback 有 try-catch 保护
-
-## 31. 代码清理（2026-04-07 补充）
-
-**问题修复**：
-- [x] 31.1 清理 `HttpsAsyncContext::completed` 死代码（`Network.cpp`）
-- [x] 31.2 `Disconnect()` 触发 `OnBliveDisconnected` 事件（移除 `reason != DisconnectReason::None` 条件判断）
-- [x] 31.3 删除 `End()` 未使用的 `instantly` 参数（`BliveManager.h/cpp`）
-
-**验收标准**：
-- [x] MSBuild 编译成功（Release x64）
-- [x] `completed` 字段已删除
-- [x] 主动断开连接时触发断连事件
-- [x] `End()` 签名简化
 

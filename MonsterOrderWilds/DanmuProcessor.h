@@ -50,6 +50,9 @@ public:
     // 解析JSON弹幕消息（从BliveManager接收）
     DanmuData ParseDanmuJson(const std::string& jsonStr) const;
 
+    // 重载版本：接受已解析的json对象
+    DanmuData ParseDanmuJson(const json& j) const;
+
     // 生成播报文本
     std::string GenerateSpeakText(const std::string& userName, const std::string& monsterName) const;
 
