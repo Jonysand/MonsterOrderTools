@@ -18,7 +18,7 @@
 - Modify: `MonsterOrderWilds/DataBridgeExports.h` (在现有回调类型之后)
 - Modify: `MonsterOrderWilds/DataBridgeExports.cpp:378-397` (在现有回调模式之后)
 
-- [ ] **Step 1: 在 DataBridgeExports.h 添加 OnAIReplyCallback 类型定义**
+- [x] **Step 1: 在 DataBridgeExports.h 添加 OnAIReplyCallback 类型定义**
 
 在现有回调类型定义之后添加：
 
@@ -26,7 +26,7 @@
 typedef void(__stdcall* OnAIReplyCallback)(const wchar_t* username, const wchar_t* content, void* userData);
 ```
 
-- [ ] **Step 2: 添加 AIReplyCallback 类型定义和静态变量**
+- [x] **Step 2: 添加 AIReplyCallback 类型定义和静态变量**
 
 在 `DataBridge_SetDanmuProcessedCallback` 函数之后添加：
 
@@ -46,11 +46,11 @@ __declspec(dllexport) void __stdcall DataBridge_SetAIReplyCallback(OnAIReplyCall
 }
 ```
 
-- [ ] **Step 3: 在 CaptainCheckInModule.cpp 包含回调头文件**
+- [x] **Step 3: 在 CaptainCheckInModule.cpp 包含回调头文件**
 
 确认 `CaptainCheckInModule.cpp` 已包含必要的头文件
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add MonsterOrderWilds/DataBridgeExports.h MonsterOrderWilds/DataBridgeExports.cpp
@@ -62,7 +62,7 @@ git commit -m "feat(ai-reply): add AIReplyCallback mechanism to DataBridge"
 **Files:**
 - Modify: `MonsterOrderWilds/CaptainCheckInModule.cpp:269-274`
 
-- [ ] **Step 1: 在 PushDanmuEvent 中添加回调调用**
+- [x] **Step 1: 在 PushDanmuEvent 中添加回调调用**
 
 在 `AnswerResult result = GenerateCheckinAnswerSync(checkinEvt);` 之后、TTS 调用之前添加：
 
@@ -121,7 +121,7 @@ git commit -m "feat(ai-reply): invoke AIReplyCallback after generating answer"
 **Files:**
 - Modify: `JonysandMHDanmuTools/NativeImports.cs`
 
-- [ ] **Step 1: 添加 OnAIReplyCallback 委托声明**
+- [x] **Step 1: 添加 OnAIReplyCallback 委托声明**
 
 在现有委托声明区域添加：
 
@@ -130,7 +130,7 @@ git commit -m "feat(ai-reply): invoke AIReplyCallback after generating answer"
 public delegate void OnAIReplyCallback(string username, string content, IntPtr userData);
 ```
 
-- [ ] **Step 2: 添加 SetAIReplyCallback 函数声明**
+- [x] **Step 2: 添加 SetAIReplyCallback 函数声明**
 
 在现有 P/Invoke 函数声明区域添加：
 
@@ -151,7 +151,7 @@ git commit -m "feat(ai-reply): add P/Invoke for AIReplyCallback"
 **Files:**
 - Create: `JonysandMHDanmuTools/AIBubbleInfo.cs`
 
-- [ ] **Step 1: 创建 AIBubbleInfo 类**
+- [x] **Step 1: 创建 AIBubbleInfo 类**
 
 ```csharp
 using System;
@@ -186,20 +186,20 @@ git commit -m "feat(ai-reply): add AIBubbleInfo data structure"
 **Files:**
 - Modify: `JonysandMHDanmuTools/DanmuManager.cs`
 
-- [ ] **Step 1: 添加 AIReplyCallback 实例变量**
+- [x] **Step 1: 添加 AIReplyCallback 实例变量**
 
 ```csharp
 private static OnAIReplyCallback _aiReplyCallback;
 ```
 
-- [ ] **Step 2: 在构造函数中注册回调**
+- [x] **Step 2: 在构造函数中注册回调**
 
 ```csharp
 _aiReplyCallback = OnAIReplyCallback;
 NativeImports.DataBridge_SetAIReplyCallback(_aiReplyCallback, IntPtr.Zero);
 ```
 
-- [ ] **Step 3: 添加 OnAIReplyCallback 处理函数**
+- [x] **Step 3: 添加 OnAIReplyCallback 处理函数**
 
 ```csharp
 private static void OnAIReplyCallback(string username, string content, IntPtr userData)
@@ -226,7 +226,7 @@ git commit -m "feat(ai-reply): register AIReplyCallback and dispatch event"
 - Create: `JonysandMHDanmuTools/AIBubbleControl.xaml`
 - Create: `JonysandMHDanmuTools/AIBubbleControl.xaml.cs`
 
-- [ ] **Step 1: 创建 AIBubbleControl.xaml**
+- [x] **Step 1: 创建 AIBubbleControl.xaml**
 
 ```xaml
 <UserControl x:Class="MonsterOrderWindows.AIBubbleControl"
@@ -257,7 +257,7 @@ git commit -m "feat(ai-reply): register AIReplyCallback and dispatch event"
 </UserControl>
 ```
 
-- [ ] **Step 2: 创建 AIBubbleControl.xaml.cs**
+- [x] **Step 2: 创建 AIBubbleControl.xaml.cs**
 
 ```csharp
 using System.Windows.Controls;
@@ -286,7 +286,7 @@ git commit -m "feat(ai-reply): add AIBubbleControl user control"
 **Files:**
 - Modify: `JonysandMHDanmuTools/OrderedMonsterWindow.xaml`
 
-- [ ] **Step 1: 在 Window.Resources 中添加动画定义**
+- [x] **Step 1: 在 Window.Resources 中添加动画定义**
 
 在 `</Window.Resources>` 之前添加：
 
@@ -310,7 +310,7 @@ git commit -m "feat(ai-reply): add AIBubbleControl user control"
 </Storyboard>
 ```
 
-- [ ] **Step 2: 在 MainGrid 内添加 BubbleCanvas**
+- [x] **Step 2: 在 MainGrid 内添加 BubbleCanvas**
 
 在 `<Grid MouseLeftButtonDown="OnClientAreaMouseLeftButtonDown" ...>` 之后，`</Grid>` 之前添加：
 
@@ -331,7 +331,7 @@ git commit -m "feat(ai-reply): add BubbleCanvas and animation storyboards"
 **Files:**
 - Modify: `JonysandMHDanmuTools/OrderedMonsterWindow.xaml.cs`
 
-- [ ] **Step 1: 添加私有变量和常量**
+- [x] **Step 1: 添加私有变量和常量**
 
 ```csharp
 private List<AIBubbleControl> _bubbles = new List<AIBubbleControl>();
@@ -341,13 +341,13 @@ private const int BUBBLE_INTERVAL_MS = 5000;
 private const double BUBBLE_MARGIN = 8;
 ```
 
-- [ ] **Step 2: 在构造函数中注册 AIReplyBubble 事件监听和窗口关闭事件**
+- [x] **Step 2: 在构造函数中注册 AIReplyBubble 事件监听和窗口关闭事件**
 
 ```csharp
 GlobalEventListener.AddListener("AIReplyBubble", (object info) => AddBubble(info as AIBubbleInfo));
 ```
 
-- [ ] **Step 3: 添加 AddBubble 方法**
+- [x] **Step 3: 添加 AddBubble 方法**
 
 ```csharp
 public void AddBubble(AIBubbleInfo bubbleInfo)
@@ -390,7 +390,7 @@ public void AddBubble(AIBubbleInfo bubbleInfo)
 }
 ```
 
-- [ ] **Step 4: 添加 RemoveBubble 方法**
+- [x] **Step 4: 添加 RemoveBubble 方法**
 
 ```csharp
 private void RemoveBubble(AIBubbleControl bubble)
@@ -401,7 +401,7 @@ private void RemoveBubble(AIBubbleControl bubble)
 }
 ```
 
-- [ ] **Step 5: 添加 UpdateBubblePositions 方法**
+- [x] **Step 5: 添加 UpdateBubblePositions 方法**
 
 ```csharp
 private void UpdateBubblePositions()
@@ -419,7 +419,7 @@ private void UpdateBubblePositions()
 }
 ```
 
-- [ ] **Step 6: 添加 PlayExitAnimation 方法**
+- [x] **Step 6: 添加 PlayExitAnimation 方法**
 
 ```csharp
 private void PlayExitAnimation(AIBubbleControl bubble)
@@ -436,7 +436,7 @@ private void PlayExitAnimation(AIBubbleControl bubble)
 }
 ```
 
-- [ ] **Step 7: 添加窗口关闭清理方法**
+- [x] **Step 7: 添加窗口关闭清理方法**
 
 ```csharp
 private void CleanupBubbles()
@@ -460,7 +460,7 @@ private void CleanupBubbles()
 
 **注意**：停止所有气泡的动画后立即清理，无需等待动画完成。
 
-- [ ] **Step 8: 在 Window.Closing 事件中调用清理方法**
+- [x] **Step 8: 在 Window.Closing 事件中调用清理方法**
 
 在窗口构造函数中添加：
 ```csharp
@@ -479,7 +479,7 @@ git commit -m "feat(ai-reply): implement bubble management logic"
 **Files:**
 - Modify: `JonysandMHDanmuTools/MonsterOrderWildsGUI.csproj`
 
-- [ ] **Step 1: 添加 AIBubbleInfo.cs 到 ItemGroup**
+- [x] **Step 1: 添加 AIBubbleInfo.cs 到 ItemGroup**
 
 找到包含 `<Compile Include="DanmuManager.cs" />` 的 ItemGroup，添加：
 
@@ -487,7 +487,7 @@ git commit -m "feat(ai-reply): implement bubble management logic"
 <Compile Include="AIBubbleInfo.cs" />
 ```
 
-- [ ] **Step 2: 添加 AIBubbleControl.xaml 和 .xaml.cs 到 ItemGroup**
+- [x] **Step 2: 添加 AIBubbleControl.xaml 和 .xaml.cs 到 ItemGroup**
 
 找到包含 `<Page Include="OrderedMonsterWindow.xaml">` 的 ItemGroup，添加：
 
@@ -517,7 +517,7 @@ git commit -m "feat(ai-reply): add new files to project"
 **Files:**
 - None (verification only)
 
-- [ ] **Step 1: 运行 MSBuild 编译**
+- [x] **Step 1: 运行 MSBuild 编译**
 
 ```bash
 "D:\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" "D:\VisualStudioProjects\JonysandMHDanmuTools\JonysandMHDanmuTools.sln" -p:Configuration=Release -p:Platform=x64 -t:Build -m
@@ -538,23 +538,23 @@ git commit -m "feat(ai-reply): complete AI reply bubble display feature"
 
 完成所有任务后，执行以下验证：
 
-- [ ] 所有 10 个 Task 的 checkbox 都已勾选（含 Task 8.5）
-- [ ] 编译成功无错误
-- [ ] GlobalEventListener.Invoke("AIReplyBubble", ...) 被正确触发
-- [ ] 气泡动画（渐显 500ms、停留 5s、渐隐 800ms）符合设计
-- [ ] 气泡队列上限为 5 个
-- [ ] 新气泡从底部加入（离窗口最近），旧气泡向上移动被推远
-- [ ] 新增文件（AIBubbleInfo.cs、AIBubbleControl.xaml/.cs）已添加到 csproj
-- [ ] 无占位符、无 TODO、无 TBD
-- [ ] C# 层回调在程序启动时正确注册
-- [ ] C++ 层 g_aiReplyCallback 调用前检查非空（回调注册在程序启动时完成，气泡队列限制为5个）
-- [ ] C++ 回调使用局部 std::wstring 持有字符串数据，确保指针在回调期间有效
-- [ ] C++ 回调调用在锁外执行，避免长时间持有锁
-- [ ] 窗口关闭时 CleanupBubbles() 被调用，所有定时器停止
-- [ ] 窗口关闭时所有气泡的动画立即停止（Storyboard.Stop()），无需等待动画完成
-- [ ] DispatcherTimer 在气泡移除时从 _bubbleTimers 列表中移除
-- [ ] 气泡内容过长时使用 TextWrapping 换行处理
-- [ ] 打包配置检查：新增文件为源代码文件（.cs/.xaml），已通过 csproj 包含，无需额外 installer 配置
+- [x] 所有 10 个 Task 的 checkbox 都已勾选（含 Task 8.5）
+- [x] 编译成功无错误
+- [x] GlobalEventListener.Invoke("AIReplyBubble", ...) 被正确触发
+- [x] 气泡动画（渐显 500ms、停留 5s、渐隐 800ms）符合设计
+- [x] 气泡队列上限为 5 个
+- [x] 新气泡从底部加入（离窗口最近），旧气泡向上移动被推远
+- [x] 新增文件（AIBubbleInfo.cs、AIBubbleControl.xaml/.cs）已添加到 csproj
+- [x] 无占位符、无 TODO、无 TBD
+- [x] C# 层回调在程序启动时正确注册
+- [x] C++ 层 g_aiReplyCallback 调用前检查非空（回调注册在程序启动时完成，气泡队列限制为5个）
+- [x] C++ 回调使用局部 std::wstring 持有字符串数据，确保指针在回调期间有效
+- [x] C++ 回调调用在锁外执行，避免长时间持有锁
+- [x] 窗口关闭时 CleanupBubbles() 被调用，所有定时器停止
+- [x] 窗口关闭时所有气泡的动画立即停止（Storyboard.Stop()），无需等待动画完成
+- [x] DispatcherTimer 在气泡移除时从 _bubbleTimers 列表中移除
+- [x] 气泡内容过长时使用 TextWrapping 换行处理
+- [x] 打包配置检查：新增文件为源代码文件（.cs/.xaml），已通过 csproj 包含，无需额外 installer 配置
 
 ---
 

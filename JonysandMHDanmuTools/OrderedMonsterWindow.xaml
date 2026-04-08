@@ -17,8 +17,30 @@
     x:Name="MainWindow"
     ResizeMode="CanResizeWithGrip">
 
+    <Window.Resources>
+        <Storyboard x:Key="BubbleEnterStoryboard">
+            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                             From="0" To="1" Duration="0:0:0.5">
+                <DoubleAnimation.EasingFunction>
+                    <QuadraticEase EasingMode="EaseOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+
+        <Storyboard x:Key="BubbleExitStoryboard">
+            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                             From="1" To="0" Duration="0:0:0.8">
+                <DoubleAnimation.EasingFunction>
+                    <QuadraticEase EasingMode="EaseOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+    </Window.Resources>
+
     <!--OnClientAreaMouseLeftButtonDown 允许拖动窗口-->
     <Grid MouseLeftButtonDown="OnClientAreaMouseLeftButtonDown" Background="#AA000000" Name="MainGrid">
+        <Canvas x:Name="BubbleCanvas" VerticalAlignment="Top" HorizontalAlignment="Left" 
+                ClipToBounds="False" IsHitTestVisible="False"/>
         <Canvas VerticalAlignment="Top" Height="30" ClipToBounds="True" Margin="0,0,0,0">
             <StackPanel Name="StatueWithFireMachine" Margin="7,5,0,0" Height="30" VerticalAlignment="Center" HorizontalAlignment="Left">
                 <StackPanel.RenderTransform>

@@ -6,6 +6,7 @@ namespace MonsterOrderWindows
     internal class DanmuManager
     {
         private static NativeImports.DanmuProcessedCallback danmuProcessedCallback;
+        private static NativeImports.OnAIReplyCallback aiReplyCallback;
 
         static DanmuManager _Inst = null;
 
@@ -20,6 +21,9 @@ namespace MonsterOrderWindows
         {
             danmuProcessedCallback = OnDanmuProcessed;
             NativeImports.DataBridge_SetDanmuProcessedCallback(danmuProcessedCallback, IntPtr.Zero);
+
+            aiReplyCallback = OnAIReplyCallback;
+            NativeImports.DataBridge_SetAIReplyCallback(aiReplyCallback, IntPtr.Zero);
         }
 
         public void LoadHistoryOrder()
@@ -38,6 +42,12 @@ namespace MonsterOrderWindows
         {
             GlobalEventListener.Invoke("RefreshOrder", null);
             GlobalEventListener.Invoke("AddRollingInfo", new RollingInfo(userName + " 点怪 " + monsterName + " 成功！", Colors.Yellow));
+        }
+
+        private static void OnAIReplyCallback(string username, string content, IntPtr userData)
+        {
+            var bubbleInfo = new AIBubbleInfo(username, content);
+            GlobalEventListener.Invoke("AIReplyBubble", bubbleInfo);
         }
     }
 }

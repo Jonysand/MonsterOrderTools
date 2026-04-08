@@ -37,6 +37,13 @@ namespace MonsterOrderWindows
         // 跑马灯状态管理
         private bool _isShowingDefault = true;
         private bool _currentAnimationIsLoop = true;
+        // 气泡管理
+        private List<AIBubbleControl> _bubbles = new List<AIBubbleControl>();
+        private List<DispatcherTimer> _bubbleTimers = new List<DispatcherTimer>();
+        private const int MAX_BUBBLES = 5;
+        private const int BUBBLE_INTERVAL_MS = 5000;
+        private const double BUBBLE_MARGIN = 8;
+
         public OrderedMonsterWindow()
         {
             InitializeComponent();
@@ -52,6 +59,7 @@ namespace MonsterOrderWindows
             GlobalEventListener.AddListener("AddRollingInfo", (object rollingInfo) => AddRollingInfo(rollingInfo as RollingInfo));
             GlobalEventListener.AddListener("RefreshOrder", (object _) => RefreshOrder());
             GlobalEventListener.AddListener("MarqueeTextChanged", (object text) => UpdateMarqueeText(text?.ToString() ?? ""));
+            GlobalEventListener.AddListener("AIReplyBubble", (object info) => AddBubble(info as AIBubbleInfo));
 
             _isShowingDefault = true;
             _currentAnimationIsLoop = true;
@@ -66,6 +74,8 @@ namespace MonsterOrderWindows
                 _lastRefreshTime = now;
                 Dispatcher.InvokeAsync(new Action(() => RefreshOrder()));
             };
+
+            this.Closing += (s, e) => CleanupBubbles();
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
@@ -336,6 +346,93 @@ namespace MonsterOrderWindows
             {
                 _orderCollection.Move(oldIndex, newIndex);
             }
+        }
+
+        public void AddBubble(AIBubbleInfo bubbleInfo)
+        {
+            if (bubbleInfo == null) return;
+
+            Dispatcher.InvokeAsync(() =>
+            {
+                while (_bubbles.Count >= MAX_BUBBLES)
+                {
+                    RemoveBubble(_bubbles[0]);
+                }
+
+                var bubble = new AIBubbleControl();
+                bubble.DataContext = bubbleInfo;
+                bubble.Opacity = 0;
+
+                _bubbles.Add(bubble);
+                BubbleCanvas.Children.Add(bubble);
+
+                UpdateBubblePositions();
+
+                var storyboard = (Storyboard)FindResource("BubbleEnterStoryboard");
+                storyboard = storyboard.Clone();
+                storyboard.Begin(bubble);
+
+                var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(BUBBLE_INTERVAL_MS) };
+                timer.Tick += (s, e) =>
+                {
+                    timer.Stop();
+                    _bubbleTimers.Remove(timer);
+                    PlayExitAnimation(bubble);
+                };
+                timer.Start();
+                _bubbleTimers.Add(timer);
+            });
+        }
+
+        private void RemoveBubble(AIBubbleControl bubble)
+        {
+            if (bubble == null || !_bubbles.Contains(bubble)) return;
+            _bubbles.Remove(bubble);
+            BubbleCanvas.Children.Remove(bubble);
+        }
+
+        private void UpdateBubblePositions()
+        {
+            double top = 0;
+            for (int i = _bubbles.Count - 1; i >= 0; i--)
+            {
+                var bubble = _bubbles[i];
+                bubble.UpdateLayout();
+                double height = bubble.ActualHeight > 0 ? bubble.ActualHeight : 60;
+                Canvas.SetTop(bubble, top);
+                top += height + BUBBLE_MARGIN;
+            }
+        }
+
+        private void PlayExitAnimation(AIBubbleControl bubble)
+        {
+            if (bubble == null || !_bubbles.Contains(bubble)) return;
+            var storyboard = (Storyboard)FindResource("BubbleExitStoryboard");
+            storyboard = storyboard.Clone();
+            storyboard.Completed += (s, e) =>
+            {
+                RemoveBubble(bubble);
+                UpdateBubblePositions();
+            };
+            storyboard.Begin(bubble);
+        }
+
+        private void CleanupBubbles()
+        {
+            foreach (var timer in _bubbleTimers)
+            {
+                timer.Stop();
+            }
+            _bubbleTimers.Clear();
+            foreach (var bubble in _bubbles)
+            {
+                var enterStory = (Storyboard)FindResource("BubbleEnterStoryboard");
+                var exitStory = (Storyboard)FindResource("BubbleExitStoryboard");
+                if (enterStory != null) enterStory.Stop(bubble);
+                if (exitStory != null) exitStory.Stop(bubble);
+            }
+            _bubbles.Clear();
+            BubbleCanvas.Children.Clear();
         }
     }
 

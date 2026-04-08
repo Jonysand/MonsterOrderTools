@@ -2,6 +2,7 @@
 #include "ConfigFieldRegistry.h"
 #include "WriteLog.h"
 #include <cstring>
+#include <mutex>
 
 #include "CaptainCheckInModule.h"
 #include "ProfileManager.h"
@@ -458,5 +459,15 @@ extern "C" {
             LOG_ERROR(TEXT("CaptainCheckInModule_SetTriggerWords failed: %s"), e.what());
         }
     }
-    
+}
+
+OnAIReplyCallback g_aiReplyCallback = nullptr;
+void* g_aiReplyUserData = nullptr;
+std::mutex g_aiReplyMutex;
+
+__declspec(dllexport) void __stdcall DataBridge_SetAIReplyCallback(OnAIReplyCallback callback, void* userData)
+{
+    std::lock_guard<std::mutex> lock(g_aiReplyMutex);
+    g_aiReplyCallback = callback;
+    g_aiReplyUserData = userData;
 }

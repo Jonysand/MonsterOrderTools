@@ -19,6 +19,11 @@
 #include <iostream>
 #endif
 
+typedef void(__stdcall* OnAIReplyCallback)(const wchar_t* username, const wchar_t* content, void* userData);
+extern OnAIReplyCallback g_aiReplyCallback;
+extern void* g_aiReplyUserData;
+extern std::mutex g_aiReplyMutex;
+
 using namespace std;
 
 namespace {
@@ -268,6 +273,23 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
 
         AnswerResult result = GenerateCheckinAnswerSync(checkinEvt);
         if (result.success && !result.answerContent.empty()) {
+            std::wstring usernameCopy = Utf8ToWstring(event.username);
+            std::wstring contentCopy = Utf8ToWstring(result.answerContent);
+
+            OnAIReplyCallback callback = nullptr;
+            void* userData = nullptr;
+            {
+                std::lock_guard<std::mutex> lock(g_aiReplyMutex);
+                callback = g_aiReplyCallback;
+                userData = g_aiReplyUserData;
+            }
+            if (callback) {
+                try {
+                    callback(usernameCopy.c_str(), contentCopy.c_str(), userData);
+                } catch (...) {
+                }
+            }
+
             if (ConfigManager::Inst()->GetConfig().enableVoice) {
                 PlayCheckinTTS(result.answerContent, event.username, event.serverTimestamp);
             }
