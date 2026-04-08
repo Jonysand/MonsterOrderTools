@@ -1,0 +1,6 @@
+name: ai-reply-bubble
+status: completed
+created: 2026-04-08
+author: claude
+summary: AI 回复气泡显示功能
+description: 在点怪窗口上方显示 AI 回复气泡，支持渐显/渐隐动画和堆叠效果
