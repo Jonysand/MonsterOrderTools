@@ -55,6 +55,12 @@
 - USE_MIMO_TTS: 编译时开关，默认启用（设为0可排除MiMo代码）
 - RUN_UNIT_TESTS: Debug 模式启用，用于单元测试
 
+### 调试日志规则
+- **调试日志一律使用 `LOG_DEBUG`**
+- `LOG_DEBUG` 在 Debug 配置下启用，在 Release 配置下为空宏（不输出）
+- 临时添加的调试日志使用 `LOG_DEBUG`，不要使用 `LOG_INFO` 或 `LOG_ERROR`
+- 示例：`LOG_DEBUG(TEXT("ConfigManager: LoadConfig - idCode from registry: [%s]"), config_.idCode.c_str());`
+
 ### Filter（虚拟文件夹）
 - Filter 配置放在 `.vcxproj.filters` 文件中
 - 单元测试文件放在 `UnitTests` Filter 下

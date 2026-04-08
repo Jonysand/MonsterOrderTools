@@ -65,75 +65,81 @@ bool ConfigManager::LoadConfig()
     {
         std::string path = GetConfigPath();
         std::ifstream file(path);
-        if (!file.is_open())
+        
+        bool configLoaded = false;
+        if (file.is_open())
         {
-            LOG_ERROR(TEXT("ConfigManager: Cannot open config file: %s"), path.c_str());
-            return false;
+            std::stringstream buffer;
+            buffer << file.rdbuf();
+            std::string content = buffer.str();
+            file.close();
+
+            // 跳过BOM（如果存在）
+            if (content.size() >= 3 &&
+                (unsigned char)content[0] == 0xEF &&
+                (unsigned char)content[1] == 0xBB &&
+                (unsigned char)content[2] == 0xBF)
+            {
+                content = content.substr(3);
+            }
+
+            json j = json::parse(content);
+            configLoaded = true;
+
+            // 基本配置（idCode 从注册表读取，不从 JSON）
+            if (j.contains("ONLY_MEDAL_ORDER")) config_.onlyMedalOrder = j["ONLY_MEDAL_ORDER"].get<bool>();
+            if (j.contains("ENABLE_VOICE")) config_.enableVoice = j["ENABLE_VOICE"].get<bool>();
+            if (j.contains("SPEECH_RATE")) config_.speechRate = j["SPEECH_RATE"].get<int>();
+            if (j.contains("SPEECH_PITCH")) config_.speechPitch = j["SPEECH_PITCH"].get<int>();
+            if (j.contains("SPEECH_VOLUME")) config_.speechVolume = j["SPEECH_VOLUME"].get<int>();
+            if (j.contains("ONLY_SPEEK_WEARING_MEDAL")) config_.onlySpeekWearingMedal = j["ONLY_SPEEK_WEARING_MEDAL"].get<bool>();
+            if (j.contains("ONLY_SPEEK_GUARD_LEVEL")) config_.onlySpeekGuardLevel = j["ONLY_SPEEK_GUARD_LEVEL"].get<int>();
+            if (j.contains("ONLY_SPEEK_PAID_GIFT")) config_.onlySpeekPaidGift = j["ONLY_SPEEK_PAID_GIFT"].get<bool>();
+            if (j.contains("OPACITY")) config_.opacity = j["OPACITY"].get<int>();
+
+            // 窗口位置
+            if (j.contains("TopPos"))
+            {
+                auto& pos = j["TopPos"];
+                if (pos.contains("X")) config_.topPosX = pos["X"].get<double>();
+                if (pos.contains("Y")) config_.topPosY = pos["Y"].get<double>();
+            }
+
+            // 跑马灯默认文本
+            if (j.contains("DEFAULT_MARQUEE_TEXT")) config_.defaultMarqueeText = j["DEFAULT_MARQUEE_TEXT"].get<std::string>();
+
+            // MiMo TTS 配置
+            if (j.contains("TTS_ENGINE")) config_.ttsEngine = j["TTS_ENGINE"].get<std::string>();
+            if (j.contains("MIMO_API_KEY")) config_.mimoApiKey = j["MIMO_API_KEY"].get<std::string>();
+            if (j.contains("MIMO_VOICE")) config_.mimoVoice = j["MIMO_VOICE"].get<std::string>();
+            if (j.contains("MIMO_STYLE")) config_.mimoStyle = j["MIMO_STYLE"].get<std::string>();
+            if (j.contains("MIMO_DIALECT")) config_.mimoDialect = j["MIMO_DIALECT"].get<std::string>();
+            if (j.contains("MIMO_ROLE")) config_.mimoRole = j["MIMO_ROLE"].get<std::string>();
+            if (j.contains("MIMO_AUDIO_FORMAT")) config_.mimoAudioFormat = j["MIMO_AUDIO_FORMAT"].get<std::string>();
+            if (j.contains("MIMO_SPEED")) config_.mimoSpeed = j["MIMO_SPEED"].get<float>();
+
+            if (j.contains("TTS_CACHE_DAYS_TO_KEEP")) config_.ttsCacheDaysToKeep = j["TTS_CACHE_DAYS_TO_KEEP"].get<int>();
+
+            // 舰长打卡AI配置
+            if (j.contains("ENABLE_CAPTAIN_CHECKIN_AI")) config_.enableCaptainCheckinAI = j["ENABLE_CAPTAIN_CHECKIN_AI"].get<bool>();
+            if (j.contains("CHECKIN_TRIGGER_WORDS")) config_.checkinTriggerWords = j["CHECKIN_TRIGGER_WORDS"].get<std::string>();
+        }
+        else
+        {
+            LOG_DEBUG(TEXT("ConfigManager: Config file not found, using defaults: %s"), path.c_str());
         }
 
-        std::stringstream buffer;
-        buffer << file.rdbuf();
-        std::string content = buffer.str();
-        file.close();
-
-        // 跳过BOM（如果存在）
-        if (content.size() >= 3 &&
-            (unsigned char)content[0] == 0xEF &&
-            (unsigned char)content[1] == 0xBB &&
-            (unsigned char)content[2] == 0xBF)
-        {
-            content = content.substr(3);
-        }
-
-        json j = json::parse(content);
-
-        // 基本配置（idCode 从注册表读取，不从 JSON）
-        if (j.contains("ONLY_MEDAL_ORDER")) config_.onlyMedalOrder = j["ONLY_MEDAL_ORDER"].get<bool>();
-        if (j.contains("ENABLE_VOICE")) config_.enableVoice = j["ENABLE_VOICE"].get<bool>();
-        if (j.contains("SPEECH_RATE")) config_.speechRate = j["SPEECH_RATE"].get<int>();
-        if (j.contains("SPEECH_PITCH")) config_.speechPitch = j["SPEECH_PITCH"].get<int>();
-        if (j.contains("SPEECH_VOLUME")) config_.speechVolume = j["SPEECH_VOLUME"].get<int>();
-        if (j.contains("ONLY_SPEEK_WEARING_MEDAL")) config_.onlySpeekWearingMedal = j["ONLY_SPEEK_WEARING_MEDAL"].get<bool>();
-        if (j.contains("ONLY_SPEEK_GUARD_LEVEL")) config_.onlySpeekGuardLevel = j["ONLY_SPEEK_GUARD_LEVEL"].get<int>();
-        if (j.contains("ONLY_SPEEK_PAID_GIFT")) config_.onlySpeekPaidGift = j["ONLY_SPEEK_PAID_GIFT"].get<bool>();
-        if (j.contains("OPACITY")) config_.opacity = j["OPACITY"].get<int>();
-
-        // 窗口位置
-        if (j.contains("TopPos"))
-        {
-            auto& pos = j["TopPos"];
-            if (pos.contains("X")) config_.topPosX = pos["X"].get<double>();
-            if (pos.contains("Y")) config_.topPosY = pos["Y"].get<double>();
-        }
-
-        // 跑马灯默认文本
-        if (j.contains("DEFAULT_MARQUEE_TEXT")) config_.defaultMarqueeText = j["DEFAULT_MARQUEE_TEXT"].get<std::string>();
-
-        // MiMo TTS 配置
-        if (j.contains("TTS_ENGINE")) config_.ttsEngine = j["TTS_ENGINE"].get<std::string>();
-        if (j.contains("MIMO_API_KEY")) config_.mimoApiKey = j["MIMO_API_KEY"].get<std::string>();
-        if (j.contains("MIMO_VOICE")) config_.mimoVoice = j["MIMO_VOICE"].get<std::string>();
-        if (j.contains("MIMO_STYLE")) config_.mimoStyle = j["MIMO_STYLE"].get<std::string>();
-        if (j.contains("MIMO_DIALECT")) config_.mimoDialect = j["MIMO_DIALECT"].get<std::string>();
-        if (j.contains("MIMO_ROLE")) config_.mimoRole = j["MIMO_ROLE"].get<std::string>();
-        if (j.contains("MIMO_AUDIO_FORMAT")) config_.mimoAudioFormat = j["MIMO_AUDIO_FORMAT"].get<std::string>();
-        if (j.contains("MIMO_SPEED")) config_.mimoSpeed = j["MIMO_SPEED"].get<float>();
-
-        if (j.contains("TTS_CACHE_DAYS_TO_KEEP")) config_.ttsCacheDaysToKeep = j["TTS_CACHE_DAYS_TO_KEEP"].get<int>();
-
-        // 舰长打卡AI配置
-        if (j.contains("ENABLE_CAPTAIN_CHECKIN_AI")) config_.enableCaptainCheckinAI = j["ENABLE_CAPTAIN_CHECKIN_AI"].get<bool>();
-        if (j.contains("CHECKIN_TRIGGER_WORDS")) config_.checkinTriggerWords = j["CHECKIN_TRIGGER_WORDS"].get<std::string>();
-
-        // 从注册表读取 idCode
+        // 从注册表读取 idCode（无论配置文件是否存在都读取）
         config_.idCode = ReadIdCodeFromRegistry();
 
         dirty_ = false;
-        return true;
+        return configLoaded;
     }
     catch (const std::exception& e)
     {
         LOG_ERROR(TEXT("ConfigManager: LoadConfig failed: %s"), e.what());
+        // 即使加载失败，也尝试从注册表读取 idCode
+        config_.idCode = ReadIdCodeFromRegistry();
         return false;
     }
 }
