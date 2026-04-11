@@ -65,3 +65,17 @@
 #### Scenario: UI线程调用
 - **WHEN** 从UI线程调用JSON处理接口
 - **THEN** 接口不阻塞UI线程，提供异步调用方式
+
+### Requirement: 字符编码处理
+系统 SHALL 在C#-C++边界正确处理中文字符串编码。
+
+#### Scenario: 配置字符串中文显示
+- **WHEN** 配置值包含中文字符（如"打卡,签到"）
+- **THEN** 配置文件以UTF-8存储，C#/C++边界传递时正确转换编码
+- **AND** UI层显示的中文字符与配置文件中的原始字符一致
+- **KNOWN ISSUE**: 修复前 `checkinTriggerWords` 等字段显示为乱码（"鎵撳崱,绛惧埌"）
+
+#### Scenario: P/Invoke字符串转换
+- **WHEN** C#通过P/Invoke传递字符串到C++
+- **THEN** 使用 `CharSet.Ansi` 时，C++层需将ANSI字节转换为UTF-8再存入std::string
+- **AND** C++通过P/Invoke返回字符串给C#时，需将UTF-8转换为ANSI

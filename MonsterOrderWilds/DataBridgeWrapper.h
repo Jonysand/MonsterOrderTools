@@ -37,10 +37,10 @@ namespace MonsterOrderBridge
             MimoSpeed = config.mimoSpeed;
             TopPosX = config.topPosX;
             TopPosY = config.topPosY;
-            DefaultMarqueeText = gcnew System::String(config.defaultMarqueeText.c_str());
+            DefaultMarqueeText = gcnew System::String(config.defaultMarqueeText.c_str(), 0, -1, System::Text::Encoding::UTF8);
             TtsCacheDaysToKeep = config.ttsCacheDaysToKeep;
             EnableCaptainCheckinAI = config.enableCaptainCheckinAI;
-            CheckinTriggerWords = gcnew System::String(config.checkinTriggerWords.c_str());
+            CheckinTriggerWords = gcnew System::String(config.checkinTriggerWords.c_str(), 0, -1, System::Text::Encoding::UTF8);
         }
 
         void Apply()
@@ -66,10 +66,17 @@ namespace MonsterOrderBridge
             data.mimoSpeed = MimoSpeed;
             data.topPosX = TopPosX;
             data.topPosY = TopPosY;
-            data.defaultMarqueeText = msclr::interop::marshal_as<std::string>(DefaultMarqueeText);
+
+            array<Byte>^ utf8Bytes = System::Text::Encoding::UTF8->GetBytes(DefaultMarqueeText);
+            pin_ptr<Byte> pinnedBytes = &utf8Bytes[0];
+            data.defaultMarqueeText = std::string(reinterpret_cast<char*>(pinnedBytes), utf8Bytes->Length);
+
             data.ttsCacheDaysToKeep = TtsCacheDaysToKeep;
             data.enableCaptainCheckinAI = EnableCaptainCheckinAI;
-            data.checkinTriggerWords = msclr::interop::marshal_as<std::string>(CheckinTriggerWords);
+
+            utf8Bytes = System::Text::Encoding::UTF8->GetBytes(CheckinTriggerWords);
+            pinnedBytes = &utf8Bytes[0];
+            data.checkinTriggerWords = std::string(reinterpret_cast<char*>(pinnedBytes), utf8Bytes->Length);
 
             DataBridge::UpdateAllConfig(data);
         }

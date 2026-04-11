@@ -51,8 +51,20 @@ extern "C" {
             {
             case CONFIG_TYPE_STRING:
                 {
-                    std::string strVal(value);
-                    configMgr->SetValueByMeta(meta, &strVal);
+                    int wlen = MultiByteToWideChar(CP_ACP, 0, value, -1, nullptr, 0);
+                    if (wlen > 0) {
+                        std::wstring wstr(wlen - 1, L'\0');
+                        MultiByteToWideChar(CP_ACP, 0, value, -1, &wstr[0], wlen);
+                        int utf8Len = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, nullptr, 0, nullptr, nullptr);
+                        if (utf8Len > 0) {
+                            std::string utf8Str(utf8Len - 1, '\0');
+                            WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, &utf8Str[0], utf8Len, nullptr, nullptr);
+                            configMgr->SetValueByMeta(meta, &utf8Str);
+                        }
+                    } else {
+                        std::string strVal(value);
+                        configMgr->SetValueByMeta(meta, &strVal);
+                    }
                 }
                 break;
             case CONFIG_TYPE_BOOL:
@@ -111,8 +123,27 @@ extern "C" {
                 return;
             }
             const char* value = ConfigFieldRegistry::GetString(meta, config);
-            strncpy_s(outValue, bufferSize, value, bufferSize - 1);
-            if (bufferSize > 0) outValue[bufferSize - 1] = '\0';
+
+            int wlen = MultiByteToWideChar(CP_UTF8, 0, value, -1, nullptr, 0);
+            if (wlen > 0) {
+                std::wstring wstr(wlen - 1, L'\0');
+                MultiByteToWideChar(CP_UTF8, 0, value, -1, &wstr[0], wlen);
+                int ansiLen = WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), -1, nullptr, 0, nullptr, nullptr);
+                if (ansiLen > 0) {
+                    if (ansiLen <= bufferSize) {
+                        WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), -1, outValue, bufferSize, nullptr, nullptr);
+                    } else {
+                        WideCharToMultiByte(CP_ACP, 0, wstr.c_str(), -1, outValue, bufferSize, nullptr, nullptr);
+                        if (bufferSize > 0) outValue[bufferSize - 1] = '\0';
+                    }
+                } else {
+                    strncpy_s(outValue, bufferSize, value, bufferSize - 1);
+                    if (bufferSize > 0) outValue[bufferSize - 1] = '\0';
+                }
+            } else {
+                strncpy_s(outValue, bufferSize, value, bufferSize - 1);
+                if (bufferSize > 0) outValue[bufferSize - 1] = '\0';
+            }
         }
         catch (const std::exception& e)
         {
