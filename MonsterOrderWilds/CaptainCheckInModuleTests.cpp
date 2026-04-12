@@ -2,6 +2,8 @@
 #include <iostream>
 #include <cassert>
 #include <sstream>
+#include <thread>
+#include <chrono>
 
 #ifdef RUN_UNIT_TESTS
 
@@ -160,6 +162,27 @@ void TestCalculateContinuousDays_ProfileManagerIntegration()
     std::cout << "[PASS] TestCalculateContinuousDays_ProfileManagerIntegration" << std::endl;
 }
 
+void TestGenerateCheckinAnswerAsync_Callback()
+{
+    CheckinEvent evt;
+    evt.uid = 123456;
+    evt.username = "test_user";
+    evt.continuousDays = 1;
+    evt.checkinDate = 20260412;
+    
+    bool callbackCalled = false;
+    CaptainCheckInModule::Inst()->GenerateCheckinAnswerAsync(evt, [&callbackCalled](const AnswerResult& result) {
+        callbackCalled = true;
+        assert(result.success);
+        std::cout << "[ASYNC TEST] Callback received result: " << (result.isAiGenerated ? "AI" : "Fallback") 
+                  << ", content: " << result.answerContent << std::endl;
+    });
+    
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+    assert(callbackCalled);
+    std::cout << "[PASS] TestGenerateCheckinAnswerAsync_Callback" << std::endl;
+}
+
 void RunCaptainCheckInModuleTests()
 {
     std::cout << "========== CaptainCheckInModule Tests ==========" << std::endl;
@@ -178,6 +201,7 @@ void RunCaptainCheckInModuleTests()
     TestIsCheckinMessage_WithSpaces();
     TestSetTriggerWords_UpdatesCorrectly();
     TestCalculateContinuousDays_ProfileManagerIntegration();
+    TestGenerateCheckinAnswerAsync_Callback();
     std::cout << "========== CaptainCheckInModule Tests: ALL PASS ==========" << std::endl;
 }
 

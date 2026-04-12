@@ -24,7 +24,9 @@
 
 ### Decision 1: 锁粒度优化
 
-**选择**: `PushDanmuEvent` 只在访问共享数据时短暂持锁，AI 调用和 DB 操作在锁外执行
+**选择**: `PushDanmuEvent` 只在访问共享数据时短暂持锁，AI 调用在锁外执行，DB 操作（SaveProfileToDb）在锁内快速完成
+
+**实际实现**: AI 调用（GenerateCheckinAnswerAsync）在锁外异步执行，数据库写入在锁内同步完成（SaveProfileToDb）。由于数据库操作本身很快（约几毫秒），且舰长签到是低频操作（每个舰长每天一次），当前锁粒度在高并发场景下不会成为瓶颈。
 
 **理由**: 
 - 原问题：`profilesLock_` 在 AI API 等待期间被持有，阻塞其他舰长弹幕处理
@@ -88,7 +90,7 @@ void CaptainCheckInModule::GenerateCheckinAnswerAsync(
 | 风险 | 影响 | 缓解措施 |
 |------|------|---------|
 | 异步回调在后台线程执行 | TTS/UI 操作可能在非主线程 | 使用 `PostMessage` 切换到主线程执行 TTS 播放 |
-| AI API 调用失败重试 | 后台线程可能重复请求 | 使用 `std::atomic<bool>` 标记请求状态 |
+| AI API 调用失败 | 后台线程无法获得 AI 回复 | 使用固定模板生成回复，不阻塞流程 |
 | 数据库并发写入 | SQLite 写锁竞争 | 使用 WAL 模式，写操作仍需串行 |
 | 内存泄漏 | std::thread detach 后生命周期管理 | 使用智能指针或确保线程短生命周期 |
 

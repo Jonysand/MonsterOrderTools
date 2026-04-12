@@ -107,3 +107,58 @@ bool MiniMaxAIChatProvider::CallAPI(const std::string& prompt, std::string& outR
         return false;
     }
 }
+
+void MiniMaxAIChatProvider::CallAPIAsync(const std::string& prompt, std::function<void(bool, const std::string&)> callback) {
+    nlohmann::json requestBody;
+    requestBody["model"] = "M2-her";
+    requestBody["messages"] = nlohmann::json::array();
+    requestBody["messages"].push_back({{"role", "user"}, {"content", prompt}});
+    std::string body = requestBody.dump();
+
+    std::string headersStr =
+        "Content-Type: application/json\r\n"
+        "Authorization: Bearer " + apiKey_ + "\r\n";
+
+    Network::MakeHttpsRequestAsync(
+        TEXT("api.minimaxi.com"),
+        443,
+        TEXT("/v1/text/chatcompletion_v2"),
+        TEXT("POST"),
+        headersStr,
+        body,
+        true,
+        [this, callback](bool success, const std::string& resp, DWORD error) {
+            if (!success || error != 0) {
+                lastError_ = "HTTP request failed: " + GetWinHttpErrorString(error);
+                available_ = false;
+                if (callback) callback(false, "");
+                return;
+            }
+
+            std::string response = resp;
+            try {
+                auto responseJson = nlohmann::json::parse(response);
+                if (!responseJson.contains("choices") || !responseJson["choices"].is_array() || responseJson["choices"].empty()) {
+                    lastError_ = "No choices in response";
+                    available_ = false;
+                    if (callback) callback(false, "");
+                    return;
+                }
+                auto& choice = responseJson["choices"][0];
+                if (!choice.contains("message") || !choice["message"].contains("content")) {
+                    lastError_ = "No message content in response";
+                    available_ = false;
+                    if (callback) callback(false, "");
+                    return;
+                }
+                std::string content = choice["message"]["content"].get<std::string>();
+                available_ = true;
+                if (callback) callback(true, content);
+            }
+            catch (const std::exception& e) {
+                lastError_ = std::string("JSON parse error: ") + e.what();
+                available_ = false;
+                if (callback) callback(false, "");
+            }
+        });
+}

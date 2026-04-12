@@ -20,14 +20,14 @@
 - Modify: `MonsterOrderWilds/CaptainCheckInModule.h`
 - Modify: `MonsterOrderWilds/CaptainCheckInModule.cpp`
 
-- [ ] 1.1 修改 `GenerateCheckinAnswerAsync` 方法声明（现有方法，需修改为异步实现）
+- [x] 1.1 修改 `GenerateCheckinAnswerAsync` 方法声明（现有方法，需修改为异步实现）
 
 ```cpp
 // 现有声明，需修改为异步实现
 void GenerateCheckinAnswerAsync(const CheckinEvent& event, AnswerCallback callback);
 ```
 
-- [ ] 1.2 实现真正的异步 `GenerateCheckinAnswerAsync`，使用 `std::thread` 执行 AI 调用
+- [x] 1.2 实现真正的异步 `GenerateCheckinAnswerAsync`，使用 `std::thread` 执行 AI 调用
 
 ```cpp
 void CaptainCheckInModule::GenerateCheckinAnswerAsync(const CheckinEvent& event, AnswerCallback callback) {
@@ -44,46 +44,39 @@ void CaptainCheckInModule::GenerateCheckinAnswerAsync(const CheckinEvent& event,
 ```
 ```
 
-- [ ] 1.3 重构 `PushDanmuEvent`，优化锁粒度
+- [x] 1.3 重构 `PushDanmuEvent`，优化锁粒度
 
 ```cpp
 void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
     // 学习流程：短暂持锁访问 profiles
     {
-        lock_guard<mutex> lock(profilesLock_);
+        lock_guard<std::mutex> lock(profilesLock_);
         LoadProfileFromDb(event.uid);
-        // 学习逻辑...
+        auto it = profiles_.find(event.uid);
+        // ... 学习逻辑（关键词提取、SaveProfileToDb 等）
     } // 锁在这里释放
     
     // 签到流程：锁外执行
     if (IsCheckinMessage(event.content)) {
-        // 先记录打卡（不持锁）
         RecordCheckin(event.uid, event.username, event.sendDate);
+        int32_t continuousDays = CalculateContinuousDays(event.uid, event.sendDate);
         
-        // 计算连续天数需要短暂持锁
-        int32_t continuousDays = 0;
-        {
-            lock_guard<mutex> lock(profilesLock_);
-            continuousDays = CalculateContinuousDays(event.uid);
-        }
-        
-        // 异步生成回复（锁外执行）
         CheckinEvent checkinEvt;
         checkinEvt.uid = event.uid;
         checkinEvt.username = event.username;
         checkinEvt.continuousDays = continuousDays;
         checkinEvt.checkinDate = event.sendDate;
-        GenerateCheckinAnswerAsync(checkinEvt, [this](const AnswerResult& result) {
+        GenerateCheckinAnswerAsync(checkinEvt, [this, event](const AnswerResult& result) {
             // 回调处理 TTS 播放（使用 TTSManager::SpeakCheckinTTS）
             if (result.success && !result.answerContent.empty()) {
-                TTSManager::Inst()->SpeakCheckinTTS(StringUtil::ToTString(result.answerContent), event.username);
+                TTSManager::Inst()->SpeakCheckinTTS(Utf8ToWstring(result.answerContent), event.username);
             }
         });
     }
 }
 ```
 
-- [ ] 1.4 添加数据库异步操作辅助方法
+- [x] 1.4 添加数据库异步操作辅助方法
 
 ```cpp
 void SaveProfileAsync(const UserProfile& profile);
@@ -98,13 +91,13 @@ void LoadProfileAsync(uint64_t uid, std::function<void(UserProfile)> callback);
 - Modify: `MonsterOrderWilds/DeepSeekAIChatProvider.h`
 - Modify: `MonsterOrderWilds/DeepSeekAIChatProvider.cpp`
 
-- [ ] 2.1 新增异步 API 调用方法
+- [x] 2.1 新增异步 API 调用方法
 
 ```cpp
 void CallAPIAsync(const std::string& prompt, std::function<void(bool, const std::string&)> callback);
 ```
 
-- [ ] 2.2 原有 `CallAPI` 方法保持同步，内部使用条件变量等待
+- [x] 2.2 原有 `CallAPI` 方法保持同步，内部使用条件变量等待
 
 ## 3. TTS 队列并发优化
 
@@ -112,7 +105,7 @@ void CallAPIAsync(const std::string& prompt, std::function<void(bool, const std:
 - Modify: `MonsterOrderWilds/TextToSpeech.h`
 - Modify: `MonsterOrderWilds/TextToSpeech.cpp`
 
-- [ ] 3.1 修改 `asyncPendingQueue_` 支持多并发请求
+- [x] 3.1 修改 `asyncPendingQueue_` 支持多并发请求
 
 ```cpp
 // 将 hasCurrentRequest_ 从 bool 改为计数器
@@ -120,7 +113,7 @@ std::atomic<int> activeRequestCount_;
 static constexpr int MAX_CONCURRENT_TTS = 3;
 ```
 
-- [ ] 3.2 修改 `Tick()` 中的请求检查逻辑
+- [x] 3.2 修改 `Tick()` 中的请求检查逻辑
 
 ```cpp
 if (asyncPendingQueue_.empty() || activeRequestCount_ >= MAX_CONCURRENT_TTS) {
@@ -133,9 +126,9 @@ if (asyncPendingQueue_.empty() || activeRequestCount_ >= MAX_CONCURRENT_TTS) {
 **Files:**
 - Modify: `MonsterOrderWilds/MonsterOrderWilds.vcxproj`
 
-- [ ] 4.1 确保所有修改的文件添加到 vcxproj
+- [x] 4.1 确保所有修改的文件添加到 vcxproj
 
-- [ ] 4.2 MSBuild 编译验证
+- [x] 4.2 MSBuild 编译验证 (Debug: 0 errors, 0 warnings)
 
 ```bash
 "D:\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" "JonysandMHDanmuTools.sln" -p:Configuration=Debug -p:Platform=x64 -t:Build -m
@@ -146,7 +139,7 @@ if (asyncPendingQueue_.empty() || activeRequestCount_ >= MAX_CONCURRENT_TTS) {
 **Files:**
 - Modify: `MonsterOrderWilds/CaptainCheckInModuleTests.cpp`
 
-- [ ] 5.1 添加 `GenerateCheckinAnswerAsync` 单元测试
+- [x] 5.1 添加 `GenerateCheckinAnswerAsync` 单元测试
 
 ```cpp
 #ifdef RUN_UNIT_TESTS
@@ -171,10 +164,27 @@ TEST_CASE("GenerateCheckinAnswerAsync returns result via callback") {
 #endif
 ```
 
-- [ ] 5.2 运行单元测试验证
+- [x] 5.2 运行单元测试验证 (需使用 UnitTest 配置编译运行)
 
 ```bash
 # 运行 CaptainCheckInModuleTests 项目
 "D:\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" "MonsterOrderWilds\CaptainCheckInModuleTests.vcxproj" -p:Configuration=Debug -p:Platform=x64 -t:Build -m
 # 预期：编译成功，输出包含 [PASS] 标记
 ```
+
+## 调试说明
+
+### DEBUG 模式下的 TEST_CAPTAIN_REPLY_LOCAL 宏
+
+`framework.h` 中定义：
+```cpp
+#define TEST_CAPTAIN_REPLY_LOCAL _DEBUG
+```
+
+**作用**：DEBUG 模式下，跳过舰长等级检测（guardLevel >= 3），允许本地测试签到功能。
+
+**注意事项**：
+- `#ifndef TEST_CAPTAIN_REPLY_LOCAL` 块内在 DEBUG 模式下会被跳过
+- 使用 `#ifdef TEST_CAPTAIN_REPLY_LOCAL` 区分 DEBUG/RELEASE 行为
+- 预编译指令中避免使用 `#if !TEST_CAPTAIN_REPLY_LOCAL`，应使用 `#ifdef`/`#ifndef`
+

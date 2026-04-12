@@ -349,11 +349,8 @@ void TTSManager::SpeakCheckinTTS(const TString& text, const std::string& usernam
     req.responseFormat = "mp3";
     req.speed = config.mimoSpeed;
     
-    LOG_INFO(TEXT("SpeakCheckinTTS: Requesting TTS for: %s"), text);
-    
     mimoClient->RequestTTS(req, [this, username](const MimoTTSClient::TTSResponse& response) {
         if (response.success && !response.audioData.empty()) {
-            LOG_INFO(TEXT("SpeakCheckinTTS: TTS request succeeded, playing audio"));
             PlayAudioData(response.audioData, "mp3");
             TTSCacheManager::Inst()->SaveCheckinAudio(username, response.audioData, GetTickCount64());
         } else {
@@ -450,40 +447,55 @@ void TTSManager::SpeakWithMimoAsync(const TString& text)
         req.responseFormat = "mp3";
     }
 
-    asyncPendingQueue_.push_back(req);
-    LOG_DEBUG(TEXT("SpeakWithMimoAsync: Request added to queue, queue size: %zu"), asyncPendingQueue_.size());
+    // 需要加锁保护asyncPendingQueue_
+    size_t queueSize;
+    {
+        std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
+        asyncPendingQueue_.push_back(req);
+        queueSize = asyncPendingQueue_.size();
+    }
+    LOG_DEBUG(TEXT("SpeakWithMimoAsync: Request added to queue, queue size: %zu"), queueSize);
 }
 
 void TTSManager::ProcessAsyncTTS()
 {
-    // 处理当前请求
-    if (hasCurrentRequest_ && !asyncPendingQueue_.empty()) {
+    // 处理所有当前活跃的请求（需要加锁保护asyncPendingQueue_）
+    std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
+    
+    // 处理活跃请求：遍历当前活跃的请求
+    int processed = 0;
+    while (processed < activeRequestCount_ && !asyncPendingQueue_.empty()) {
         AsyncTTSRequest& req = asyncPendingQueue_.front();
         switch (req.state) {
         case AsyncTTSState::Pending:
             ProcessPendingRequest(req);
+            processed++;
             break;
         case AsyncTTSState::Requesting:
             ProcessRequestingState(req);
+            processed++;
             break;
         case AsyncTTSState::Playing:
             ProcessPlayingState(req);
+            processed++;
             break;
         case AsyncTTSState::Completed:
         case AsyncTTSState::Failed:
             LOG_INFO(TEXT("TTS Async: Request %s, cleaning up"),
                 req.state == AsyncTTSState::Completed ? TEXT("completed") : TEXT("failed"));
             asyncPendingQueue_.pop_front();
-            hasCurrentRequest_ = false;
+            activeRequestCount_--;
+            // 不增加 processed，因为队列front已变为下一个请求
             break;
         }
     }
 
-    // 如果当前没有请求，从队列取下一个
-    if (!hasCurrentRequest_ && !asyncPendingQueue_.empty()) {
+    // 如果未达到并发上限，从队列取新的请求
+    while (activeRequestCount_ < MAX_CONCURRENT_TTS && !asyncPendingQueue_.empty()) {
         asyncPendingQueue_.front().startTime = std::chrono::steady_clock::now();
-        hasCurrentRequest_ = true;
-        LOG_INFO(TEXT("TTS Async: Starting new request for: %s"), asyncPendingQueue_.front().text.c_str());
+        activeRequestCount_++;
+        LOG_INFO(TEXT("TTS Async: Starting new request for: %s (active: %d)"), 
+            asyncPendingQueue_.front().text.c_str(), activeRequestCount_.load());
     }
 }
 
@@ -532,19 +544,30 @@ void TTSManager::ProcessPendingRequest(AsyncTTSRequest& req)
     LOG_INFO(TEXT("TTS Async: Sending API request for: %s"), req.text.c_str());
 
     // 发起异步请求（回调在HTTP线程执行）
-    mimoClient->RequestTTS(ttsReq, [this, &req](const MimoTTSClient::TTSResponse& response) {
+    // 注意：不能捕获req的引用，因为回调执行时req可能已经被pop_front()
+    // 解决方案：通过迭代器找到对应的请求
+    std::lock_guard<std::recursive_mutex> queueLock(asyncMutex_);
+    if (asyncPendingQueue_.empty()) {
+        LOG_ERROR(TEXT("TTS Async: Request queue is empty, cannot send request"));
+        return;
+    }
+    auto it = std::prev(asyncPendingQueue_.end());
+    mimoClient->RequestTTS(ttsReq, [this, it](const MimoTTSClient::TTSResponse& response) {
         // 回调在HTTP线程中执行，需要线程安全地修改状态
-        std::lock_guard<std::mutex> lock(asyncMutex_);
+        std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
+        if (it == asyncPendingQueue_.end()) {
+            return;  // 请求已被清理
+        }
         if (response.success && !response.audioData.empty()) {
-            req.audioData = response.audioData;
-            req.state = AsyncTTSState::Playing;
+            it->audioData = response.audioData;
+            it->state = AsyncTTSState::Playing;
             LOG_INFO(TEXT("TTS Async: API request succeeded, starting playback"));
             
-            std::string utf8Text = wstring_to_utf8(req.text);
+            std::string utf8Text = wstring_to_utf8(it->text);
             TTSCacheManager::Inst()->SaveCachedAudio(utf8Text, response.audioData);
         } else {
-            req.errorMessage = response.errorMessage;
-            req.state = AsyncTTSState::Failed;
+            it->errorMessage = response.errorMessage;
+            it->state = AsyncTTSState::Failed;
             LOG_ERROR(TEXT("TTS Async: API request failed: %s"), utf8_to_wstring(response.errorMessage).c_str());
         }
     });
@@ -556,7 +579,7 @@ void TTSManager::ProcessPendingRequest(AsyncTTSRequest& req)
 void TTSManager::ProcessRequestingState(AsyncTTSRequest& req)
 {
     // 使用锁检查状态，避免与回调竞态
-    std::lock_guard<std::mutex> lock(asyncMutex_);
+    std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
     
     if (req.state != AsyncTTSState::Requesting) {
         return;
@@ -580,7 +603,7 @@ void TTSManager::ProcessRequestingState(AsyncTTSRequest& req)
 
 void TTSManager::ProcessPlayingState(AsyncTTSRequest& req)
 {
-    std::lock_guard<std::mutex> lock(asyncMutex_);
+    std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
     
     if (audioPlayer == NULL) {
         req.state = AsyncTTSState::Failed;
@@ -657,6 +680,7 @@ void TTSManager::HandleRequestFailure(AsyncTTSRequest& req)
 void TTSManager::CleanupCompletedRequests()
 {
     // 清理Completed和Failed状态的请求
+    std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
     while (!asyncPendingQueue_.empty()) {
         auto& front = asyncPendingQueue_.front();
         if (front.state == AsyncTTSState::Completed || front.state == AsyncTTSState::Failed) {

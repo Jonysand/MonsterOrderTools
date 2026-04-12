@@ -73,6 +73,8 @@ private:
     void ExtractKeywords(UserProfile& profile, const std::string& content);
     void LoadProfileFromDb(uint64_t uid);
     void SaveProfileToDb(const UserProfile& profile);
+    void SaveProfileAsync(const UserProfile& profile);
+    void LoadProfileAsync(uint64_t uid, std::function<void(UserProfile)> callback);
 
     bool ShouldLearn(const UserProfile& profile, const CaptainDanmuEvent& event);
     bool IsStopWord(const std::string& word) const;

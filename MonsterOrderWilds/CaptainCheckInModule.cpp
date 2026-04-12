@@ -231,81 +231,91 @@ bool CaptainCheckInModule::ShouldSkipDuplicateContent(const std::string& content
 void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
     if (!enabled_) return;
 
-    lock_guard<std::mutex> lock(profilesLock_);
+    bool shouldCheckin = IsCheckinMessage(event.content);
 
-    auto it = profiles_.find(event.uid);
-    if (it == profiles_.end()) {
-        LoadProfileFromDb(event.uid);
-        it = profiles_.find(event.uid);
+    {
+        lock_guard<std::mutex> lock(profilesLock_);
+
+        auto it = profiles_.find(event.uid);
         if (it == profiles_.end()) {
-            UserProfile newProfile;
-            newProfile.uid = event.uid;
-            newProfile.username = event.username;
-            newProfile.createdAt = GetCurrentTimestamp();
-            profiles_[event.uid] = std::move(newProfile);
+            LoadProfileFromDb(event.uid);
             it = profiles_.find(event.uid);
+            if (it == profiles_.end()) {
+                UserProfile newProfile;
+                newProfile.uid = event.uid;
+                newProfile.username = event.username;
+                newProfile.createdAt = GetCurrentTimestamp();
+                profiles_[event.uid] = std::move(newProfile);
+                it = profiles_.find(event.uid);
+            }
         }
-    }
 
-    UserProfile& profile = it->second;
-    profile.username = event.username;
+        UserProfile& profile = it->second;
+        profile.username = event.username;
 
-    if (!ShouldLearn(profile, event)) {
-        return;
-    }
+        if (!ShouldLearn(profile, event)) {
+            return;
+        }
 
-    profile.lastDanmuTimestamp = event.serverTimestamp;
+        profile.lastDanmuTimestamp = event.serverTimestamp;
 
-    profile.danmuHistory.push_back({event.serverTimestamp, event.content});
-    if (profile.danmuHistory.size() > MAX_DANMU_HISTORY_SIZE) {
-        profile.danmuHistory.erase(profile.danmuHistory.begin());
-    }
+        profile.danmuHistory.push_back({event.serverTimestamp, event.content});
+        if (profile.danmuHistory.size() > MAX_DANMU_HISTORY_SIZE) {
+            profile.danmuHistory.erase(profile.danmuHistory.begin());
+        }
 
-    ExtractKeywords(profile, event.content);
+        ExtractKeywords(profile, event.content);
 
-    SaveProfileToDb(profile);
+        SaveProfileToDb(profile);
 
-    if (IsCheckinMessage(event.content)) {
-#ifndef TEST_CAPTAIN_REPLY_LOCAL
-        if (profile.lastCheckinDate == event.sendDate) {
+#ifdef TEST_CAPTAIN_REPLY_LOCAL
+#else
+        if (shouldCheckin && profile.lastCheckinDate == event.sendDate) {
             return;
         }
 #endif
-        int32_t checkinDate = event.sendDate;
-        ProfileManager::Inst()->RecordCheckin(event.uid, event.username, checkinDate);
-        int32_t continuousDays = ProfileManager::Inst()->CalculateContinuousDays(event.uid, checkinDate);
 
-        CheckinEvent checkinEvt;
-        checkinEvt.uid = event.uid;
-        checkinEvt.username = event.username;
-        checkinEvt.continuousDays = continuousDays;
-        checkinEvt.checkinDate = checkinDate;
+        if (shouldCheckin) {
+            int32_t checkinDate = event.sendDate;
+            ProfileManager::Inst()->RecordCheckin(event.uid, event.username, checkinDate);
+            int32_t continuousDays = ProfileManager::Inst()->CalculateContinuousDays(event.uid, checkinDate);
 
-        AnswerResult result = GenerateCheckinAnswerSync(checkinEvt, &profile);
-        if (result.success && !result.answerContent.empty()) {
-            std::wstring usernameCopy = Utf8ToWstring(event.username);
-            std::wstring contentCopy = Utf8ToWstring(result.answerContent);
+            profile.lastCheckinDate = checkinDate;
+            profile.continuousDays = continuousDays;
 
-            OnAIReplyCallback callback = nullptr;
-            void* userData = nullptr;
-            {
-                std::lock_guard<std::mutex> lock(g_aiReplyMutex);
-                callback = g_aiReplyCallback;
-                userData = g_aiReplyUserData;
-            }
-            if (callback) {
-                try {
-                    callback(usernameCopy.c_str(), contentCopy.c_str(), userData);
-                } catch (...) {
-                    LOG_ERROR(TEXT("AIReplyCallback threw exception"));
+            CheckinEvent checkinEvt;
+            checkinEvt.uid = event.uid;
+            checkinEvt.username = event.username;
+            checkinEvt.continuousDays = continuousDays;
+            checkinEvt.checkinDate = checkinDate;
+
+            GenerateCheckinAnswerAsync(checkinEvt, [this, event](const AnswerResult& result) {
+                if (result.success && !result.answerContent.empty()) {
+                    std::wstring usernameCopy = Utf8ToWstring(event.username);
+                    std::wstring contentCopy = Utf8ToWstring(result.answerContent);
+
+                    OnAIReplyCallback callback = nullptr;
+                    void* userData = nullptr;
+                    {
+                        std::lock_guard<std::mutex> lock(g_aiReplyMutex);
+                        callback = g_aiReplyCallback;
+                        userData = g_aiReplyUserData;
+                    }
+                    if (callback) {
+                        try {
+                            callback(usernameCopy.c_str(), contentCopy.c_str(), userData);
+                        } catch (...) {
+                            LOG_ERROR(TEXT("AIReplyCallback threw exception"));
+                        }
+                    }
+
+                    RECORD_HISTORY(contentCopy.c_str());
+
+                    if (ConfigManager::Inst()->GetConfig().enableVoice) {
+                        PlayCheckinTTS(result.answerContent, event.username);
+                    }
                 }
-            }
-
-            RECORD_HISTORY(contentCopy.c_str());
-
-            if (ConfigManager::Inst()->GetConfig().enableVoice) {
-                PlayCheckinTTS(result.answerContent, event.username);
-            }
+            });
         }
     }
 }
@@ -384,9 +394,56 @@ void CaptainCheckInModule::SaveProfileToDb(const UserProfile& profile) {
     ProfileManager::Inst()->SaveProfile(dbProfile);
 }
 
+void CaptainCheckInModule::SaveProfileAsync(const UserProfile& profile) {
+    UserProfile profileCopy = profile;
+    std::thread([profileCopy]() {
+        UserProfileData dbProfile;
+        dbProfile.uid = profileCopy.uid;
+        dbProfile.username = profileCopy.username;
+        dbProfile.lastCheckinDate = profileCopy.lastCheckinDate;
+        dbProfile.continuousDays = profileCopy.continuousDays;
+        dbProfile.lastDanmuTimestamp = profileCopy.lastDanmuTimestamp;
+        dbProfile.createdAt = profileCopy.createdAt;
+        dbProfile.keywords = profileCopy.keywords;
+        dbProfile.danmuHistory = profileCopy.danmuHistory;
+        ProfileManager::Inst()->SaveProfile(dbProfile);
+    }).detach();
+}
+
+void CaptainCheckInModule::LoadProfileAsync(uint64_t uid, std::function<void(UserProfile)> callback) {
+    std::thread([this, uid, callback]() {
+        UserProfileData dbProfile;
+        if (ProfileManager::Inst()->LoadProfile(uid, dbProfile)) {
+            UserProfile profile;
+            profile.uid = dbProfile.uid;
+            profile.username = dbProfile.username;
+            profile.lastCheckinDate = dbProfile.lastCheckinDate;
+            profile.continuousDays = dbProfile.continuousDays;
+            profile.lastDanmuTimestamp = dbProfile.lastDanmuTimestamp;
+            profile.createdAt = dbProfile.createdAt;
+            profile.keywords = dbProfile.keywords;
+            profile.danmuHistory = dbProfile.danmuHistory;
+            
+            lock_guard<std::mutex> lock(profilesLock_);
+            profiles_[uid] = profile;
+            
+            if (callback) {
+                callback(profile);
+            }
+        }
+    }).detach();
+}
+
 void CaptainCheckInModule::GenerateCheckinAnswerAsync(const CheckinEvent& event, AnswerCallback callback) {
-    AnswerResult result = GenerateCheckinAnswerSync(event);
-    callback(result);
+    CheckinEvent evtCopy = event;
+    auto resultCb = [callback](const AnswerResult& result) {
+        if (callback) callback(result);
+    };
+    
+    std::thread([this, evtCopy, resultCb]() {
+        AnswerResult result = GenerateCheckinAnswerSync(evtCopy, nullptr);
+        resultCb(result);
+    }).detach();
 }
 
 AnswerResult CaptainCheckInModule::GenerateCheckinAnswerSync(const CheckinEvent& event, UserProfile* profile) {
@@ -417,6 +474,7 @@ AnswerResult CaptainCheckInModule::GenerateCheckinAnswerSync(const CheckinEvent&
     result.success = true;
     result.answerContent = GetFallbackAnswer(event);
     result.isAiGenerated = false;
+    LOG_DEBUG(TEXT("[CaptainCheckInModule] Using fallback answer=%hs"), result.answerContent.c_str());
     return result;
 }
 

@@ -123,7 +123,7 @@ private:
 	std::chrono::steady_clock::time_point LastTickTime;
 	ISpVoice* pVoice{ NULL };
 	std::mutex sapiMutex_;
-	std::mutex asyncMutex_;  // 保护异步TTS请求状态
+	std::recursive_mutex asyncMutex_;  // 保护异步TTS请求状态（使用递归锁以便在ProcessAsyncTTS锁内调用子函数）
 
 #if USE_MIMO_TTS
 	// 小米MiMo TTS客户端
@@ -131,9 +131,10 @@ private:
 	// 音频播放器
 	AudioPlayer* audioPlayer{ NULL };
 
-	// 异步TTS请求队列（串行处理，最多1个在处理）
+	// 异步TTS请求队列（多并发处理，最多MAX_CONCURRENT_TTS个在处理）
 	std::list<AsyncTTSRequest> asyncPendingQueue_;      // 等待队列
-	bool hasCurrentRequest_{ false };   // 是否有当前请求在处理
+	std::atomic<int> activeRequestCount_{ 0 };   // 当前正在处理的请求数量
+	static constexpr int MAX_CONCURRENT_TTS = 3;       // 最大并发请求数
 	static constexpr int MAX_ASYNC_QUEUE_SIZE = 0;      // 队列大小限制（0=不限制）
 	static constexpr int MAX_RETRY_COUNT = 0;           // 最大重试次数
 	static constexpr int API_TIMEOUT_SECONDS = 5;       // API请求超时（秒）

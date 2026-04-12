@@ -5,7 +5,7 @@
 ## What Changes
 
 1. **AI 调用异步化**：将 `GenerateCheckinAnswerSync` 改为 `GenerateCheckinAnswerAsync`，AI API 调用移到后台线程，结果通过回调通知
-2. **锁粒度优化**：`PushDanmuEvent` 只在访问共享数据（profiles）时短暂持锁，AI 调用和数据库操作在锁外执行
+2. **锁粒度优化**：`PushDanmuEvent` 只在访问共享数据（profiles）时短暂持锁，AI 调用在锁外执行，数据库操作通过 `SaveProfileAsync` 异步化（仍短暂持锁写入内存副本）
 3. **数据库操作异步化**：数据库读写移到后台线程执行
 4. **TTS 队列改进**：`asyncPendingQueue_` 支持多并发请求（上限3个），避免串行瓶颈
 
