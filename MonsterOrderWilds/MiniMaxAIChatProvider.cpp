@@ -33,7 +33,7 @@ MiniMaxAIChatProvider::MiniMaxAIChatProvider(const std::string& apiKey)
 
 std::string MiniMaxAIChatProvider::GetProviderName() const { return "minimax"; }
 
-bool MiniMaxAIChatProvider::IsAvailable() const { return available_; }
+
 
 std::string MiniMaxAIChatProvider::GetLastError() const { return lastError_; }
 

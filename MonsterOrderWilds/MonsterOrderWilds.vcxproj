@@ -154,6 +154,10 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>winhttp.lib;$(SolutionDir)bin\$(Platform)\$(Configuration)\SQLite3Lib.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>if not exist "$(OutDir)dict" mkdir "$(OutDir)dict"
+xcopy /y /q "$(ProjectDir)dict\*" "$(OutDir)dict\"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -180,6 +184,10 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>winhttp.lib;$(SolutionDir)bin\$(Platform)\$(Configuration)\SQLite3Lib.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>if not exist "$(OutDir)dict" mkdir "$(OutDir)dict"
+xcopy /y /q "$(ProjectDir)dict\*" "$(OutDir)dict\"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='UnitTest|Win32'">
     <ClCompile>

@@ -50,7 +50,7 @@ using json = nlohmann::json;
 
 // 本地测试宏 - 跳过舰长检测，方便本地测试 captain-checkin-ai-reply 功能
 #ifndef TEST_CAPTAIN_REPLY_LOCAL
-#define TEST_CAPTAIN_REPLY_LOCAL 0
+#define TEST_CAPTAIN_REPLY_LOCAL _DEBUG
 #endif
 
 #define APP_VERSION 15

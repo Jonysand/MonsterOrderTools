@@ -57,7 +57,7 @@ public:
     bool Init();
     void PushDanmuEvent(const CaptainDanmuEvent& event);
     void GenerateCheckinAnswerAsync(const CheckinEvent& event, AnswerCallback callback);
-    AnswerResult GenerateCheckinAnswerSync(const CheckinEvent& event);
+    AnswerResult GenerateCheckinAnswerSync(const CheckinEvent& event, UserProfile* profile = nullptr);
     const UserProfile* GetUserProfile(uint64_t uid) const;
     std::vector<std::string> GetUserTopKeywords(uint64_t uid) const;
     void SetTriggerWords(const std::string& words);
@@ -79,7 +79,7 @@ private:
     bool ShouldSkipDuplicateContent(const std::string& content);
     int64_t GetCurrentTimestamp() const;
     std::string GetModuleDictPath() const;
-    void PlayCheckinTTS(const std::string& text, const std::string& username, int64_t timestamp);
+    void PlayCheckinTTS(const std::string& text, const std::string& username);
 
     std::map<uint64_t, UserProfile> profiles_;
     std::vector<std::wregex> triggerWordPatterns_;

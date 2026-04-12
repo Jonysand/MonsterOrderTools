@@ -17,7 +17,7 @@ class XiaomiTTSProvider : public ITTSProvider {
 public:
     XiaomiTTSProvider(const std::string& apiKey);
     std::string GetProviderName() const override;
-    bool IsAvailable() const override;
+    bool IsAvailable() const override { return !apiKey_.empty(); }
     std::string GetLastError() const override;
     void RequestTTS(const TTSRequest& request, TTSCallback callback) override;
     std::string BuildRequestBody(const TTSRequest& request) const;
@@ -34,7 +34,7 @@ class MiniMaxTTSProvider : public ITTSProvider {
 public:
     MiniMaxTTSProvider(const std::string& apiKey);
     std::string GetProviderName() const override;
-    bool IsAvailable() const override;
+    bool IsAvailable() const override { return !apiKey_.empty(); }
     std::string GetLastError() const override;
     void RequestTTS(const TTSRequest& request, TTSCallback callback) override;
     std::string BuildRequestBody(const TTSRequest& request) const;

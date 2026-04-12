@@ -45,11 +45,20 @@ AudioPlayer::~AudioPlayer()
 
 bool AudioPlayer::Play(const std::vector<uint8_t>& audioData, const std::string& format)
 {
-    lock.lock();
-    if (playing) {
-        Stop();
+    bool wasPlaying = false;
+    {
+        lock.lock();
+        wasPlaying = playing;
+        if (playing) {
+            playing = false;
+        }
+        lock.unlock();
     }
-    lock.unlock();
+    
+    if (wasPlaying) {
+        ExecuteMCICommand(L"stop mimo_audio_alias");
+        ExecuteMCICommand(L"close mimo_audio_alias");
+    }
 
     if (audioData.empty()) {
         lastError = "Audio data is empty";

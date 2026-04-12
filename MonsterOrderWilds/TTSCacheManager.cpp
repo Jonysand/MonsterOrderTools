@@ -5,6 +5,7 @@
 #include <Shlwapi.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <filesystem>
 
 #pragma comment(lib, "Shlwapi.lib")
 
@@ -54,12 +55,9 @@ std::string TTSCacheManager::GetContentPrefix(const std::string& text) const {
 bool TTSCacheManager::SaveCachedAudio(const std::string& text, const std::vector<uint8_t>& audioData) {
     std::wstring todayDir = GetTodayCacheDir();
     if (!std::filesystem::exists(todayDir)) {
-        if (!CreateDirectoryW(todayDir.c_str(), NULL)) {
-            DWORD dirError = ::GetLastError();
-            if (dirError != ERROR_ALREADY_EXISTS) {
-                LOG_ERROR(TEXT("TTSCacheManager: Failed to create cache directory"));
-                return false;
-            }
+        if (!std::filesystem::create_directories(todayDir)) {
+            LOG_ERROR(TEXT("TTSCacheManager: Failed to create cache directory"));
+            return false;
         }
     }
     
@@ -92,12 +90,9 @@ bool TTSCacheManager::SaveCachedAudio(const std::string& text, const std::vector
 bool TTSCacheManager::SaveCachedAudioWithPrefix(const std::string& text, const std::vector<uint8_t>& audioData, const std::string& prefix) {
     std::wstring todayDir = GetTodayCacheDir();
     if (!std::filesystem::exists(todayDir)) {
-        if (!CreateDirectoryW(todayDir.c_str(), NULL)) {
-            DWORD dirError = ::GetLastError();
-            if (dirError != ERROR_ALREADY_EXISTS) {
-                LOG_ERROR(TEXT("TTSCacheManager: Failed to create cache directory"));
-                return false;
-            }
+        if (!std::filesystem::create_directories(todayDir)) {
+            LOG_ERROR(TEXT("TTSCacheManager: Failed to create cache directory"));
+            return false;
         }
     }
 
@@ -127,12 +122,9 @@ bool TTSCacheManager::SaveCachedAudioWithPrefix(const std::string& text, const s
 bool TTSCacheManager::SaveCheckinAudio(const std::string& username, const std::vector<uint8_t>& audioData, int64_t timestamp) {
     std::wstring todayDir = GetTodayCacheDir();
     if (!std::filesystem::exists(todayDir)) {
-        if (!CreateDirectoryW(todayDir.c_str(), NULL)) {
-            DWORD dirError = ::GetLastError();
-            if (dirError != ERROR_ALREADY_EXISTS) {
-                LOG_ERROR(TEXT("TTSCacheManager: Failed to create cache directory"));
-                return false;
-            }
+        if (!std::filesystem::create_directories(todayDir)) {
+            LOG_ERROR(TEXT("TTSCacheManager: Failed to create cache directory"));
+            return false;
         }
     }
 

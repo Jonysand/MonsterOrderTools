@@ -44,8 +44,8 @@ namespace {
 
 class CaptainCheckInModule::JiebaContext {
 public:
-    JiebaContext(const string& dictPath, const string& hmmModelPath, const string& userDictPath, const string& stopWordsPath)
-        : jieba_(dictPath, hmmModelPath, userDictPath, stopWordsPath) {}
+    JiebaContext(const string& dictPath, const string& hmmModelPath, const string& userDictPath, const string& idfPath, const string& stopWordsPath)
+        : jieba_(dictPath, hmmModelPath, userDictPath, idfPath, stopWordsPath) {}
 
     cppjieba::Jieba jieba_;
 };
@@ -101,6 +101,7 @@ bool CaptainCheckInModule::Init() {
     std::string jiebaDict = dictPath + "/jieba.dict.utf8";
     std::string hmmModel = dictPath + "/hmm_model.utf8";
     std::string userDict = "";
+    std::string idfPath = dictPath + "/idf.utf8";
     std::string stopWords = dictPath + "/stop_words.utf8";
 
 #if TEST_CAPTAIN_REPLY_LOCAL
@@ -116,10 +117,14 @@ bool CaptainCheckInModule::Init() {
     if (!stopTest.good()) {
         LOG_ERROR(TEXT("CaptainCheckInModule::Init ERROR: Dictionary file not found: %hs. Please ensure dict/stop_words.utf8 exists."), stopWords.c_str());
     }
+    std::ifstream idfTest(idfPath);
+    if (!idfTest.good()) {
+        LOG_ERROR(TEXT("CaptainCheckInModule::Init ERROR: Dictionary file not found: %hs. Please ensure dict/idf.utf8 exists."), idfPath.c_str());
+    }
 #endif
 
     try {
-        jiebaContext_ = std::make_unique<JiebaContext>(jiebaDict, hmmModel, userDict, stopWords);
+        jiebaContext_ = std::make_unique<JiebaContext>(jiebaDict, hmmModel, userDict, idfPath, stopWords);
         LOG_INFO(TEXT("CaptainCheckInModule::Init cppjieba initialized successfully"));
     } catch (const std::exception& e) {
         LOG_ERROR(TEXT("CaptainCheckInModule::Init cppjieba init failed: %s, keyword extraction will be disabled"), e.what());
@@ -271,7 +276,7 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
         checkinEvt.continuousDays = continuousDays;
         checkinEvt.checkinDate = checkinDate;
 
-        AnswerResult result = GenerateCheckinAnswerSync(checkinEvt);
+        AnswerResult result = GenerateCheckinAnswerSync(checkinEvt, &profile);
         if (result.success && !result.answerContent.empty()) {
             std::wstring usernameCopy = Utf8ToWstring(event.username);
             std::wstring contentCopy = Utf8ToWstring(result.answerContent);
@@ -291,8 +296,10 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
                 }
             }
 
+            RECORD_HISTORY(contentCopy.c_str());
+
             if (ConfigManager::Inst()->GetConfig().enableVoice) {
-                PlayCheckinTTS(result.answerContent, event.username, event.serverTimestamp);
+                PlayCheckinTTS(result.answerContent, event.username);
             }
         }
     }
@@ -377,11 +384,10 @@ void CaptainCheckInModule::GenerateCheckinAnswerAsync(const CheckinEvent& event,
     callback(result);
 }
 
-AnswerResult CaptainCheckInModule::GenerateCheckinAnswerSync(const CheckinEvent& event) {
+AnswerResult CaptainCheckInModule::GenerateCheckinAnswerSync(const CheckinEvent& event, UserProfile* profile) {
     AnswerResult result;
 
-    UserProfile* profile = nullptr;
-    {
+    if (!profile) {
         lock_guard<std::mutex> lock(profilesLock_);
         auto it = profiles_.find(event.uid);
         if (it != profiles_.end()) {
@@ -504,34 +510,11 @@ std::string CaptainCheckInModule::GetModuleDictPath() const {
     return exeDir + "/dict";
 }
 
-void CaptainCheckInModule::PlayCheckinTTS(const std::string& text, const std::string& username, int64_t timestamp) {
-    if (aiProviderJson_.empty()) {
-        LOG_WARNING(TEXT("PlayCheckinTTS: AI_PROVIDER is empty, cannot play TTS"));
+void CaptainCheckInModule::PlayCheckinTTS(const std::string& text, const std::string& username) {
+    if (!ConfigManager::Inst()->GetConfig().enableVoice) {
         return;
     }
 
-    auto ttsProvider = TTSProviderFactory::Create(aiProviderJson_);
-    if (!ttsProvider || !ttsProvider->IsAvailable()) {
-        LOG_WARNING(TEXT("PlayCheckinTTS: TTS provider not available"));
-        return;
-    }
-
-    TTSRequest ttsReq;
-    ttsReq.text = text;
-    ttsReq.voice = "";
-    ttsReq.style = "开心";
-    ttsReq.speed = 1.0f;
-    ttsReq.pitch = 0;
-    ttsReq.volume = 1;
-
-    ttsProvider->RequestTTS(ttsReq, [this, username, timestamp](const TTSResponse& response) {
-        if (response.success && !response.audioData.empty()) {
-            if (TTSCacheManager::Inst()->SaveCheckinAudio(username, response.audioData, timestamp)) {
-                LOG_INFO(TEXT("PlayCheckinTTS: Saved checkin audio for %hs"), username.c_str());
-            }
-            TTSManager::Inst()->PlayAudioData(response.audioData, "mp3");
-        } else {
-            LOG_ERROR(TEXT("PlayCheckinTTS: TTS request failed: %hs"), response.errorMsg.c_str());
-        }
-    });
+    TString ttsText = Utf8ToWstring(text);
+    TTSManager::Inst()->SpeakCheckinTTS(ttsText, username);
 }

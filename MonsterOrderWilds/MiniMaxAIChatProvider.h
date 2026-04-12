@@ -8,7 +8,7 @@ public:
     MiniMaxAIChatProvider(const std::string& apiKey);
 
     std::string GetProviderName() const override;
-    bool IsAvailable() const override;
+    bool IsAvailable() const override { return !apiKey_.empty(); }
     std::string GetLastError() const override;
     bool CallAPI(const std::string& prompt, std::string& outResponse) override;
 

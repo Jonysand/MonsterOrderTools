@@ -34,7 +34,7 @@ DeepSeekAIChatProvider::DeepSeekAIChatProvider(const std::string& apiKey)
 
 std::string DeepSeekAIChatProvider::GetProviderName() const { return "deepseek"; }
 
-bool DeepSeekAIChatProvider::IsAvailable() const { return available_; }
+
 
 std::string DeepSeekAIChatProvider::GetLastError() const { return lastError_; }
 

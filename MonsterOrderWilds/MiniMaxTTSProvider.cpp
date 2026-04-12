@@ -15,8 +15,6 @@ MiniMaxTTSProvider::MiniMaxTTSProvider(const std::string& apiKey) : apiKey_(apiK
 
 std::string MiniMaxTTSProvider::GetProviderName() const { return "minimax"; }
 
-bool MiniMaxTTSProvider::IsAvailable() const { return available_; }
-
 std::string MiniMaxTTSProvider::GetLastError() const { return lastError_; }
 
 void MiniMaxTTSProvider::RequestTTS(const TTSRequest& request, TTSCallback callback) {

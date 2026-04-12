@@ -5,6 +5,8 @@
 #include "MonsterDataManager.h"
 #include "PriorityQueueManager.h"
 #include "DanmuProcessor.h"
+#include "ProfileManager.h"
+#include "CaptainCheckInModule.h"
 #include "ErrorHandler.h"
 #include <functional>
 #include <string>
@@ -90,6 +92,11 @@ public:
             GetDanmuProcessor()->SetOnlySpeekWearingMedal(config.onlySpeekWearingMedal);
             GetDanmuProcessor()->SetOnlySpeekGuardLevel(config.onlySpeekGuardLevel);
             GetDanmuProcessor()->SetOnlySpeekPaidGift(config.onlySpeekPaidGift);
+
+            // 初始化舰长签到模块
+            ProfileManager::Inst()->Init();
+            GetDanmuProcessor()->Init();
+            CaptainCheckInModule::Inst()->Init();
 
             if (!configLoaded)
                 REPORT_WARNING("DataBridge", "Config file not found, using defaults");

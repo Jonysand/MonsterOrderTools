@@ -15,7 +15,7 @@ XiaomiTTSProvider::XiaomiTTSProvider(const std::string& apiKey) : apiKey_(apiKey
 
 std::string XiaomiTTSProvider::GetProviderName() const { return "xiaomi"; }
 
-bool XiaomiTTSProvider::IsAvailable() const { return available_; }
+
 
 std::string XiaomiTTSProvider::GetLastError() const { return lastError_; }
 

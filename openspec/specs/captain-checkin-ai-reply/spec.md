@@ -1,5 +1,70 @@
 # 舰长打卡AI回复系统 - 主规格
 
+## 修复记录
+
+### 2026-04-12: AI回复和TTS播放问题修复
+
+**修复的问题**：
+
+1. **AI Chat Provider `IsAvailable()` 返回值错误** (`DeepSeekAIChatProvider.h`, `MiniMaxAIChatProvider.h`)
+   - 问题：`IsAvailable()` 返回的是上次 API 调用结果（`available_`），而不是检查 API key 是否有效
+   - 修复：改为 `return !apiKey_.empty()`，只要 API key 非空就返回 true
+
+2. **TTS Provider `IsAvailable()` 返回值错误** (`TTSProvider.h`, `XiaomiTTSProvider.cpp`, `MiniMaxTTSProvider.cpp`)
+   - 问题：同上，`IsAvailable()` 返回 `available_` 而不是检查 API key
+   - 修复：改为 `return !apiKey_.empty()`
+
+ 3. **签到 TTS 播放失败** (`CaptainCheckInModule.cpp`, `TextToSpeech.cpp`, `TextToSpeech.h`)
+   - 问题：`PlayCheckinTTS` 使用 `TTSProviderFactory` 创建 provider（可能是 xiaomi），但 XiaomiTTS 返回的音频格式不被 MCI 正确支持；且之前未调用 `SaveCheckinAudio()` 保存音频
+   - 修复：新增 `TTSManager::SpeakCheckinTTS()` 方法，使用 `MimoTTSClient`（与弹幕 TTS 相同方式），签到 TTS 播放成功后调用 `SaveCheckinAudio()` 保存音频到 `打卡_{username}_{timestamp}.mp3`；时间戳使用 `GetTickCount64()` 与 `SaveCachedAudio()` 保持一致
+
+ 4. **签到弹幕触发普通 TTS** (`TextToSpeech.cpp`)
+   - 问题：弹幕 "签到" 或 "打卡" 被 `HandleSpeekDm` 处理后加入 `NormalMsgQueue`，导致播放弹幕内容 "签到" 而不是 AI 回复
+   - 修复：在 `HandleSpeekDm` 中检测签到消息（`msg == "签到" || msg == "打卡"`），跳过普通 TTS 队列处理
+
+5. **AudioPlayer 死锁** (`AudioPlayer.cpp`)
+   - 问题：`Play()` 获取自旋锁后，如果 `playing==true` 会调用 `Stop()`，而 `Stop()` 尝试获取同一个锁导致死锁
+   - 修复：先检查 `playing` 状态并释放锁，再执行 MCI stop/close 命令
+
+**相关文件修改**：
+- `MonsterOrderWilds/DeepSeekAIChatProvider.h` - `IsAvailable()` 返回 `!apiKey_.empty()`
+- `MonsterOrderWilds/MiniMaxAIChatProvider.h` - 同上
+- `MonsterOrderWilds/TTSProvider.h` - `XiaomiTTSProvider` 和 `MiniMaxTTSProvider` 的 `IsAvailable()` 改为内联实现
+- `MonsterOrderWilds/XiaomiTTSProvider.cpp` - 删除 `IsAvailable()` 定义
+- `MonsterOrderWilds/MiniMaxTTSProvider.cpp` - 删除 `IsAvailable()` 定义
+- `MonsterOrderWilds/TextToSpeech.h` - 新增 `SpeakCheckinTTS()` 方法声明
+- `MonsterOrderWilds/TextToSpeech.cpp` - 实现 `SpeakCheckinTTS()`，修改 `HandleSpeekDm()` 跳过签到消息
+- `MonsterOrderWilds/CaptainCheckInModule.cpp` - `PlayCheckinTTS()` 改用 `SpeakCheckinTTS()`
+- `MonsterOrderWilds/AudioPlayer.cpp` - 修复 `Play()` 死锁问题
+
+---
+
+### 2026-04-12 (早期): 初始化和死锁问题修复
+
+**修复的问题**：
+
+1. **CaptainCheckInModule 未初始化** (`DataBridge.h`)
+   - 问题：`DataBridge::Initialize()` 没有调用 `CaptainCheckInModule::Init()`，导致签到模块完全未初始化
+   - 修复：在 `DataBridge::Initialize()` 中添加 `ProfileManager::Inst()->Init()`、`GetDanmuProcessor()->Init()` 和 `CaptainCheckInModule::Inst()->Init()`
+
+2. **词典文件缺失** (`CaptainCheckInModule.cpp`)
+   - 问题：Jieba 构造函数需要 5 个参数（含 `idfPath`），但代码只传了 4 个，导致 `idfAverage_ > 0.0` 断言失败
+   - 修复：添加 `idf.utf8` 路径参数和文件检查
+
+3. **死锁问题** (`CaptainCheckInModule.cpp`)
+   - 问题：`PushDanmuEvent` 持有 `profilesLock_` 时调用 `GenerateCheckinAnswerSync`，而后者也会尝试获取 `profilesLock_`，导致死锁
+   - 修复：修改 `GenerateCheckinAnswerSync` 接受可选的 `profile` 指针参数，避免重复加锁
+
+4. **dict 文件未复制到输出目录** (`MonsterOrderWilds.vcxproj`)
+   - 问题：Debug 构建时 dict 文件没有复制到 `x64\Debug\dict\`，导致运行时找不到文件
+   - 修复：添加 PostBuildEvent 复制 `dict\*` 到输出目录
+
+**相关文件修改**：
+- `MonsterOrderWilds/DataBridge.h` - 添加初始化调用
+- `MonsterOrderWilds/CaptainCheckInModule.cpp` - 添加 idf 支持，修复死锁
+- `MonsterOrderWilds/CaptainCheckInModule.h` - 更新函数签名
+- `MonsterOrderWilds/MonsterOrderWilds.vcxproj` - 添加 PostBuildEvent
+
 ## 概述
 
 学习舰长发言习惯，当舰长发送含打卡触发词的弹幕时，基于其历史发言习惯生成个性化AI回复。
@@ -226,11 +291,12 @@ public:
 
 | 宏名 | 默认值 | 说明 |
 |------|--------|------|
-| `TEST_CAPTAIN_REPLY_LOCAL` | 0 | 本地测试宏。设为 1 时跳过舰长检测（guard_level >= 3）和防刷屏检查，方便本地测试 captain-checkin-ai-reply 功能。**测试完成后请改回 0** |
+| `TEST_CAPTAIN_REPLY_LOCAL` | `_DEBUG` | 本地测试宏。设为 1 时跳过舰长检测（guard_level >= 3）和防刷屏检查，方便本地测试 captain-checkin-ai-reply 功能。**在 Debug 配置下自动启用**，Release 配置下为 0 |
 
 **注意**：
 - `TEST_CAPTAIN_REPLY_LOCAL` 仅用于本地开发调试，**不要提交到正式版本**
 - 宏开启时，词典文件（`dict/*.utf8`）必须存在，否则会输出明确错误日志
+- 已修复问题：词典文件检查现在包含 `idf.utf8`（之前遗漏导致 cppjieba 初始化失败）
 
 ## 数据库
 
@@ -274,11 +340,14 @@ CREATE INDEX idx_checkin_uid_date ON checkin_records(uid, checkin_date);
 |------|----------|
 | `dict/jieba.dict.utf8` | `{AppRoot}/dict/jieba.dict.utf8` |
 | `dict/hmm_model.utf8` | `{AppRoot}/dict/hmm_model.utf8` |
+| `dict/idf.utf8` | `{AppRoot}/dict/idf.utf8` |
 | `dict/stop_words.utf8` | `{AppRoot}/dict/stop_words.utf8` |
+| `dict/user.dict.utf8` | `{AppRoot}/dict/user.dict.utf8` |
 | `dict/弹幕习惯词黑白名单配置.txt` | `{AppRoot}/dict/弹幕习惯词黑白名单配置.txt` |
 
 **注意**：
 - `captain_profiles.db` 在运行时自动创建，无需打包
 - `弹幕习惯词黑白名单配置.txt` 是配置说明文档
+- **所有 dict 文件都必须在 Debug 构建时复制到输出目录**（通过 vcxproj 的 PostBuildEvent 配置）
 
 详见 `keyword-extraction-spec.md` 的「安装包配置」章节。

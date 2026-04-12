@@ -78,6 +78,7 @@ public:
 public:
 	bool Speak(const TString& text);
 	bool PlayAudioData(const std::vector<uint8_t>& audioData, const std::string& format = "mp3");
+	void SpeakCheckinTTS(const TString& text, const std::string& username);
 private:
 #if USE_MIMO_TTS
 	// 异步TTS方法

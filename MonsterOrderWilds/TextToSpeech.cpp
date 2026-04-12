@@ -148,6 +148,8 @@ void TTSManager::HandleSpeekDm(const json& data)
         // 以"点餐"开头
         HandleDmOrderFood(msg, utf8_to_wstring(uname));
     }
+    else if (msg == TEXT("签到") || msg == TEXT("打卡")) {
+    }
     else
         NormalMsgQueue.push_back(msgTString);
 }
@@ -316,6 +318,48 @@ bool TTSManager::PlayAudioData(const std::vector<uint8_t>& audioData, const std:
 #else
     LOG_WARNING(TEXT("PlayAudioData: MIMO TTS not enabled, using SAPI"));
     return false;
+#endif
+}
+
+void TTSManager::SpeakCheckinTTS(const TString& text, const std::string& username) {
+#if USE_MIMO_TTS
+    if (mimoClient == NULL) {
+        LOG_ERROR(TEXT("SpeakCheckinTTS: mimoClient is NULL"));
+        return;
+    }
+    
+    if (!mimoClient->IsAvailable()) {
+        LOG_WARNING(TEXT("SpeakCheckinTTS: MiMo TTS not available"));
+        return;
+    }
+    
+    MimoTTSClient::TTSRequest req;
+    req.text = wstring_to_utf8(text);
+    
+    const auto& config = ConfigManager::Inst()->GetConfig();
+    if (!config.mimoVoice.empty()) {
+        req.voice = config.mimoVoice;
+    }
+    if (!config.mimoDialect.empty()) {
+        req.dialect = config.mimoDialect;
+    }
+    if (!config.mimoRole.empty()) {
+        req.role = config.mimoRole;
+    }
+    req.responseFormat = "mp3";
+    req.speed = config.mimoSpeed;
+    
+    LOG_INFO(TEXT("SpeakCheckinTTS: Requesting TTS for: %s"), text);
+    
+    mimoClient->RequestTTS(req, [this, username](const MimoTTSClient::TTSResponse& response) {
+        if (response.success && !response.audioData.empty()) {
+            LOG_INFO(TEXT("SpeakCheckinTTS: TTS request succeeded, playing audio"));
+            PlayAudioData(response.audioData, "mp3");
+            TTSCacheManager::Inst()->SaveCheckinAudio(username, response.audioData, GetTickCount64());
+        } else {
+            LOG_ERROR(TEXT("SpeakCheckinTTS: TTS request failed: %s"), utf8_to_wstring(response.errorMessage).c_str());
+        }
+    });
 #endif
 }
 
