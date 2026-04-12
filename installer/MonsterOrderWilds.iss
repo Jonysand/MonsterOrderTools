@@ -2,12 +2,12 @@
 ; Inno Setup 6.x
 
 #define MyAppName "MonsterOrderWilds"
-#define MyAppVersion "v15"
+#define MyAppVersion "v20"
 #define MyAppPublisher "JonysandMHDanmuTools"
 #define MyAppExeName "MonsterOrderWilds.exe"
 
 [Setup]
-AppId={{MonsterOrderWilds-Setup}
+AppId={{MonsterOrderWilds-Setup}}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
@@ -24,6 +24,7 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=x64
 ArchitecturesInstallIn64BitMode=x64
 UsePreviousAppDir=yes
+DisableWelcomePage=no
 
 [Languages]
 Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
@@ -69,9 +70,29 @@ Filename: "certutil"; Parameters: "-addstore -f ""Root"" ""{app}\MonsterOrderWil
 [Code]
 var
   CertPage: TInputOptionWizardPage;
+  PrevInstallPath: string;
+
+function GetRegKeyName(): string;
+begin
+  Result := 'Software\{#MyAppPublisher}\{#MyAppName}';
+end;
+
+procedure SaveInstallPath(Path: string);
+begin
+  RegWriteStringValue(HKEY_CURRENT_USER, GetRegKeyName(), 'InstallPath', Path);
+end;
+
+function LoadInstallPath(): string;
+begin
+  Result := '';
+  RegQueryStringValue(HKEY_CURRENT_USER, GetRegKeyName(), 'InstallPath', Result);
+end;
 
 procedure InitializeWizard;
 begin
+  PrevInstallPath := LoadInstallPath();
+  if PrevInstallPath <> '' then
+    WizardForm.DirEdit.Text := PrevInstallPath;
   { Create certificate installation page }
   CertPage := CreateInputOptionPage(wpSelectComponents,
     '安装签名证书',
@@ -115,6 +136,10 @@ procedure CurStepChanged(CurStep: TSetupStep);
 var
   ResultCode: Integer;
 begin
+  if CurStep = ssInstall then
+  begin
+    SaveInstallPath(WizardForm.DirEdit.Text);
+  end;
   if CurStep = ssPostInstall then
   begin
     { Run application after installation if not silent }
