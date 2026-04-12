@@ -120,6 +120,16 @@ def prepare_files():
         else:
             print(f"[Warning] {config_src} not found!")
 
+    # 复制分词词典目录
+    dict_src = PROJECT_DIR / "MonsterOrderWilds" / "dict"
+    dict_dst = FILES_DIR / "dict"
+    if dict_src.exists():
+        shutil.copytree(dict_src, dict_dst)
+        print(f"[OK] Copied dict directory with {len(list(dict_src.iterdir()))} files")
+    else:
+        print(f"[Error] {dict_src} not found!")
+        sys.exit(1)
+
     # 复制证书
     if CERT_FILE.exists():
         print("[OK] Certificate found, will be copied during signing")

@@ -53,7 +53,7 @@ using json = nlohmann::json;
 #define TEST_CAPTAIN_REPLY_LOCAL _DEBUG
 #endif
 
-#define APP_VERSION 15
+#define APP_VERSION 20
 
 #ifdef UNICODE
 typedef std::wstring TString;

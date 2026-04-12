@@ -45,6 +45,7 @@ Source: "files\monster_list.json"; DestDir: "{app}\MonsterOrderWilds_configs"; F
 ; cppjieba 分词字典文件
 Source: "..\MonsterOrderWilds\dict\jieba.dict.utf8"; DestDir: "{app}\dict"; Flags: ignoreversion; Components: main
 Source: "..\MonsterOrderWilds\dict\hmm_model.utf8"; DestDir: "{app}\dict"; Flags: ignoreversion; Components: main
+Source: "..\MonsterOrderWilds\dict\idf.utf8"; DestDir: "{app}\dict"; Flags: ignoreversion; Components: main
 Source: "..\MonsterOrderWilds\dict\stop_words.utf8"; DestDir: "{app}\dict"; Flags: ignoreversion; Components: main
 Source: "..\MonsterOrderWilds\dict\user.dict.utf8"; DestDir: "{app}\dict"; Flags: ignoreversion; Components: main
 ; 舰长打卡AI配置说明
