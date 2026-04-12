@@ -333,8 +333,13 @@ void TTSManager::SpeakCheckinTTS(const TString& text, const std::string& usernam
         return;
     }
     
-    MimoTTSClient::TTSRequest req;
-    req.text = wstring_to_utf8(text);
+    AsyncTTSRequest req;
+    req.text = text;
+    req.state = AsyncTTSState::Pending;
+    req.startTime = std::chrono::steady_clock::now();
+    req.responseFormat = "mp3";
+    req.isCheckinTTS = true;
+    req.checkinUsername = username;
     
     const auto& config = ConfigManager::Inst()->GetConfig();
     if (!config.mimoVoice.empty()) {
@@ -346,17 +351,13 @@ void TTSManager::SpeakCheckinTTS(const TString& text, const std::string& usernam
     if (!config.mimoRole.empty()) {
         req.role = config.mimoRole;
     }
-    req.responseFormat = "mp3";
     req.speed = config.mimoSpeed;
     
-    mimoClient->RequestTTS(req, [this, username](const MimoTTSClient::TTSResponse& response) {
-        if (response.success && !response.audioData.empty()) {
-            PlayAudioData(response.audioData, "mp3");
-            TTSCacheManager::Inst()->SaveCheckinAudio(username, response.audioData, GetTickCount64());
-        } else {
-            LOG_ERROR(TEXT("SpeakCheckinTTS: TTS request failed: %s"), utf8_to_wstring(response.errorMessage).c_str());
-        }
-    });
+    {
+        std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
+        asyncPendingQueue_.push_back(req);
+    }
+    LOG_DEBUG(TEXT("SpeakCheckinTTS: Request added to queue for: %s"), text.c_str());
 #endif
 }
 
@@ -521,7 +522,10 @@ void TTSManager::ProcessPendingRequest(AsyncTTSRequest& req)
     // 获取配置参数
     const auto& config = ConfigManager::Inst()->GetConfig();
 
-    if (!config.mimoVoice.empty()) {
+    // 优先使用请求中存储的参数（checkin TTS会设置这些）
+    if (!req.voice.empty()) {
+        ttsReq.voice = req.voice;
+    } else if (!config.mimoVoice.empty()) {
         ttsReq.voice = config.mimoVoice;
     }
 
@@ -532,14 +536,18 @@ void TTSManager::ProcessPendingRequest(AsyncTTSRequest& req)
     }
     ttsReq.text = styleTag + wstring_to_utf8(req.text);
 
-    if (!config.mimoDialect.empty()) {
+    if (!req.dialect.empty()) {
+        ttsReq.dialect = req.dialect;
+    } else if (!config.mimoDialect.empty()) {
         ttsReq.dialect = config.mimoDialect;
     }
-    if (!config.mimoRole.empty()) {
+    if (!req.role.empty()) {
+        ttsReq.role = req.role;
+    } else if (!config.mimoRole.empty()) {
         ttsReq.role = config.mimoRole;
     }
     ttsReq.responseFormat = req.responseFormat;
-    ttsReq.speed = config.mimoSpeed;
+    ttsReq.speed = req.speed != 0 ? req.speed : config.mimoSpeed;
 
     LOG_INFO(TEXT("TTS Async: Sending API request for: %s"), req.text.c_str());
 
@@ -564,7 +572,11 @@ void TTSManager::ProcessPendingRequest(AsyncTTSRequest& req)
             LOG_INFO(TEXT("TTS Async: API request succeeded, starting playback"));
             
             std::string utf8Text = wstring_to_utf8(it->text);
-            TTSCacheManager::Inst()->SaveCachedAudio(utf8Text, response.audioData);
+            if (it->isCheckinTTS && !it->checkinUsername.empty()) {
+                TTSCacheManager::Inst()->SaveCheckinAudio(it->checkinUsername, response.audioData, GetTickCount64());
+            } else {
+                TTSCacheManager::Inst()->SaveCachedAudio(utf8Text, response.audioData);
+            }
         } else {
             it->errorMessage = response.errorMessage;
             it->state = AsyncTTSState::Failed;
@@ -597,7 +609,12 @@ void TTSManager::ProcessRequestingState(AsyncTTSRequest& req)
 
     if (elapsed >= API_TIMEOUT_SECONDS) {
         LOG_WARNING(TEXT("TTS Async: API request timeout (%d seconds)"), elapsed);
-        HandleRequestFailure(req);
+        // 不在这里标记失败，因为HTTP回调可能还在处理中
+        // 等到下次Tick，如果audioData有数据会转为Playing，没有才会真正失败
+        // 为了避免无限等待，最多等待2个额外的超时周期
+        if (elapsed >= API_TIMEOUT_SECONDS * 3) {
+            HandleRequestFailure(req);
+        }
     }
 }
 
@@ -673,8 +690,9 @@ void TTSManager::HandleRequestFailure(AsyncTTSRequest& req)
         TriggerFallback();
     }
 
-    // 降级到SAPI
-    SpeakWithSapi(req.text);
+    // 不在这里降级到SAPI，因为可能有其他请求正在播放
+    // audioPlayer是单例，调用Stop()会打断其他请求的播放
+    // 让失败的请求直接失败，不尝试SAPI降级播放
 }
 
 void TTSManager::CleanupCompletedRequests()

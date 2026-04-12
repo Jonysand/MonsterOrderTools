@@ -30,6 +30,12 @@ struct AsyncTTSRequest
 	std::chrono::steady_clock::time_point startTime;  // 状态开始时间
 	int retryCount = 0;                     // 重试次数
 	std::string errorMessage;               // 错误信息
+	bool isCheckinTTS = false;              // 是否为checkin TTS
+	std::string checkinUsername;            // checkin用户名（用于缓存）
+	std::string voice;                     // 语音
+	std::string dialect;                    // 方言
+	std::string role;                      // 角色
+	int speed = 0;                          // 语速
 };
 
 class TTSManager

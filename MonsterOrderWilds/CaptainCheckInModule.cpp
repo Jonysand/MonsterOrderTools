@@ -268,7 +268,7 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
 
         SaveProfileToDb(profile);
 
-#ifdef TEST_CAPTAIN_REPLY_LOCAL
+#if TEST_CAPTAIN_REPLY_LOCAL
 #else
         if (shouldCheckin && profile.lastCheckinDate == event.sendDate) {
             return;

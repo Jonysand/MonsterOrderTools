@@ -185,6 +185,6 @@ TEST_CASE("GenerateCheckinAnswerAsync returns result via callback") {
 
 **注意事项**：
 - `#ifndef TEST_CAPTAIN_REPLY_LOCAL` 块内在 DEBUG 模式下会被跳过
-- 使用 `#ifdef TEST_CAPTAIN_REPLY_LOCAL` 区分 DEBUG/RELEASE 行为
-- 预编译指令中避免使用 `#if !TEST_CAPTAIN_REPLY_LOCAL`，应使用 `#ifdef`/`#ifndef`
+- 使用 `#if TEST_CAPTAIN_REPLY_LOCAL`（检查值）而不是 `#ifdef TEST_CAPTAIN_REPLY_LOCAL`（检查定义）来区分 DEBUG/RELEASE 行为
+- `#ifdef` 只检查宏是否被定义过，即使值为 0 也会执行 `#ifdef` 分支
 

@@ -9,6 +9,10 @@
 - 确认修改范围正确，无多余改动
 - 验证改动符合任务要求
 
+## Git 提交规则
+- **永远不要自动提交（commit）和推送（push）**
+- 所有提交和推送必须由用户明确要求
+
 ## 单元测试规则
 - **新建 OpenSpec Change 时必须为所有修改的功能建立单元测试**
 - **单元测试在代码修改后立即运行验证**
@@ -114,3 +118,12 @@
 - C++ 层的 `ConfigFieldRegistry` 和 C# 层的 `ConfigFieldRegistry` 是两个独立的注册表，需要分别注册
 - 如果字段需要即时生效，需要在 `ToolsMain.ConfigChanged()` 中添加处理逻辑
 - **如果配置变更需要通知其他组件（如 UI 刷新），必须在 `ToolsMain.ConfigChanged()` 中调用 `GlobalEventListener.Invoke("事件名", 值)` 发送通知**，并在该组件中注册监听此事件
+
+## 编译验证规则
+
+**MSBuild 编译命令**（后续使用此简写方式执行编译验证）：
+```
+powershell -Command "& 'D:\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe' 'D:\VisualStudioProjects\JonysandMHDanmuTools\JonysandMHDanmuTools.sln' -p:Configuration=Release -p:Platform=x64 -t:Build -m"
+```
+
+**注意**：由于 PowerShell 版本限制，不能使用 `&&` 连接命令。编译完成后检查输出中的 `0 个错误` 确认编译成功。
