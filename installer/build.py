@@ -108,7 +108,11 @@ def prepare_files():
     print("[OK] Copied MonsterOrderWildsGUI.dll")
 
     # 复制配置文件
-    for config_file in ["credentials.dat", "monster_list.json"]:
+    for config_file in [
+        "credentials.dat",
+        "monster_list.json",
+        "弹幕习惯词黑白名单配置.txt",
+    ]:
         config_src = CONFIGS_DIR / config_file
         if config_src.exists():
             shutil.copy2(config_src, FILES_DIR / config_file)
