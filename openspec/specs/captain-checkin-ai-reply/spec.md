@@ -2,6 +2,18 @@
 
 ## 修复记录
 
+### 2026-04-12: TempAudio目录只保存签到TTS
+
+**修复的问题**：
+- **一般弹幕 TTS 误存 TempAudio** (`TextToSpeech.cpp`)
+  - 问题：`TempAudio/{YYYYMMDD}/` 目录原本设计为只保存签到 AI 回复 TTS，但一般弹幕播报也调用了 `SaveCachedAudio()` 写入该目录
+  - 修复：移除一般弹幕的 `SaveCachedAudio()` 调用，改为直接播放后丢弃，不再缓存
+
+**相关文件修改**：
+- `MonsterOrderWilds/TextToSpeech.cpp` - 移除一般弹幕的 `SaveCachedAudio()` 调用
+
+---
+
 ### 2026-04-12: AI回复和TTS播放问题修复
 
 **修复的问题**：

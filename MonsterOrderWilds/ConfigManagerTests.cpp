@@ -15,7 +15,7 @@ void TestConfigManager_DefaultValues()
     assert(config.enableVoice == false);
     assert(config.speechRate == 0);
     assert(config.speechPitch == 0);
-    assert(config.speechVolume == 0);
+    assert(config.speechVolume == 50);
     assert(config.opacity == 100);
     assert(config.ttsEngine == "auto");
     assert(config.mimoSpeed == 1.0f);

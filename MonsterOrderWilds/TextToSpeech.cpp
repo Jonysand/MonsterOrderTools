@@ -571,11 +571,8 @@ void TTSManager::ProcessPendingRequest(AsyncTTSRequest& req)
             it->state = AsyncTTSState::Playing;
             LOG_INFO(TEXT("TTS Async: API request succeeded, starting playback"));
             
-            std::string utf8Text = wstring_to_utf8(it->text);
             if (it->isCheckinTTS && !it->checkinUsername.empty()) {
                 TTSCacheManager::Inst()->SaveCheckinAudio(it->checkinUsername, response.audioData, GetTickCount64());
-            } else {
-                TTSCacheManager::Inst()->SaveCachedAudio(utf8Text, response.audioData);
             }
         } else {
             it->errorMessage = response.errorMessage;
