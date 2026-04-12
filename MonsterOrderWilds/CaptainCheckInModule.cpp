@@ -266,6 +266,11 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
     SaveProfileToDb(profile);
 
     if (IsCheckinMessage(event.content)) {
+#ifndef TEST_CAPTAIN_REPLY_LOCAL
+        if (profile.lastCheckinDate == event.sendDate) {
+            return;
+        }
+#endif
         int32_t checkinDate = event.sendDate;
         ProfileManager::Inst()->RecordCheckin(event.uid, event.username, checkinDate);
         int32_t continuousDays = ProfileManager::Inst()->CalculateContinuousDays(event.uid, checkinDate);
