@@ -282,7 +282,11 @@ def build_installer(iscc_path, version):
 
     # 调用Inno Setup
     result = subprocess.run(
-        [str(iscc_path), str(ISS_FILE)], capture_output=True, text=True
+        [str(iscc_path), str(ISS_FILE)],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
     )
 
     print(result.stdout)
