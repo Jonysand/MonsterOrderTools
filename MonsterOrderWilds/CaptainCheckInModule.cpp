@@ -266,22 +266,21 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
 
         ExtractKeywords(profile, event.content);
 
-        SaveProfileToDb(profile);
-
-#if TEST_CAPTAIN_REPLY_LOCAL
-#else
+#if !TEST_CAPTAIN_REPLY_LOCAL
         if (shouldCheckin && profile.lastCheckinDate == event.sendDate) {
+            SaveProfileAsync(profile);
             return;
         }
 #endif
 
         if (shouldCheckin) {
             int32_t checkinDate = event.sendDate;
-            ProfileManager::Inst()->RecordCheckin(event.uid, event.username, checkinDate);
             int32_t continuousDays = ProfileManager::Inst()->CalculateContinuousDays(event.uid, checkinDate);
 
             profile.lastCheckinDate = checkinDate;
             profile.continuousDays = continuousDays;
+
+            ProfileManager::Inst()->RecordCheckinAsync(event.uid, event.username, checkinDate, continuousDays);
 
             CheckinEvent checkinEvt;
             checkinEvt.uid = event.uid;
@@ -316,6 +315,8 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
                     }
                 }
             });
+        } else {
+            SaveProfileAsync(profile);
         }
     }
 }

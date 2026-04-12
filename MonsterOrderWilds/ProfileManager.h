@@ -36,6 +36,7 @@ public:
     void DeleteProfile(uint64_t uid);
 
     void RecordCheckin(uint64_t uid, const std::string& username, int32_t checkinDate);
+    void RecordCheckinAsync(uint64_t uid, const std::string& username, int32_t checkinDate, int32_t continuousDays);
     int32_t CalculateContinuousDays(uint64_t uid, int32_t checkinDate);
 
     void AddKeyword(uint64_t uid, const std::string& keyword);
