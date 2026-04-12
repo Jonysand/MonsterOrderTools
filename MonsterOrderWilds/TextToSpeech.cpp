@@ -466,10 +466,11 @@ void TTSManager::ProcessAsyncTTS()
     // 处理活跃请求：遍历当前活跃的请求
     int processed = 0;
     while (processed < activeRequestCount_ && !asyncPendingQueue_.empty()) {
-        AsyncTTSRequest& req = asyncPendingQueue_.front();
+        auto it = asyncPendingQueue_.begin();
+        AsyncTTSRequest& req = *it;
         switch (req.state) {
         case AsyncTTSState::Pending:
-            ProcessPendingRequest(req);
+            ProcessPendingRequest(it);
             processed++;
             break;
         case AsyncTTSState::Requesting:
@@ -500,8 +501,9 @@ void TTSManager::ProcessAsyncTTS()
     }
 }
 
-void TTSManager::ProcessPendingRequest(AsyncTTSRequest& req)
+void TTSManager::ProcessPendingRequest(std::list<AsyncTTSRequest>::iterator it)
 {
+    AsyncTTSRequest& req = *it;
     // Pending → Requesting: 发起API请求
     if (req.text.empty()) {
         LOG_ERROR(TEXT("TTS Async: req.text is empty!"));
@@ -553,13 +555,12 @@ void TTSManager::ProcessPendingRequest(AsyncTTSRequest& req)
 
     // 发起异步请求（回调在HTTP线程执行）
     // 注意：不能捕获req的引用，因为回调执行时req可能已经被pop_front()
-    // 解决方案：通过迭代器找到对应的请求
+    // 解决方案：通过传入的迭代器找到对应的请求
     std::lock_guard<std::recursive_mutex> queueLock(asyncMutex_);
     if (asyncPendingQueue_.empty()) {
         LOG_ERROR(TEXT("TTS Async: Request queue is empty, cannot send request"));
         return;
     }
-    auto it = std::prev(asyncPendingQueue_.end());
     mimoClient->RequestTTS(ttsReq, [this, it](const MimoTTSClient::TTSResponse& response) {
         // 回调在HTTP线程中执行，需要线程安全地修改状态
         std::lock_guard<std::recursive_mutex> lock(asyncMutex_);

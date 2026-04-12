@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include "framework.h"
 #include <mutex>
+#include <list>
 
 #if USE_MIMO_TTS
 #include "MimoTTSClient.h"
@@ -92,7 +93,7 @@ private:
 	// 处理异步TTS状态机
 	void ProcessAsyncTTS();
 	// 处理Pending状态 - 发起API请求
-	void ProcessPendingRequest(AsyncTTSRequest& req);
+	void ProcessPendingRequest(std::list<AsyncTTSRequest>::iterator it);
 	// 处理Requesting状态 - 检查API响应
 	void ProcessRequestingState(AsyncTTSRequest& req);
 	// 处理Playing状态 - 检查播放完成
