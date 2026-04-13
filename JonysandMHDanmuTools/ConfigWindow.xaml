@@ -457,6 +457,34 @@
                                     Foreground="#222"
                                     Width="30" />
                                 </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="8,8,0,0"
+                                VerticalAlignment="Center">
+                                <Label
+                                    Content="穿透模式透明度"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe UI Variable"
+                                    FontSize="14"
+                                    Foreground="#222"
+                                    Margin="0,0,8,0" />
+                                <Slider
+                                    Name="PenetratingModeOpacitySlider"
+                                    Minimum="0"
+                                    Maximum="100"
+                                    Value="50"
+                                    TickFrequency="1"
+                                    IsSnapToTickEnabled="True"
+                                    Width="150"
+                                    VerticalAlignment="Center"
+                                    Margin="0,0,8,0"
+                                    ValueChanged="PenetratingModeOpacitySlider_ValueChanged" />
+                                <TextBlock
+                                    Text="{Binding ElementName=PenetratingModeOpacitySlider, Path=Value, StringFormat=F0}"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe UI Variable"
+                                    FontSize="14"
+                                    Foreground="#222"
+                                    Width="30" />
+                                </StackPanel>
                             <Border Margin="8,16,8,8" Padding="12"
                                     Background="#F5F5F5" CornerRadius="4">
                                 <StackPanel>

@@ -18,6 +18,7 @@ struct ConfigData
     int onlySpeekGuardLevel = 0;
     bool onlySpeekPaidGift = false;
     int opacity = 100;
+    int penetratingModeOpacity = 50;
 
     // MiMo TTS 配置
     std::string ttsEngine = "auto";

@@ -180,6 +180,17 @@ namespace MonsterOrderWindows
                     }
                 }
             }
+            else if (parts[0] == "PENETRATING_MODE_OPACITY")
+            {
+                if (int.TryParse(parts[1], out int penetratingOpacity))
+                {
+                    _Config.Config.PENETRATING_MODE_OPACITY = penetratingOpacity;
+                    if (_OrderedMonsterWindow != null)
+                    {
+                        _OrderedMonsterWindow.RefreshWindow();
+                    }
+                }
+            }
             else if (parts[0] == "TTS_ENGINE")
             {
                 _Config.Config.TTS_ENGINE = parts[1];

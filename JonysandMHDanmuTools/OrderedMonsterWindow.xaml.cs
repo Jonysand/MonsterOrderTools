@@ -93,8 +93,10 @@ namespace MonsterOrderWindows
 
         public void RefreshWindow()
         {
-            float opacity = ToolsMain.GetConfigService().Config.OPACITY / 100f;
-            int alphaInt = mIsLocked ? (int)(170f * opacity + 0.5f): (int)(255f * opacity + 0.5f);
+            float opacity = mIsLocked 
+                ? ToolsMain.GetConfigService().Config.PENETRATING_MODE_OPACITY / 100f
+                : ToolsMain.GetConfigService().Config.OPACITY / 100f;
+            int alphaInt = (int)(255f * opacity + 0.5f);
             alphaInt = Math.Max(0, Math.Min(255, alphaInt));
             byte alpha = (byte)alphaInt;
             var grayBrush = new SolidColorBrush(Color.FromArgb(alpha, 0, 0, 0));

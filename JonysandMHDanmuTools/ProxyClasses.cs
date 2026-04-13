@@ -93,6 +93,13 @@ namespace MonsterOrderWindows
             set { _opacity = value; OnPropertyChanged(); }
         }
 
+        private int _penetratingModeOpacity = 50;
+        public int PenetratingModeOpacity
+        {
+            get => _penetratingModeOpacity;
+            set { _penetratingModeOpacity = value; OnPropertyChanged(); }
+        }
+
         private string _ttsEngine = "auto";
         public string TtsEngine
         {
@@ -182,6 +189,7 @@ namespace MonsterOrderWindows
             OnlySpeekGuardLevel = config.ONLY_SPEEK_GUARD_LEVEL;
             OnlySpeekPaidGift = config.ONLY_SPEEK_PAID_GIFT;
             Opacity = config.OPACITY;
+            PenetratingModeOpacity = config.PENETRATING_MODE_OPACITY;
             TtsEngine = config.TTS_ENGINE ?? "auto";
             MimoApiKey = config.MIMO_API_KEY ?? "";
             MimoVoice = config.MIMO_VOICE ?? "mimo_default";
@@ -207,6 +215,7 @@ namespace MonsterOrderWindows
             config.ONLY_SPEEK_GUARD_LEVEL = OnlySpeekGuardLevel;
             config.ONLY_SPEEK_PAID_GIFT = OnlySpeekPaidGift;
             config.OPACITY = Opacity;
+            config.PENETRATING_MODE_OPACITY = PenetratingModeOpacity;
             config.TTS_ENGINE = TtsEngine;
             config.MIMO_API_KEY = MimoApiKey;
             config.MIMO_VOICE = MimoVoice;

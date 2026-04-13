@@ -11,27 +11,7 @@
 
 #define MAX_LOADSTRING 100
 
-namespace {
-    PVOID g_mainVehHandler = nullptr;
 
-    LONG CALLBACK GlobalVectoredExceptionHandler(PEXCEPTION_POINTERS ExceptionInfo) {
-        DWORD code = ExceptionInfo->ExceptionRecord->ExceptionCode;
-        DWORD flags = ExceptionInfo->ExceptionRecord->ExceptionFlags;
-        LOG_ERROR(TEXT("[VEH] Global handler caught code=0x%08X, flags=0x%08X"), code, flags);
-        if (code == 0xc0000409 || code == 0xC00000FD) {
-            LOG_ERROR(TEXT("[VEH] Known crash code, will try to continue..."));
-            return EXCEPTION_CONTINUE_EXECUTION;
-        }
-        return EXCEPTION_CONTINUE_SEARCH;
-    }
-}
-
-void RegisterGlobalVEH() {
-    if (g_mainVehHandler == nullptr) {
-        g_mainVehHandler = AddVectoredExceptionHandler(1, GlobalVectoredExceptionHandler);
-        LOG_INFO(TEXT("[Startup] Global VEH registered, handler=%p"), g_mainVehHandler);
-    }
-}
 
 // Global Variables:
 HINSTANCE hInst;                                // current instance
@@ -50,8 +30,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_ LPWSTR    lpCmdLine,
                      _In_ int       nCmdShow)
 {
-    RegisterGlobalVEH();
-    
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
 

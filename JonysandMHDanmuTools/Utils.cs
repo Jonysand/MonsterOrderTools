@@ -184,6 +184,10 @@ namespace MonsterOrderWindows
                 () => GetInt("opacity"),
                 v => SetValue("opacity", (int)v, ConfigFieldType.Int));
 
+            Register("penetratingModeOpacity", ConfigFieldType.Int,
+                () => GetInt("penetratingModeOpacity"),
+                v => SetValue("penetratingModeOpacity", (int)v, ConfigFieldType.Int));
+
             Register("ttsEngine", ConfigFieldType.String,
                 () => GetString("ttsEngine"),
                 v => SetValue("ttsEngine", (string)v, ConfigFieldType.String));
@@ -365,6 +369,12 @@ namespace MonsterOrderWindows
         {
             get => (int)ConfigFieldRegistry.Get("opacity");
             set { ConfigFieldRegistry.Set("opacity", value); OnPropertyChanged(); }
+        }
+
+        public int PENETRATING_MODE_OPACITY
+        {
+            get => (int)ConfigFieldRegistry.Get("penetratingModeOpacity");
+            set { ConfigFieldRegistry.Set("penetratingModeOpacity", value); OnPropertyChanged(); }
         }
 
         public String TTS_ENGINE

@@ -96,6 +96,7 @@ bool ConfigManager::LoadConfig()
             if (j.contains("ONLY_SPEEK_GUARD_LEVEL")) config_.onlySpeekGuardLevel = j["ONLY_SPEEK_GUARD_LEVEL"].get<int>();
             if (j.contains("ONLY_SPEEK_PAID_GIFT")) config_.onlySpeekPaidGift = j["ONLY_SPEEK_PAID_GIFT"].get<bool>();
             if (j.contains("OPACITY")) config_.opacity = j["OPACITY"].get<int>();
+            if (j.contains("PENETRATING_MODE_OPACITY")) config_.penetratingModeOpacity = j["PENETRATING_MODE_OPACITY"].get<int>();
 
             // 窗口位置
             if (j.contains("TopPos"))
@@ -168,6 +169,7 @@ bool ConfigManager::SaveConfig(bool force)
         j["ONLY_SPEEK_GUARD_LEVEL"] = config_.onlySpeekGuardLevel;
         j["ONLY_SPEEK_PAID_GIFT"] = config_.onlySpeekPaidGift;
         j["OPACITY"] = config_.opacity;
+        j["PENETRATING_MODE_OPACITY"] = config_.penetratingModeOpacity;
 
         // 窗口位置
         j["TopPos"] = { {"X", config_.topPosX}, {"Y", config_.topPosY} };

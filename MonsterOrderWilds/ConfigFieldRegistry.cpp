@@ -55,6 +55,8 @@ void ConfigFieldRegistry::RegisterAll()
 
     REGISTER_FIELD("opacity", int, opacity, ConfigFieldType::Int);
 
+    REGISTER_FIELD("penetratingModeOpacity", int, penetratingModeOpacity, ConfigFieldType::Int);
+
     REGISTER_FIELD("mimoSpeed", float, mimoSpeed, ConfigFieldType::Float);
 
     REGISTER_FIELD("topPosX", double, topPosX, ConfigFieldType::Double);

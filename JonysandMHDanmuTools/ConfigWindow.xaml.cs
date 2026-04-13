@@ -281,6 +281,11 @@ namespace MonsterOrderWindows
             GlobalEventListener.Invoke("ConfigChanged", $"OPACITY:{e.NewValue}");
         }
 
+        private void PenetratingModeOpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            GlobalEventListener.Invoke("ConfigChanged", $"PENETRATING_MODE_OPACITY:{e.NewValue}");
+        }
+
         private async void SaveSettingsButton_Click(object sender, RoutedEventArgs e)
         {
             SaveSettingsButton.IsEnabled = false;

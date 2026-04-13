@@ -27,6 +27,7 @@ namespace MonsterOrderBridge
             OnlySpeekGuardLevel = config.onlySpeekGuardLevel;
             OnlySpeekPaidGift = config.onlySpeekPaidGift;
             Opacity = config.opacity;
+            PenetratingModeOpacity = config.penetratingModeOpacity;
             TtsEngine = gcnew System::String(config.ttsEngine.c_str());
             MimoApiKey = gcnew System::String(config.mimoApiKey.c_str());
             MimoVoice = gcnew System::String(config.mimoVoice.c_str());
@@ -56,6 +57,7 @@ namespace MonsterOrderBridge
             data.onlySpeekGuardLevel = OnlySpeekGuardLevel;
             data.onlySpeekPaidGift = OnlySpeekPaidGift;
             data.opacity = Opacity;
+            data.penetratingModeOpacity = PenetratingModeOpacity;
             data.ttsEngine = msclr::interop::marshal_as<std::string>(TtsEngine);
             data.mimoApiKey = msclr::interop::marshal_as<std::string>(MimoApiKey);
             data.mimoVoice = msclr::interop::marshal_as<std::string>(MimoVoice);
@@ -92,6 +94,7 @@ namespace MonsterOrderBridge
         property int OnlySpeekGuardLevel;
         property bool OnlySpeekPaidGift;
         property int Opacity;
+        property int PenetratingModeOpacity;
         property System::String^ TtsEngine;
         property System::String^ MimoApiKey;
         property System::String^ MimoVoice;
