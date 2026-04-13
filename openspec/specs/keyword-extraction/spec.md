@@ -209,3 +209,23 @@ constexpr int32_t MAX_SAME_CONTENT_SKIP = 3;
 - 词典文件约 4.2MB，需要在安装包配置中声明
 - `弹幕习惯词黑白名单配置.txt` 是配置说明文档
 - 运行时会动态读取词典路径，无需硬编码
+
+## 初始化崩溃问题修复记录 (2026-04-13)
+
+**问题描述**：程序在 Release 版本启动时崩溃，异常代码 `0xE06D7363`（C++ EH）和 `0xE0434352`（CLR std::terminate），调用栈显示 clrjit.dll 在 JIT 编译 cppjieba 的 `LoadUserDict` 时崩溃。
+
+**根本原因**：
+1. `GetModuleFileNameA` 在某些 Windows 环境（尤其是开启了"Beta: Use Unicode UTF-8"语言选项的系统）下返回的路径编码不是预期的 ANSI/GBK
+2. limonp 的 `XCHECK` 宏在 Release 模式下调用 `abort()`，导致 `std::terminate`
+
+**修复方案**：
+
+| 文件 | 修改内容 |
+|------|---------|
+| `CaptainCheckInModule.cpp` | `GetModuleDictPath()` 改用 `GetModuleFileNameW` + UTF-8 转换 |
+| `CaptainCheckInModule.cpp` | 添加 `CreateJiebaContextSafe()` 包装函数，捕获初始化异常 |
+| `CaptainCheckInModule.cpp` | `userDict` 参数从空字符串改为 `user.dict.utf8` 文件路径 |
+| `limonp/Logging.hpp` | `XCHECK` 的 FATAL 分支改为抛出 `std::runtime_error` 异常而非 `abort()` |
+| `main.cpp` | 添加 Global VEH handler 捕获未处理异常 |
+
+**修复效果**：cppjieba 初始化失败时，程序继续运行（关键词提取功能被禁用），其他功能正常。

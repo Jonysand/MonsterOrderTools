@@ -14,6 +14,8 @@
 #include <set>
 #include <mutex>
 #include <fstream>
+#include <eh.h>
+#include <psapi.h>
 
 #ifdef RUN_UNIT_TESTS
 #include <iostream>
@@ -49,6 +51,22 @@ public:
 
     cppjieba::Jieba jieba_;
 };
+
+CaptainCheckInModule::JiebaContext* CaptainCheckInModule::CreateJiebaContextSafe(
+    const std::string& jiebaDict,
+    const std::string& hmmModel,
+    const std::string& userDict,
+    const std::string& idfPath,
+    const std::string& stopWords
+) {
+    try {
+        return new (std::nothrow) JiebaContext(
+            jiebaDict, hmmModel, userDict, idfPath, stopWords);
+    } catch (...) {
+        LOG_ERROR(TEXT("CreateJiebaContextSafe: caught exception during JiebaContext construction"));
+        return nullptr;
+    }
+}
 
 CaptainCheckInModule* CaptainCheckInModule::__Instance = nullptr;
 
@@ -98,41 +116,21 @@ bool CaptainCheckInModule::Init() {
     aiProviderJson_ = GetAI_PROVIDER();
 
     std::string dictPath = GetModuleDictPath();
-    std::string jiebaDict = dictPath + "/jieba.dict.utf8";
-    std::string hmmModel = dictPath + "/hmm_model.utf8";
-    std::string userDict = "";
-    std::string idfPath = dictPath + "/idf.utf8";
-    std::string stopWords = dictPath + "/stop_words.utf8";
+    std::string jiebaDict = dictPath + "\\jieba.dict.utf8";
+    std::string hmmModel = dictPath + "\\hmm_model.utf8";
+    std::string userDict = dictPath + "\\user.dict.utf8";
+    std::string idfPath = dictPath + "\\idf.utf8";
+    std::string stopWords = dictPath + "\\stop_words.utf8";
 
-#if TEST_CAPTAIN_REPLY_LOCAL
-    std::ifstream dictTest(jiebaDict);
-    if (!dictTest.good()) {
-        LOG_ERROR(TEXT("CaptainCheckInModule::Init ERROR: Dictionary file not found: %hs. Please ensure dict/jieba.dict.utf8 exists."), jiebaDict.c_str());
-    }
-    std::ifstream hmmTest(hmmModel);
-    if (!hmmTest.good()) {
-        LOG_ERROR(TEXT("CaptainCheckInModule::Init ERROR: Dictionary file not found: %hs. Please ensure dict/hmm_model.utf8 exists."), hmmModel.c_str());
-    }
-    std::ifstream stopTest(stopWords);
-    if (!stopTest.good()) {
-        LOG_ERROR(TEXT("CaptainCheckInModule::Init ERROR: Dictionary file not found: %hs. Please ensure dict/stop_words.utf8 exists."), stopWords.c_str());
-    }
-    std::ifstream idfTest(idfPath);
-    if (!idfTest.good()) {
-        LOG_ERROR(TEXT("CaptainCheckInModule::Init ERROR: Dictionary file not found: %hs. Please ensure dict/idf.utf8 exists."), idfPath.c_str());
-    }
-#endif
-
-    try {
-        jiebaContext_ = std::make_unique<JiebaContext>(jiebaDict, hmmModel, userDict, idfPath, stopWords);
-        LOG_INFO(TEXT("CaptainCheckInModule::Init cppjieba initialized successfully"));
-    } catch (const std::exception& e) {
-        LOG_ERROR(TEXT("CaptainCheckInModule::Init cppjieba init failed: %s, keyword extraction will be disabled"), e.what());
-        jiebaContext_.reset();
+    JiebaContext* rawContext = CreateJiebaContextSafe(jiebaDict, hmmModel, userDict, idfPath, stopWords);
+    jiebaContext_.reset(rawContext);
+    
+    if (!jiebaContext_) {
+        LOG_ERROR(TEXT("CaptainCheckInModule::Init: JiebaContext creation failed, keyword extraction disabled"));
     }
 
     inited_ = true;
-    LOG_INFO(TEXT("CaptainCheckInModule::Init done, trigger words: %s"), triggerWordsStr_.c_str());
+    LOG_INFO(TEXT("CaptainCheckInModule::Init done"));
 
     DanmuProcessor::Inst()->AddCaptainDanmuListener([this](const DanmuProcessor::CaptainDanmuEvent& event) {
         if (IsEnabled()) {
@@ -566,8 +564,14 @@ int64_t CaptainCheckInModule::GetCurrentTimestamp() const {
 }
 
 std::string CaptainCheckInModule::GetModuleDictPath() const {
-    char exePath[MAX_PATH];
-    GetModuleFileNameA(NULL, exePath, MAX_PATH);
+    wchar_t exePathW[MAX_PATH];
+    GetModuleFileNameW(NULL, exePathW, MAX_PATH);
+    int utf8Len = WideCharToMultiByte(CP_UTF8, 0, exePathW, -1, nullptr, 0, nullptr, nullptr);
+    std::string exePath(utf8Len, '\0');
+    WideCharToMultiByte(CP_UTF8, 0, exePathW, -1, &exePath[0], utf8Len, nullptr, nullptr);
+    if (!exePath.empty() && exePath.back() == '\0') {
+        exePath.pop_back();
+    }
     std::string exeDir = exePath;
     size_t pos = exeDir.find_last_of("\\/");
     if (pos != std::string::npos) exeDir = exeDir.substr(0, pos);

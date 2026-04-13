@@ -6,6 +6,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <ctime>
+#include <stdexcept>
 
 #ifdef XLOG
 #error "XLOG has been defined already"
@@ -72,7 +73,12 @@ class Logger {
 #endif
     std::cerr << stream_.str() << std::endl;
     if (level_ == LL_FATAL) {
+#ifdef _WIN32
+      // Replace abort() with C++ exception to allow proper exception handling
+      throw std::runtime_error(stream_.str());
+#else
       abort();
+#endif
     }
   }
 

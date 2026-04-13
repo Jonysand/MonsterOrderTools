@@ -1,4 +1,4 @@
-﻿// MonsterOrderWilds.cpp : Defines the entry point for the application.
+// MonsterOrderWilds.cpp : Defines the entry point for the application.
 //
 
 #include "framework.h"
@@ -6,8 +6,32 @@
 #include "MonsterOrderWilds.h"
 #include <ShellScalingApi.h>
 #pragma comment(lib, "Shcore.lib")
+#include "WriteLog.h"
+#include <eh.h>
 
 #define MAX_LOADSTRING 100
+
+namespace {
+    PVOID g_mainVehHandler = nullptr;
+
+    LONG CALLBACK GlobalVectoredExceptionHandler(PEXCEPTION_POINTERS ExceptionInfo) {
+        DWORD code = ExceptionInfo->ExceptionRecord->ExceptionCode;
+        DWORD flags = ExceptionInfo->ExceptionRecord->ExceptionFlags;
+        LOG_ERROR(TEXT("[VEH] Global handler caught code=0x%08X, flags=0x%08X"), code, flags);
+        if (code == 0xc0000409 || code == 0xC00000FD) {
+            LOG_ERROR(TEXT("[VEH] Known crash code, will try to continue..."));
+            return EXCEPTION_CONTINUE_EXECUTION;
+        }
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
+}
+
+void RegisterGlobalVEH() {
+    if (g_mainVehHandler == nullptr) {
+        g_mainVehHandler = AddVectoredExceptionHandler(1, GlobalVectoredExceptionHandler);
+        LOG_INFO(TEXT("[Startup] Global VEH registered, handler=%p"), g_mainVehHandler);
+    }
+}
 
 // Global Variables:
 HINSTANCE hInst;                                // current instance
@@ -26,6 +50,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_ LPWSTR    lpCmdLine,
                      _In_ int       nCmdShow)
 {
+    RegisterGlobalVEH();
+    
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
 
@@ -101,7 +127,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 //
 HWND InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
-   hInst = hInstance; // Store instance handle in our global variable
+   hInst = hInstance;
 
    HWND hWnd = CreateWindow(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
       CW_USEDEFAULT, 0, 600, 600, nullptr, nullptr, hInstance, nullptr);
@@ -111,11 +137,9 @@ HWND InitInstance(HINSTANCE hInstance, int nCmdShow)
       return hWnd;
    }
 
-   // ShowWindow(hWnd, nCmdShow);
    ShowWindow(hWnd, SW_HIDE);
    UpdateWindow(hWnd);
 
-   // Set a global timer
    SetTimer(hWnd, TIMER_ID, TIMER_INTERVAL, nullptr);
 
    return hWnd;
