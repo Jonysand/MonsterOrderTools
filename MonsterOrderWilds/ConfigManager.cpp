@@ -486,4 +486,6 @@ void ConfigManager::SetValueByMeta(const ConfigFieldMeta* meta, const void* valu
     }
     dirty_ = true;
     lock_.unlock();
+
+    ConfigFieldRegistry::InvokeOnChanged(meta, config_);
 }

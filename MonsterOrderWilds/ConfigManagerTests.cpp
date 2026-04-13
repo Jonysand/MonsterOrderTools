@@ -1,5 +1,6 @@
 ﻿#include "framework.h"
 #include "ConfigManager.h"
+#include "DanmuProcessor.h"
 #include "UnitTestLog.h"
 #include <cassert>
 #include <filesystem>
@@ -175,6 +176,23 @@ void TestConfigManager_EventNotification()
     TestLog("[PASS] TestConfigManager_EventNotification");
 }
 
+void TestConfigManager_OnlyMedalOrderSyncToDanmuProcessor()
+{
+    ConfigManager* mgr = ConfigManager::Inst();
+    DanmuProcessor* processor = DanmuProcessor::Inst();
+
+    processor->SetOnlyMedalOrder(true);
+    assert(processor->GetOnlyMedalOrder() == true);
+
+    mgr->SetOnlyMedalOrder(false);
+    assert(processor->GetOnlyMedalOrder() == false);
+
+    mgr->SetOnlyMedalOrder(true);
+    assert(processor->GetOnlyMedalOrder() == true);
+
+    TestLog("[PASS] TestConfigManager_OnlyMedalOrderSyncToDanmuProcessor");
+}
+
 void RunAllConfigManagerTests()
 {
     TestLog("=== ConfigManager Tests ===");
@@ -186,6 +204,7 @@ void RunAllConfigManagerTests()
     TestConfigManager_WindowPosition();
     TestConfigManager_SaveAndLoad();
     TestConfigManager_EventNotification();
+    TestConfigManager_OnlyMedalOrderSyncToDanmuProcessor();
     TestLog("=== ConfigManager Tests Done ===");
 }
 
