@@ -134,6 +134,10 @@ void TTSManager::Tick()
 
 void TTSManager::HandleSpeekDm(const json& data)
 {
+    if (!data.contains("fans_medal_wearing_status") || !data.contains("guard_level") ||
+        !data.contains("uname") || !data.contains("msg")) {
+        return;
+    }
     const auto& wearing_medal = data["fans_medal_wearing_status"].get<bool>();
     const auto& guard_level = data["guard_level"].get<int>();
     const auto& uname = data["uname"].get<std::string>();

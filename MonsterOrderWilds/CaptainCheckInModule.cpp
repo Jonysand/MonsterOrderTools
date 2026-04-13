@@ -198,30 +198,26 @@ bool CaptainCheckInModule::ShouldLearn(const UserProfile& profile, const Captain
         return false;
     }
 
-    if (ShouldSkipDuplicateContent(event.content)) {
-        return false;
-    }
-
     return true;
 #endif
 }
 
-bool CaptainCheckInModule::ShouldSkipDuplicateContent(const std::string& content) {
-    if (lastContent_.empty()) {
-        lastContent_ = content;
-        sameContentCount_ = 1;
+bool CaptainCheckInModule::ShouldSkipDuplicateContent(UserProfile& profile, const std::string& content) {
+    if (profile.lastContent.empty()) {
+        profile.lastContent = content;
+        profile.sameContentCount = 1;
         return false;
     }
 
-    if (content == lastContent_) {
-        sameContentCount_++;
-        if (sameContentCount_ >= MAX_SAME_CONTENT_SKIP) {
+    if (content == profile.lastContent) {
+        profile.sameContentCount++;
+        if (profile.sameContentCount >= MAX_SAME_CONTENT_SKIP) {
             return true;
         }
     }
     else {
-        sameContentCount_ = 1;
-        lastContent_ = content;
+        profile.sameContentCount = 1;
+        profile.lastContent = content;
     }
     return false;
 }
@@ -263,6 +259,12 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
         }
 
         ExtractKeywords(profile, event.content);
+
+#if !TEST_CAPTAIN_REPLY_LOCAL
+        if (ShouldSkipDuplicateContent(profile, event.content)) {
+            return;
+        }
+#endif
 
 #if !TEST_CAPTAIN_REPLY_LOCAL
         if (shouldCheckin && profile.lastCheckinDate == event.sendDate) {

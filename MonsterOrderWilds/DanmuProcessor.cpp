@@ -169,7 +169,7 @@ DanmuProcessResult DanmuProcessor::ProcessDanmu(const DanmuData& danmu)
         NotifyCaptainDanmu(capEvent);
     }
 #else
-    if (danmu.guardLevel >= 3)
+    if (danmu.guardLevel != 0)
     {
         CaptainDanmuEvent capEvent;
         capEvent.uid = std::stoull(danmu.userId.empty() ? "0" : danmu.userId);
@@ -239,7 +239,9 @@ DanmuData DanmuProcessor::ParseDanmuJson(const json& j) const
             dataObj = j["data"];
         }
 
-        if (dataObj.contains("uid"))
+        if (dataObj.contains("open_id"))
+            data.userId = dataObj["open_id"].get<std::string>();
+        else if (dataObj.contains("uid"))
             data.userId = std::to_string(dataObj["uid"].get<int64_t>());
         if (dataObj.contains("uname"))
             data.userName = dataObj["uname"].get<std::string>();
@@ -247,7 +249,9 @@ DanmuData DanmuProcessor::ParseDanmuJson(const json& j) const
             data.message = dataObj["msg"].get<std::string>();
             LOG_DEBUG(TEXT("[ParseDanmuJson] msg extracted: length=%d"), (int)data.message.length());
         }
-        if (dataObj.contains("send_time"))
+        if (dataObj.contains("timestamp"))
+            data.timestamp = dataObj["timestamp"].get<long long>();
+        else if (dataObj.contains("send_time"))
             data.timestamp = dataObj["send_time"].get<long long>();
 
         if (dataObj.contains("fans_medal_wearing_status") && dataObj["fans_medal_wearing_status"].get<bool>())

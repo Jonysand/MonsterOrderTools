@@ -46,6 +46,8 @@ struct UserProfile {
     int32_t continuousDays = 0;
     int64_t lastDanmuTimestamp = 0;
     int64_t createdAt = 0;
+    int32_t sameContentCount = 0;
+    std::string lastContent;
 };
 
 using AnswerCallback = std::function<void(const AnswerResult&)>;
@@ -78,7 +80,7 @@ private:
 
     bool ShouldLearn(const UserProfile& profile, const CaptainDanmuEvent& event);
     bool IsStopWord(const std::string& word) const;
-    bool ShouldSkipDuplicateContent(const std::string& content);
+    bool ShouldSkipDuplicateContent(UserProfile& profile, const std::string& content);
     int64_t GetCurrentTimestamp() const;
     std::string GetModuleDictPath() const;
     void PlayCheckinTTS(const std::string& text, const std::string& username);
@@ -92,8 +94,6 @@ private:
     bool inited_ = false;
     bool enabled_ = true;
 
-    int32_t sameContentCount_ = 0;
-    std::string lastContent_;
     int64_t lastLearnTimestamp_ = 0;
 
     std::string aiProviderJson_;
