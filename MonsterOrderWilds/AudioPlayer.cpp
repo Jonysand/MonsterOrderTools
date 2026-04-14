@@ -46,6 +46,7 @@ AudioPlayer::~AudioPlayer()
 bool AudioPlayer::Play(const std::vector<uint8_t>& audioData, const std::string& format)
 {
     bool wasPlaying = false;
+    std::wstring prevFilePath;
     {
         lock.lock();
         wasPlaying = playing;
@@ -58,6 +59,7 @@ bool AudioPlayer::Play(const std::vector<uint8_t>& audioData, const std::string&
     if (wasPlaying) {
         ExecuteMCICommand(L"stop mimo_audio_alias");
         ExecuteMCICommand(L"close mimo_audio_alias");
+        prevFilePath = tempFilePath;
     }
 
     if (audioData.empty()) {
@@ -73,8 +75,21 @@ bool AudioPlayer::Play(const std::vector<uint8_t>& audioData, const std::string&
         return false;
     }
 
+    tempFilePath = filePath;
+
+    bool playResult = PlayFile(filePath);
+    if (!playResult) {
+        tempFilePath.clear();
+        return false;
+    }
+
+    if (!prevFilePath.empty()) {
+        DeleteFileW(prevFilePath.c_str());
+        LOG_INFO(TEXT("AudioPlayer: Deleted previous temp file"));
+    }
+
     LOG_INFO(TEXT("AudioPlayer: Playing file: %s"), filePath.c_str());
-    return PlayFile(filePath);
+    return true;
 }
 
 bool AudioPlayer::PlayFile(const std::wstring& filePath)
@@ -241,7 +256,13 @@ bool AudioPlayer::IsPlaybackComplete() const
     MCIERROR err = mciSendStringW(L"status mimo_audio_alias mode", status, 256, NULL);
     if (err == 0) {
         std::wstring mode = status;
-        return (mode == L"stopped");
+        if (mode == L"stopped") {
+            lock.lock();
+            playing = false;
+            lock.unlock();
+            return true;
+        }
+        return false;
     }
     
     // MCI query failed, check if we've started playing before

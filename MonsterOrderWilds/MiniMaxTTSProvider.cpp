@@ -11,6 +11,26 @@
 
 #pragma comment(lib, "winhttp.lib")
 
+namespace {
+    std::string GetWinHttpErrorString(DWORD errorCode) {
+        LPWSTR buffer = nullptr;
+        DWORD len = FormatMessageW(
+            FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_HMODULE | FORMAT_MESSAGE_IGNORE_INSERTS,
+            GetModuleHandleW(L"winhttp.dll"),
+            errorCode,
+            MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+            (LPWSTR)&buffer,
+            0,
+            nullptr);
+        if (len == 0 || buffer == nullptr) {
+            return "Unknown WinHTTP error (code: " + std::to_string(errorCode) + ")";
+        }
+        std::wstring wstr(buffer, len);
+        LocalFree(buffer);
+        return std::string(wstr.begin(), wstr.end());
+    }
+}
+
 MiniMaxTTSProvider::MiniMaxTTSProvider(const std::string& apiKey) : apiKey_(apiKey), available_(false) {}
 
 std::string MiniMaxTTSProvider::GetProviderName() const { return "minimax"; }
@@ -21,12 +41,6 @@ void MiniMaxTTSProvider::RequestTTS(const TTSRequest& request, TTSCallback callb
     std::string body = BuildRequestBody(request);
     std::string headers = BuildRequestHeaders(apiKey_);
 
-    std::string responseBody;
-    std::mutex mtx;
-    std::condition_variable cv;
-    bool completed = false;
-    DWORD httpError = 0;
-
     Network::MakeHttpsRequestAsync(
         TEXT("api.minimaxi.com"),
         443,
@@ -35,43 +49,30 @@ void MiniMaxTTSProvider::RequestTTS(const TTSRequest& request, TTSCallback callb
         headers,
         body,
         true,
-        [&](bool success, const std::string& resp, DWORD error) {
+        [this, callback](bool success, const std::string& resp, DWORD error) {
+            if (!success || error != 0) {
+                lastError_ = "HTTP request failed: " + GetWinHttpErrorString(error);
+                available_ = false;
+                TTSResponse resp;
+                resp.success = false;
+                resp.errorMsg = lastError_;
+                try {
+                    callback(resp);
+                } catch (...) {
+                }
+                return;
+            }
+
+            auto ttsResp = ParseResponse(resp);
+            available_ = ttsResp.success && !ttsResp.audioData.empty();
+            if (!available_) {
+                lastError_ = ttsResp.errorMsg;
+            }
             try {
-                std::lock_guard<std::mutex> lock(mtx);
-                responseBody = resp;
-                httpError = error;
-                completed = true;
-                cv.notify_one();
+                callback(ttsResp);
             } catch (...) {
-                // Mutex operations should not throw, but handle defensively
             }
         });
-
-    std::unique_lock<std::mutex> lock(mtx);
-    cv.wait(lock, [&completed]() { return completed; });
-
-    if (httpError != 0) {
-        lastError_ = "HTTP request failed";
-        available_ = false;
-        TTSResponse resp;
-        resp.success = false;
-        resp.errorMsg = lastError_;
-        try {
-            callback(resp);
-        } catch (...) {
-        }
-        return;
-    }
-
-    auto resp = ParseResponse(responseBody);
-    available_ = resp.success && !resp.audioData.empty();
-    if (!available_) {
-        lastError_ = resp.errorMsg;
-    }
-    try {
-        callback(resp);
-    } catch (...) {
-    }
 }
 
 std::string MiniMaxTTSProvider::BuildRequestBody(const TTSRequest& request) const {

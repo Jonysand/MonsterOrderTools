@@ -497,10 +497,15 @@ void TTSManager::ProcessAsyncTTS()
 
     // 如果未达到并发上限，从队列取新的请求
     while (activeRequestCount_ < MAX_CONCURRENT_TTS && !asyncPendingQueue_.empty()) {
-        asyncPendingQueue_.front().startTime = std::chrono::steady_clock::now();
+        AsyncTTSRequest& req = asyncPendingQueue_.front();
+        if (req.state != AsyncTTSState::Pending) {
+            break;
+        }
+        req.startTime = std::chrono::steady_clock::now();
         activeRequestCount_++;
         LOG_INFO(TEXT("TTS Async: Starting new request for: %s (active: %d)"), 
-            asyncPendingQueue_.front().text.c_str(), activeRequestCount_.load());
+            req.text.c_str(), activeRequestCount_.load());
+        ProcessPendingRequest(asyncPendingQueue_.begin());
     }
 }
 
@@ -625,42 +630,48 @@ void TTSManager::ProcessPlayingState(AsyncTTSRequest& req)
     }
 
     // 播放音频（非阻塞模式）
-    if (!req.audioData.empty()) {
+    if (!req.audioData.empty() && !audioPlayer->IsPlaying() && !req.playbackStarted) {
         bool playSuccess = audioPlayer->Play(req.audioData, req.responseFormat);
         if (!playSuccess) {
             LOG_ERROR(TEXT("TTS Async: Audio playback failed"));
             req.state = AsyncTTSState::Failed;
             return;
         }
-        // 清空audioData，避免重复播放
+        req.playbackStarted = true;
         req.audioData.clear();
         req.startTime = std::chrono::steady_clock::now();  // 重置超时计时
         LOG_INFO(TEXT("TTS Async: Audio playback started"));
     }
 
-    // 检查播放完成：优先用MCI状态判断，如果MCI错误则用时间判断
-    bool playbackComplete = audioPlayer->IsPlaybackComplete();
-    
-    // 如果MCI报告完成，或者播放时间超过预期（处理MCI设备错误的情况）
-    auto now = std::chrono::steady_clock::now();
-    auto playbackElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - req.startTime).count();
-    
-    // 对于短文本（<500字符），预期播放时间约2-3秒；超过5秒认为有问题
-    bool timedOut = (playbackElapsed > 5000 && !req.audioData.empty());
-    
-    if (playbackComplete || timedOut) {
-        if (playbackComplete) {
-            LOG_INFO(TEXT("TTS Async: Playback completed (MCI reported stop)"));
-        } else {
-            LOG_WARNING(TEXT("TTS Async: Playback timeout (%d ms), treating as completed"), playbackElapsed);
-            if (audioPlayer != NULL) {
-                audioPlayer->Stop();
-            }
+    // 检查播放完成：只有真正开始播放了才检查完成状态
+    if (req.playbackStarted) {
+        bool playbackComplete = audioPlayer->IsPlaybackComplete();
+        
+        bool timedOut = false;
+        if (PLAYBACK_TIMEOUT_SECONDS > 0) {
+            auto now = std::chrono::steady_clock::now();
+            auto playbackElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - req.startTime).count();
+            timedOut = (playbackElapsed > PLAYBACK_TIMEOUT_SECONDS * 1000);
         }
-        req.state = AsyncTTSState::Completed;
-        consecutiveFailures++;
-        lastFailureTime = std::chrono::steady_clock::now();
-        return;
+        
+        if (playbackComplete || timedOut) {
+            if (playbackComplete) {
+                LOG_INFO(TEXT("TTS Async: Playback completed (MCI reported stop)"));
+            } else {
+                LOG_WARNING(TEXT("TTS Async: Playback timeout (%d ms), treating as completed"), 
+                    (int)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - req.startTime).count());
+                if (audioPlayer != NULL) {
+                    audioPlayer->Stop();
+                }
+            }
+            if (audioPlayer != NULL) {
+                audioPlayer->CleanupTempFile();
+            }
+            req.state = AsyncTTSState::Completed;
+            consecutiveFailures++;
+            lastFailureTime = std::chrono::steady_clock::now();
+            return;
+        }
     }
 }
 

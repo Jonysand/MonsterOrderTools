@@ -31,14 +31,16 @@ public:
     // 获取最后一次错误信息
     std::string GetLastError() const;
 
+    // 清理临时文件
+    void CleanupTempFile();
+
 private:
     std::wstring WriteToTempFile(const std::vector<uint8_t>& audioData, const std::string& format);
-    void CleanupTempFile();
     bool ExecuteMCICommand(const std::wstring& command, bool ignoreError = false);
     bool CheckMCIError(DWORD error);
 
     std::wstring tempFilePath;
     std::string lastError;
-    bool playing;
+    mutable bool playing;
     mutable Lock lock;
 };

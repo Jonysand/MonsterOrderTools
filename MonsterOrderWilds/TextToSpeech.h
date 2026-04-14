@@ -35,6 +35,7 @@ struct AsyncTTSRequest
 	std::string checkinUsername;            // checkin用户名（用于缓存）
 	std::string voice;                     // 语音
 	int speed = 0;                          // 语速
+	bool playbackStarted = false;            // 是否已开始播放
 	std::function<void(bool success, const std::string& errorMsg)> callback;  // 完成回调
 };
 
@@ -137,14 +138,14 @@ private:
 	// 音频播放器
 	AudioPlayer* audioPlayer{ NULL };
 
-	// 异步TTS请求队列（多并发处理，最多MAX_CONCURRENT_TTS个在处理）
+	// 异步TTS请求队列（API并发请求，播放串行）
 	std::list<AsyncTTSRequest> asyncPendingQueue_;      // 等待队列
 	std::atomic<int> activeRequestCount_{ 0 };   // 当前正在处理的请求数量
-	static constexpr int MAX_CONCURRENT_TTS = 3;       // 最大并发请求数
+	static constexpr int MAX_CONCURRENT_TTS = 3;       // API并发请求数
 	static constexpr int MAX_ASYNC_QUEUE_SIZE = 0;      // 队列大小限制（0=不限制）
 	static constexpr int MAX_RETRY_COUNT = 0;           // 最大重试次数
 	static constexpr int API_TIMEOUT_SECONDS = 5;       // API请求超时（秒）
-	static constexpr int PLAYBACK_TIMEOUT_SECONDS = 3; // 播放超时（秒）
+	static constexpr int PLAYBACK_TIMEOUT_SECONDS = 0; // 播放超时（秒），0表示不超时
 
 	static constexpr int GIFT_COOLDOWN_SECONDS = 5;
 	static constexpr int DYNAMIC_COMBO_WINDOW_SECONDS = 10;

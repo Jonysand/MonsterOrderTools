@@ -10,6 +10,26 @@
 
 #pragma comment(lib, "winhttp.lib")
 
+namespace {
+    std::string GetWinHttpErrorString(DWORD errorCode) {
+        LPWSTR buffer = nullptr;
+        DWORD len = FormatMessageW(
+            FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_HMODULE | FORMAT_MESSAGE_IGNORE_INSERTS,
+            GetModuleHandleW(L"winhttp.dll"),
+            errorCode,
+            MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+            (LPWSTR)&buffer,
+            0,
+            nullptr);
+        if (len == 0 || buffer == nullptr) {
+            return "Unknown WinHTTP error (code: " + std::to_string(errorCode) + ")";
+        }
+        std::wstring wstr(buffer, len);
+        LocalFree(buffer);
+        return std::string(wstr.begin(), wstr.end());
+    }
+}
+
 XiaomiTTSProvider::XiaomiTTSProvider(const std::string& apiKey) : apiKey_(apiKey), available_(false) {}
 
 std::string XiaomiTTSProvider::GetProviderName() const { return "xiaomi"; }
@@ -22,12 +42,6 @@ void XiaomiTTSProvider::RequestTTS(const TTSRequest& request, TTSCallback callba
     std::string body = BuildRequestBody(request);
     std::string headers = BuildRequestHeaders(apiKey_);
 
-    std::string responseBody;
-    std::mutex mtx;
-    std::condition_variable cv;
-    bool completed = false;
-    DWORD httpError = 0;
-
     Network::MakeHttpsRequestAsync(
         TEXT("api.xiaomimimo.com"),
         443,
@@ -36,43 +50,30 @@ void XiaomiTTSProvider::RequestTTS(const TTSRequest& request, TTSCallback callba
         headers,
         body,
         true,
-        [&](bool success, const std::string& resp, DWORD error) {
+        [this, callback](bool success, const std::string& resp, DWORD error) {
+            if (!success || error != 0) {
+                lastError_ = "HTTP request failed: " + GetWinHttpErrorString(error);
+                available_ = false;
+                TTSResponse ttsResp;
+                ttsResp.success = false;
+                ttsResp.errorMsg = lastError_;
+                try {
+                    callback(ttsResp);
+                } catch (...) {
+                }
+                return;
+            }
+
+            auto ttsResp = ParseResponse(resp, 200);
+            available_ = ttsResp.success;
+            if (!ttsResp.success) {
+                lastError_ = ttsResp.errorMsg;
+            }
             try {
-                std::lock_guard<std::mutex> lock(mtx);
-                responseBody = resp;
-                httpError = error;
-                completed = true;
-                cv.notify_one();
+                callback({ ttsResp.audioData, ttsResp.success, ttsResp.errorMsg });
             } catch (...) {
-                // Mutex operations should not throw, but handle defensively
             }
         });
-
-    std::unique_lock<std::mutex> lock(mtx);
-    cv.wait(lock, [&completed]() { return completed; });
-
-    if (httpError != 0) {
-        lastError_ = "HTTP request failed";
-        available_ = false;
-        TTSResponse resp;
-        resp.success = false;
-        resp.errorMsg = lastError_;
-        try {
-            callback(resp);
-        } catch (...) {
-        }
-        return;
-    }
-
-    auto resp = ParseResponse(responseBody, 200);
-    available_ = resp.success;
-    if (!resp.success) {
-        lastError_ = resp.errorMsg;
-    }
-    try {
-        callback({ resp.audioData, resp.success, resp.errorMsg });
-    } catch (...) {
-    }
 }
 
 std::string XiaomiTTSProvider::BuildRequestBody(const TTSRequest& request) const {
