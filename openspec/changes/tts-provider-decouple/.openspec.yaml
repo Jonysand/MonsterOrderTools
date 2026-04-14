@@ -1,7 +1,0 @@
-schema: spec-driven
-change:
-  name: tts-provider-decouple
-  date: 2026-04-13
-  type: refactor
-  status: in-progress
-  summary: TTSManager 与 MiMo TTS 解耦，通过 ITTSProvider 接口统一管理
