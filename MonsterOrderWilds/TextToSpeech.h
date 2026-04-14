@@ -4,7 +4,7 @@
 #include <list>
 
 #if USE_MIMO_TTS
-#include "MimoTTSClient.h"
+#include "TTSProvider.h"
 #include "AudioPlayer.h"
 #include "TTSCacheManager.h"
 #endif
@@ -34,9 +34,8 @@ struct AsyncTTSRequest
 	bool isCheckinTTS = false;              // 是否为checkin TTS
 	std::string checkinUsername;            // checkin用户名（用于缓存）
 	std::string voice;                     // 语音
-	std::string dialect;                    // 方言
-	std::string role;                      // 角色
 	int speed = 0;                          // 语速
+	std::function<void(bool success, const std::string& errorMsg)> callback;  // 完成回调
 };
 
 class TTSManager
@@ -89,7 +88,7 @@ public:
 private:
 #if USE_MIMO_TTS
 	// 异步TTS方法
-	void SpeakWithMimoAsync(const TString& text);
+	void SpeakWithMimoAsync(const TString& text, std::function<void(bool success, const std::string& errorMsg)> callback = nullptr);
 	// 处理异步TTS状态机
 	void ProcessAsyncTTS();
 	// 处理Pending状态 - 发起API请求
@@ -133,8 +132,8 @@ private:
 	std::recursive_mutex asyncMutex_;  // 保护异步TTS请求状态（使用递归锁以便在ProcessAsyncTTS锁内调用子函数）
 
 #if USE_MIMO_TTS
-	// 小米MiMo TTS客户端
-	MimoTTSClient* mimoClient{ NULL };
+	// TTS提供者
+	std::unique_ptr<ITTSProvider> ttsProvider;
 	// 音频播放器
 	AudioPlayer* audioPlayer{ NULL };
 

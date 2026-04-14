@@ -248,7 +248,7 @@ xcopy /y /q "$(ProjectDir)dict\*" "$(OutDir)dict\"</Command>
     <ClInclude Include="framework.h" />
     <ClInclude Include="ITTSProvider.h" />
     <ClInclude Include="MHDanmuToolsHost.h" />
-    <ClInclude Include="MimoTTSClient.h" />
+
     <ClInclude Include="MonsterDataManager.h" />
     <ClInclude Include="MonsterOrderWilds.h" />
     <ClInclude Include="Network.h" />
@@ -277,7 +277,7 @@ xcopy /y /q "$(ProjectDir)dict\*" "$(OutDir)dict\"</Command>
       <ExcludedFromBuild Condition="'$(Configuration)'=='UnitTest'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="MHDanmuToolsHost.cpp" />
-    <ClCompile Include="MimoTTSClient.cpp" />
+
     <ClCompile Include="DeepSeekAIChatProvider.cpp" />
     <ClCompile Include="MiniMaxAIChatProvider.cpp" />
     <ClCompile Include="MonsterDataManager.cpp" />

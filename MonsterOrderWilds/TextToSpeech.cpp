@@ -1,6 +1,7 @@
 ﻿#include "TextToSpeech.h"
 #include "Network.h"
 #include "ConfigManager.h"
+#include "CredentialsManager.h"
 #include "WriteLog.h"
 #include "StringUtils.h"
 
@@ -25,7 +26,8 @@ TTSManager::TTSManager()
     lastRecoveryAttempt = std::chrono::steady_clock::now();
 
 #if USE_MIMO_TTS
-    mimoClient = new MimoTTSClient();
+    const auto& config = ConfigManager::Inst()->GetConfig();
+    ttsProvider = std::make_unique<XiaomiTTSProvider>(GetMIMO_API_KEY());
     audioPlayer = new AudioPlayer();
     TTSCacheManager::Inst()->Initialize();
 #endif
@@ -34,10 +36,7 @@ TTSManager::TTSManager()
 TTSManager::~TTSManager()
 {
 #if USE_MIMO_TTS
-    if (mimoClient != NULL) {
-        delete mimoClient;
-        mimoClient = NULL;
-    }
+    ttsProvider.reset();
     if (audioPlayer != NULL) {
         delete audioPlayer;
         audioPlayer = NULL;
@@ -327,12 +326,12 @@ bool TTSManager::PlayAudioData(const std::vector<uint8_t>& audioData, const std:
 
 void TTSManager::SpeakCheckinTTS(const TString& text, const std::string& username) {
 #if USE_MIMO_TTS
-    if (mimoClient == NULL) {
-        LOG_ERROR(TEXT("SpeakCheckinTTS: mimoClient is NULL"));
+    if (!ttsProvider) {
+        LOG_ERROR(TEXT("SpeakCheckinTTS: ttsProvider is NULL"));
         return;
     }
     
-    if (!mimoClient->IsAvailable()) {
+    if (!ttsProvider->IsAvailable()) {
         LOG_WARNING(TEXT("SpeakCheckinTTS: MiMo TTS not available"));
         return;
     }
@@ -349,13 +348,6 @@ void TTSManager::SpeakCheckinTTS(const TString& text, const std::string& usernam
     if (!config.mimoVoice.empty()) {
         req.voice = config.mimoVoice;
     }
-    if (!config.mimoDialect.empty()) {
-        req.dialect = config.mimoDialect;
-    }
-    if (!config.mimoRole.empty()) {
-        req.role = config.mimoRole;
-    }
-    req.speed = config.mimoSpeed;
     
     {
         std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
@@ -422,19 +414,25 @@ bool TTSManager::SpeakWithSapi(const TString& text)
 }
 
 #if USE_MIMO_TTS
-void TTSManager::SpeakWithMimoAsync(const TString& text)
+void TTSManager::SpeakWithMimoAsync(const TString& text, std::function<void(bool success, const std::string& errorMsg)> callback)
 {
     LOG_INFO(TEXT("=== SpeakWithMimoAsync called ==="));
     
-    if (mimoClient == NULL || audioPlayer == NULL) {
-        LOG_ERROR(TEXT("SpeakWithMimoAsync: mimoClient or audioPlayer is NULL, falling back to SAPI"));
+    if (!ttsProvider || audioPlayer == NULL) {
+        LOG_ERROR(TEXT("SpeakWithMimoAsync: ttsProvider or audioPlayer is NULL, falling back to SAPI"));
         SpeakWithSapi(text);
+        if (callback) {
+            callback(false, "ttsProvider or audioPlayer is NULL");
+        }
         return;
     }
 
-    if (!mimoClient->IsAvailable()) {
+    if (!ttsProvider->IsAvailable()) {
         LOG_WARNING(TEXT("MiMo TTS not available (API Key not configured), falling back to SAPI"));
         SpeakWithSapi(text);
+        if (callback) {
+            callback(false, "MiMo TTS not available");
+        }
         return;
     }
 
@@ -443,6 +441,7 @@ void TTSManager::SpeakWithMimoAsync(const TString& text)
     req.text = text;
     req.state = AsyncTTSState::Pending;
     req.startTime = std::chrono::steady_clock::now();
+    req.callback = callback;
 
     // 获取配置参数
     const auto& config = ConfigManager::Inst()->GetConfig();
@@ -491,7 +490,7 @@ void TTSManager::ProcessAsyncTTS()
                 req.state == AsyncTTSState::Completed ? TEXT("completed") : TEXT("failed"));
             asyncPendingQueue_.pop_front();
             activeRequestCount_--;
-            // 不增加 processed，因为队列front已变为下一个请求
+            processed++;
             break;
         }
     }
@@ -513,17 +512,23 @@ void TTSManager::ProcessPendingRequest(std::list<AsyncTTSRequest>::iterator it)
         LOG_ERROR(TEXT("TTS Async: req.text is empty!"));
         req.state = AsyncTTSState::Failed;
         req.errorMessage = "req.text is empty";
+        if (req.callback) {
+            req.callback(false, req.errorMessage);
+        }
         return;
     }
 
-    if (mimoClient == NULL) {
+    if (!ttsProvider) {
         req.state = AsyncTTSState::Failed;
-        req.errorMessage = "mimoClient is NULL";
+        req.errorMessage = "ttsProvider is NULL";
+        if (req.callback) {
+            req.callback(false, req.errorMessage);
+        }
         return;
     }
 
     // 构建请求参数
-    MimoTTSClient::TTSRequest ttsReq;
+    TTSRequest ttsReq;
 
     // 获取配置参数
     const auto& config = ConfigManager::Inst()->GetConfig();
@@ -535,25 +540,8 @@ void TTSManager::ProcessPendingRequest(std::list<AsyncTTSRequest>::iterator it)
         ttsReq.voice = config.mimoVoice;
     }
 
-    // 构建文本：将默认风格标签放在"xxx说："前面
-    std::string styleTag;
-    if (!config.mimoStyle.empty()) {
-        styleTag = "<style>" + config.mimoStyle + "</style>";
-    }
-    ttsReq.text = styleTag + wstring_to_utf8(req.text);
-
-    if (!req.dialect.empty()) {
-        ttsReq.dialect = req.dialect;
-    } else if (!config.mimoDialect.empty()) {
-        ttsReq.dialect = config.mimoDialect;
-    }
-    if (!req.role.empty()) {
-        ttsReq.role = req.role;
-    } else if (!config.mimoRole.empty()) {
-        ttsReq.role = config.mimoRole;
-    }
-    ttsReq.responseFormat = req.responseFormat;
-    ttsReq.speed = req.speed != 0 ? req.speed : config.mimoSpeed;
+    ttsReq.style = config.mimoStyle;
+    ttsReq.text = wstring_to_utf8(req.text);
 
     LOG_INFO(TEXT("TTS Async: Sending API request for: %s"), req.text.c_str());
 
@@ -565,7 +553,7 @@ void TTSManager::ProcessPendingRequest(std::list<AsyncTTSRequest>::iterator it)
         LOG_ERROR(TEXT("TTS Async: Request queue is empty, cannot send request"));
         return;
     }
-    mimoClient->RequestTTS(ttsReq, [this, it](const MimoTTSClient::TTSResponse& response) {
+    ttsProvider->RequestTTS(ttsReq, [this, it](const TTSResponse& response) {
         // 回调在HTTP线程中执行，需要线程安全地修改状态
         std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
         if (it == asyncPendingQueue_.end()) {
@@ -579,10 +567,16 @@ void TTSManager::ProcessPendingRequest(std::list<AsyncTTSRequest>::iterator it)
             if (it->isCheckinTTS && !it->checkinUsername.empty()) {
                 TTSCacheManager::Inst()->SaveCheckinAudio(it->checkinUsername, response.audioData, GetTickCount64());
             }
+            if (it->callback) {
+                it->callback(true, "");
+            }
         } else {
-            it->errorMessage = response.errorMessage;
+            it->errorMessage = response.errorMsg;
             it->state = AsyncTTSState::Failed;
-            LOG_ERROR(TEXT("TTS Async: API request failed: %s"), utf8_to_wstring(response.errorMessage).c_str());
+            LOG_ERROR(TEXT("TTS Async: API request failed: %s"), utf8_to_wstring(response.errorMsg).c_str());
+            if (it->callback) {
+                it->callback(false, response.errorMsg);
+            }
         }
     });
 
@@ -766,13 +760,13 @@ void TTSManager::TriggerFallback()
 void TTSManager::TryRecovery()
 {
 #if USE_MIMO_TTS
-    if (mimoClient == NULL) {
+    if (!ttsProvider) {
         return;
     }
 
     LOG_INFO(TEXT("Attempting MiMo TTS recovery..."));
     
-    if (mimoClient->IsAvailable()) {
+    if (ttsProvider->IsAvailable()) {
         isFallback = false;
         consecutiveFailures = 0;
         lastRecoveryAttempt = std::chrono::steady_clock::now();

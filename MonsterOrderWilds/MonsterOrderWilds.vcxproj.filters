@@ -78,9 +78,7 @@
     <ClInclude Include="AudioPlayer.h">
       <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="MimoTTSClient.h">
-      <Filter>Core</Filter>
-    </ClInclude>
+
     <ClInclude Include="StringUtils.h">
       <Filter>Core</Filter>
     </ClInclude>
@@ -170,9 +168,7 @@
     <ClCompile Include="AudioPlayer.cpp">
       <Filter>Core</Filter>
     </ClCompile>
-    <ClCompile Include="MimoTTSClient.cpp">
-      <Filter>Core</Filter>
-    </ClCompile>
+
     <ClCompile Include="MiniMaxTTSProvider.cpp">
       <Filter>DataProcessing</Filter>
     </ClCompile>

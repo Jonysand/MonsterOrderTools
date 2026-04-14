@@ -18,6 +18,14 @@
 - **WHEN** 系统接收到需要播报的文本
 - **THEN** 系统向API发送请求，接收MP3格式的音频数据，并返回成功状态
 
+#### Scenario: 语音风格传递
+- **WHEN** 用户配置了语音风格
+- **THEN** 系统在API请求的 audio.style 字段中传递风格参数
+
+#### Scenario: 语音速度控制
+- **WHEN** 用户配置了语速
+- **THEN** 系统**不**在API请求中传递 speed 参数（MiMo TTS API 不支持）
+
 #### Scenario: 文本过长
 - **WHEN** 文本长度超过API限制（8K tokens）
 - **THEN** 系统将文本分割为多个段落，分别合成后按顺序播放

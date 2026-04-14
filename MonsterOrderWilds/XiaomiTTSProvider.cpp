@@ -1,7 +1,6 @@
 #include "framework.h"
 #include "ITTSProvider.h"
 #include "TTSProvider.h"
-#include "MimoTTSClient.h"
 #include "Network.h"
 #include <winhttp.h>
 #include <string>
@@ -85,10 +84,10 @@ std::string XiaomiTTSProvider::BuildRequestBody(const TTSRequest& request) const
     j["messages"] = {
         {{"role", "assistant"}, {"content", fullText}}
     };
-    j["audio"] = {
-        {"voice", request.voice.empty() ? "mimo_default" : request.voice},
-        {"format", "wav"}
-    };
+    json audio;
+    audio["voice"] = request.voice.empty() ? "mimo_default" : request.voice;
+    audio["format"] = "mp3";
+    j["audio"] = audio;
     return j.dump();
 }
 

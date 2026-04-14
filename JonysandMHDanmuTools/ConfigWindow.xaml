@@ -266,31 +266,6 @@
                                             <ComboBoxItem Content="沉稳严肃" Tag="沉稳严肃" />
                                         </ComboBox>
                                     </StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                        <Label
-                                            Content="语速倍率"
-                                            VerticalAlignment="Center"
-                                            FontSize="14"
-                                            Foreground="#222"
-                                            Margin="0,0,8,0" />
-                                        <Slider
-                                            Name="MimoSpeedSlider"
-                                            Minimum="0.25"
-                                            Maximum="4.0"
-                                            Value="1.0"
-                                            TickFrequency="0.25"
-                                            IsSnapToTickEnabled="True"
-                                            Width="120"
-                                            VerticalAlignment="Center"
-                                            Margin="0,0,8,0"
-                                            ValueChanged="MimoSpeedSlider_ValueChanged" />
-                                        <TextBlock
-                                            Text="{Binding ElementName=MimoSpeedSlider, Path=Value, StringFormat=F2}"
-                                            VerticalAlignment="Center"
-                                            FontSize="14"
-                                            Foreground="#222"
-                                            Width="40" />
-                                    </StackPanel>
                                 </StackPanel>
                             </Border>
                             <Border Name="SapiConfigPanel" Margin="8,8,0,0">

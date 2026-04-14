@@ -61,7 +61,6 @@ namespace MonsterOrderWindows
             CheckinTriggerWordsTextBox.Text = config.CHECKIN_TRIGGER_WORDS ?? "打卡,签到";
 
             // 小米MiMo TTS配置
-            MimoSpeedSlider.Value = config.MIMO_SPEED;
 
             // 设置TTS引擎选择
             switch (config.TTS_ENGINE)
@@ -363,11 +362,6 @@ namespace MonsterOrderWindows
                 return;
             string style = selectedItem.Tag?.ToString() ?? "";
             GlobalEventListener.Invoke("ConfigChanged", $"MIMO_STYLE:{style}");
-        }
-
-        private void MimoSpeedSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-            GlobalEventListener.Invoke("ConfigChanged", $"MIMO_SPEED:{e.NewValue}");
         }
 
         private void LockWindowButton_Click(object sender, RoutedEventArgs e)
