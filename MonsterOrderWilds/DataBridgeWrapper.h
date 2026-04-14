@@ -32,8 +32,6 @@ namespace MonsterOrderBridge
             MimoApiKey = gcnew System::String(config.mimoApiKey.c_str());
             MimoVoice = gcnew System::String(config.mimoVoice.c_str());
             MimoStyle = gcnew System::String(config.mimoStyle.c_str());
-            MimoDialect = gcnew System::String(config.mimoDialect.c_str());
-            MimoRole = gcnew System::String(config.mimoRole.c_str());
             MimoAudioFormat = gcnew System::String(config.mimoAudioFormat.c_str());
             MimoSpeed = config.mimoSpeed;
             TopPosX = config.topPosX;
@@ -62,8 +60,6 @@ namespace MonsterOrderBridge
             data.mimoApiKey = msclr::interop::marshal_as<std::string>(MimoApiKey);
             data.mimoVoice = msclr::interop::marshal_as<std::string>(MimoVoice);
             data.mimoStyle = msclr::interop::marshal_as<std::string>(MimoStyle);
-            data.mimoDialect = msclr::interop::marshal_as<std::string>(MimoDialect);
-            data.mimoRole = msclr::interop::marshal_as<std::string>(MimoRole);
             data.mimoAudioFormat = msclr::interop::marshal_as<std::string>(MimoAudioFormat);
             data.mimoSpeed = MimoSpeed;
             data.topPosX = TopPosX;
@@ -99,8 +95,6 @@ namespace MonsterOrderBridge
         property System::String^ MimoApiKey;
         property System::String^ MimoVoice;
         property System::String^ MimoStyle;
-        property System::String^ MimoDialect;
-        property System::String^ MimoRole;
         property System::String^ MimoAudioFormat;
         property float MimoSpeed;
         property double TopPosX;

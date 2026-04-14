@@ -25,8 +25,6 @@ struct ConfigData
     std::string mimoApiKey = "";
     std::string mimoVoice = "mimo_default";
     std::string mimoStyle = "";
-    std::string mimoDialect = "";
-    std::string mimoRole = "";
     std::string mimoAudioFormat = "mp3";
     float mimoSpeed = 1.0f;
 
@@ -76,8 +74,6 @@ public:
     void SetMimoApiKey(const std::string& value);
     void SetMimoVoice(const std::string& value);
     void SetMimoStyle(const std::string& value);
-    void SetMimoDialect(const std::string& value);
-    void SetMimoRole(const std::string& value);
     void SetMimoAudioFormat(const std::string& value);
     void SetMimoSpeed(float value);
     void SetWindowPosition(double x, double y);

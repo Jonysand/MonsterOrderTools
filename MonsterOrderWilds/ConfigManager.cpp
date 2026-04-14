@@ -114,8 +114,6 @@ bool ConfigManager::LoadConfig()
             if (j.contains("MIMO_API_KEY")) config_.mimoApiKey = j["MIMO_API_KEY"].get<std::string>();
             if (j.contains("MIMO_VOICE")) config_.mimoVoice = j["MIMO_VOICE"].get<std::string>();
             if (j.contains("MIMO_STYLE")) config_.mimoStyle = j["MIMO_STYLE"].get<std::string>();
-            if (j.contains("MIMO_DIALECT")) config_.mimoDialect = j["MIMO_DIALECT"].get<std::string>();
-            if (j.contains("MIMO_ROLE")) config_.mimoRole = j["MIMO_ROLE"].get<std::string>();
             if (j.contains("MIMO_AUDIO_FORMAT")) config_.mimoAudioFormat = j["MIMO_AUDIO_FORMAT"].get<std::string>();
             if (j.contains("MIMO_SPEED")) config_.mimoSpeed = j["MIMO_SPEED"].get<float>();
 
@@ -179,8 +177,6 @@ bool ConfigManager::SaveConfig(bool force)
         j["MIMO_API_KEY"] = config_.mimoApiKey;
         j["MIMO_VOICE"] = config_.mimoVoice;
         j["MIMO_STYLE"] = config_.mimoStyle;
-        j["MIMO_DIALECT"] = config_.mimoDialect;
-        j["MIMO_ROLE"] = config_.mimoRole;
         j["MIMO_AUDIO_FORMAT"] = config_.mimoAudioFormat;
         j["MIMO_SPEED"] = config_.mimoSpeed;
 
@@ -362,24 +358,6 @@ void ConfigManager::SetMimoStyle(const std::string& value)
     lock_.lock();
     bool changed = config_.mimoStyle != value;
     if (changed) { config_.mimoStyle = value; dirty_ = true; }
-    lock_.unlock();
-    if (changed) NotifyConfigChanged();
-}
-
-void ConfigManager::SetMimoDialect(const std::string& value)
-{
-    lock_.lock();
-    bool changed = config_.mimoDialect != value;
-    if (changed) { config_.mimoDialect = value; dirty_ = true; }
-    lock_.unlock();
-    if (changed) NotifyConfigChanged();
-}
-
-void ConfigManager::SetMimoRole(const std::string& value)
-{
-    lock_.lock();
-    bool changed = config_.mimoRole != value;
-    if (changed) { config_.mimoRole = value; dirty_ = true; }
     lock_.unlock();
     if (changed) NotifyConfigChanged();
 }
