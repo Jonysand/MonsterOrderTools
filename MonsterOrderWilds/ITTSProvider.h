@@ -7,11 +7,6 @@
 
 struct TTSRequest {
     std::string text;
-    std::string voice;
-    std::string style;
-    float speed;
-    float pitch;
-    float volume;
 };
 
 struct TTSResponse {
@@ -33,5 +28,8 @@ public:
 
 class TTSProviderFactory {
 public:
-    static std::unique_ptr<ITTSProvider> Create(const std::string& credentialJson);
+    static std::unique_ptr<ITTSProvider> Create(
+        const std::string& mimoApiKey,
+        const std::string& minimaxApiKey,
+        const std::string& ttsEngine);
 };

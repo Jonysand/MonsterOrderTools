@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace MonsterOrderWindows
 {
@@ -26,12 +26,10 @@ namespace MonsterOrderWindows
         public string MimoApiKey;
         public string MimoVoice;
         public string MimoStyle;
-        public string MimoDialect;
-        public string MimoRole;
-        public string MimoAudioFormat;
-        public float MimoSpeed;
+        public string MimoAudioFormat;  // 写死的 mp3
 
         // MiniMax TTS 配置
+        public string MinimaxApiKey;
         public string MinimaxVoiceId;
         public float MinimaxSpeed;
 
@@ -71,10 +69,8 @@ namespace MonsterOrderWindows
                 MimoApiKey = config.MIMO_API_KEY ?? "",
                 MimoVoice = config.MIMO_VOICE ?? "mimo_default",
                 MimoStyle = config.MIMO_STYLE ?? "",
-                MimoDialect = "",
-                MimoRole = "",
                 MimoAudioFormat = "mp3",
-                MimoSpeed = config.MIMO_SPEED,
+                MinimaxApiKey = config.MINIMAX_API_KEY ?? "",
                 MinimaxVoiceId = config.MINIMAX_VOICE_ID ?? "female-tianmei",
                 MinimaxSpeed = config.MINIMAX_SPEED,
                 TopPosX = config.TopPos.X,
@@ -106,7 +102,7 @@ namespace MonsterOrderWindows
             config.MIMO_API_KEY = MimoApiKey;
             config.MIMO_VOICE = MimoVoice;
             config.MIMO_STYLE = MimoStyle;
-            config.MIMO_SPEED = MimoSpeed;
+            config.MINIMAX_API_KEY = MinimaxApiKey;
             config.MINIMAX_VOICE_ID = MinimaxVoiceId;
             config.MINIMAX_SPEED = MinimaxSpeed;
             config.TopPos = new System.Windows.Point(TopPosX, TopPosY);

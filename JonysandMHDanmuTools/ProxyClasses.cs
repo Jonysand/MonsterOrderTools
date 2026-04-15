@@ -114,6 +114,13 @@ namespace MonsterOrderWindows
             set { _mimoApiKey = value; OnPropertyChanged(); }
         }
 
+        private string _minimaxApiKey = "";
+        public string MinimaxApiKey
+        {
+            get => _minimaxApiKey;
+            set { _minimaxApiKey = value; OnPropertyChanged(); }
+        }
+
         private string _mimoVoice = "mimo_default";
         public string MimoVoice
         {
@@ -126,13 +133,6 @@ namespace MonsterOrderWindows
         {
             get => _mimoStyle;
             set { _mimoStyle = value; OnPropertyChanged(); }
-        }
-
-        private float _mimoSpeed = 1.0f;
-        public float MimoSpeed
-        {
-            get => _mimoSpeed;
-            set { _mimoSpeed = value; OnPropertyChanged(); }
         }
 
         private string _minimaxVoiceId = "female-tianmei";
@@ -206,9 +206,9 @@ namespace MonsterOrderWindows
             PenetratingModeOpacity = config.PENETRATING_MODE_OPACITY;
             TtsEngine = config.TTS_ENGINE ?? "auto";
             MimoApiKey = config.MIMO_API_KEY ?? "";
+            MinimaxApiKey = config.MINIMAX_API_KEY ?? "";
             MimoVoice = config.MIMO_VOICE ?? "mimo_default";
             MimoStyle = config.MIMO_STYLE ?? "";
-            MimoSpeed = config.MIMO_SPEED;
             MinimaxVoiceId = config.MINIMAX_VOICE_ID ?? "female-tianmei";
             MinimaxSpeed = config.MINIMAX_SPEED;
             TopPosX = config.TopPos.X;
@@ -234,9 +234,9 @@ namespace MonsterOrderWindows
             config.PENETRATING_MODE_OPACITY = PenetratingModeOpacity;
             config.TTS_ENGINE = TtsEngine;
             config.MIMO_API_KEY = MimoApiKey;
+            config.MINIMAX_API_KEY = MinimaxApiKey;
             config.MIMO_VOICE = MimoVoice;
             config.MIMO_STYLE = MimoStyle;
-            config.MIMO_SPEED = MimoSpeed;
             config.MINIMAX_VOICE_ID = MinimaxVoiceId;
             config.MINIMAX_SPEED = MinimaxSpeed;
             config.TopPos = new System.Windows.Point(TopPosX, TopPosY);

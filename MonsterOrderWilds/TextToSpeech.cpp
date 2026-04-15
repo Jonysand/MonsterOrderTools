@@ -1,7 +1,8 @@
-﻿#include "TextToSpeech.h"
+#include "TextToSpeech.h"
 #include "Network.h"
 #include "ConfigManager.h"
 #include "CredentialsManager.h"
+#include "TTSProvider.h"
 #include "WriteLog.h"
 #include "StringUtils.h"
 
@@ -27,7 +28,10 @@ TTSManager::TTSManager()
 
 #if USE_MIMO_TTS
     const auto& config = ConfigManager::Inst()->GetConfig();
-    ttsProvider = std::make_unique<XiaomiTTSProvider>(GetMIMO_API_KEY());
+    ttsProvider = TTSProviderFactory::Create(
+        GetMIMO_API_KEY(),
+        GetMINIMAX_API_KEY(),
+        config.ttsEngine);
     audioPlayer = new AudioPlayer();
     TTSCacheManager::Inst()->Initialize();
 #endif
@@ -343,12 +347,7 @@ void TTSManager::SpeakCheckinTTS(const TString& text, const std::string& usernam
     req.responseFormat = "mp3";
     req.isCheckinTTS = true;
     req.checkinUsername = username;
-    
-    const auto& config = ConfigManager::Inst()->GetConfig();
-    if (!config.mimoVoice.empty()) {
-        req.voice = config.mimoVoice;
-    }
-    
+
     {
         std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
         asyncPendingQueue_.push_back(req);
@@ -538,14 +537,8 @@ void TTSManager::ProcessPendingRequest(std::list<AsyncTTSRequest>::iterator it)
     // 获取配置参数
     const auto& config = ConfigManager::Inst()->GetConfig();
 
-    // 优先使用请求中存储的参数（checkin TTS会设置这些）
-    if (!req.voice.empty()) {
-        ttsReq.voice = req.voice;
-    } else if (!config.mimoVoice.empty()) {
-        ttsReq.voice = config.mimoVoice;
-    }
+    // voice 由各 Provider 自己从 ConfigManager 读取
 
-    ttsReq.style = config.mimoStyle;
     ttsReq.text = wstring_to_utf8(req.text);
 
     LOG_INFO(TEXT("TTS Async: Sending API request for: %s"), req.text.c_str());

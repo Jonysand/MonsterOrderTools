@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Media;
@@ -204,13 +204,13 @@ namespace MonsterOrderWindows
                 () => GetString("mimoStyle"),
                 v => SetValue("mimoStyle", (string)v, ConfigFieldType.String));
 
-            Register("mimoSpeed", ConfigFieldType.Float,
-                () => GetFloat("mimoSpeed"),
-                v => SetValue("mimoSpeed", (float)v, ConfigFieldType.Float));
-
             Register("minimaxVoiceId", ConfigFieldType.String,
                 () => GetString("minimaxVoiceId"),
                 v => SetValue("minimaxVoiceId", (string)v, ConfigFieldType.String));
+
+            Register("minimaxApiKey", ConfigFieldType.String,
+                () => GetString("minimaxApiKey"),
+                v => SetValue("minimaxApiKey", (string)v, ConfigFieldType.String));
 
             Register("minimaxSpeed", ConfigFieldType.Float,
                 () => GetFloat("minimaxSpeed"),
@@ -397,6 +397,12 @@ namespace MonsterOrderWindows
             set { ConfigFieldRegistry.Set("mimoApiKey", value); OnPropertyChanged(); }
         }
 
+        public String MINIMAX_API_KEY
+        {
+            get => (string)ConfigFieldRegistry.Get("minimaxApiKey");
+            set { ConfigFieldRegistry.Set("minimaxApiKey", value); OnPropertyChanged(); }
+        }
+
         public String MIMO_VOICE
         {
             get => (string)ConfigFieldRegistry.Get("mimoVoice");
@@ -407,12 +413,6 @@ namespace MonsterOrderWindows
         {
             get => (string)ConfigFieldRegistry.Get("mimoStyle");
             set { ConfigFieldRegistry.Set("mimoStyle", value); OnPropertyChanged(); }
-        }
-
-        public float MIMO_SPEED
-        {
-            get => (float)ConfigFieldRegistry.Get("mimoSpeed");
-            set { ConfigFieldRegistry.Set("mimoSpeed", value); OnPropertyChanged(); }
         }
 
         public String MINIMAX_VOICE_ID

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Windows;
 
@@ -209,13 +209,6 @@ namespace MonsterOrderWindows
             else if (parts[0] == "MIMO_STYLE")
             {
                 _Config.Config.MIMO_STYLE = parts[1];
-            }
-            else if (parts[0] == "MIMO_SPEED")
-            {
-                if (float.TryParse(parts[1], out float speed))
-                {
-                    _Config.Config.MIMO_SPEED = speed;
-                }
             }
             else if (parts[0] == "MIMO_API_KEY")
             {

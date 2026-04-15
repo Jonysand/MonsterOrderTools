@@ -1,5 +1,6 @@
 #include "framework.h"
 #include "TTSProvider.h"
+#include "ConfigManager.h"
 #include "Network.h"
 #include <winhttp.h>
 #include <string>
@@ -76,13 +77,14 @@ void MiniMaxTTSProvider::RequestTTS(const TTSRequest& request, TTSCallback callb
 }
 
 std::string MiniMaxTTSProvider::BuildRequestBody(const TTSRequest& request) const {
+    const auto& config = ConfigManager::Inst()->GetConfig();
     nlohmann::json j;
     j["model"] = "speech-2.8-hd";
     j["text"] = request.text;
     j["stream"] = false;
     j["voice_setting"] = {
-        {"voice_id", request.voice.empty() ? "female-tianmei" : request.voice},
-        {"speed", request.speed > 0 ? request.speed : 1.0f},
+        {"voice_id", config.minimaxVoiceId.empty() ? "female-tianmei" : config.minimaxVoiceId},
+        {"speed", config.minimaxSpeed},
         {"vol", 1},
         {"pitch", 0},
         {"emotion", "happy"}

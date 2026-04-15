@@ -11,11 +11,6 @@
 ```cpp
 struct TTSRequest {
     std::string text;
-    std::string voice;     // 音色 ID（如 "mimo_default"）
-    std::string style;    // 风格标签（如 "开心"），为空则使用默认风格
-    float speed;          // 语速（0.5-2.0，默认 1.0）
-    float pitch;          // 音调（-500-500，默认 0）
-    float volume;         // 音量（0.0-1.0，默认 1.0）
 };
 
 struct TTSResponse {
@@ -41,9 +36,20 @@ public:
 ```cpp
 class TTSProviderFactory {
 public:
-    static std::unique_ptr<ITTSProvider> Create(const std::string& credentialJson);
+    static std::unique_ptr<ITTSProvider> Create(
+        const std::string& mimoApiKey,
+        const std::string& minimaxApiKey,
+        const std::string& ttsEngine);
 };
 ```
+
+**参数说明**：
+- `mimoApiKey`: Xiaomi/MiMo TTS Provider 的 API Key
+- `minimaxApiKey`: MiniMax TTS Provider 的 API Key
+- `ttsEngine`: TTS 引擎选择，可选值：
+  - `"auto"`: 自动模式，优先 minimax，失败后回滚到 xiaomi，最后降级到 sapi
+  - `"mimo"`: 强制使用 Xiaomi/MiMo Provider
+  - `"sapi"`: 强制使用 Windows SAPI
 
 ## Provider 实现
 
@@ -88,9 +94,9 @@ private:
 ```
 
 **降级策略**：
-1. 优先使用 `AI_PROVIDER` 中指定的 TTS Provider（xiaomi 或 minimax）
-2. 如果 Provider 不可用或 API Key 为空，降级到 Windows SAPI
-3. Windows SAPI 通过 `TTSManager::SpeakWithSapi()` 实现
+1. AUTO 模式下，按 minimax → xiaomi → sapi 的顺序尝试
+2. 用户明确选择时尊重选择（mimo 或 sapi）
+3. 所有 Provider 都不可用时，降级到 Windows SAPI
 
 ### XiaomiTTSProvider
 
@@ -127,6 +133,7 @@ private:
 **风格控制**:
 - 整体风格：将 `<style>风格</style>` 置于目标文本开头
 - 细粒度控制：支持音频标签如 `(紧张，深呼吸)`, `(语速加快)`
+- **注意**: `mimoStyle` 配置由 `XiaomiTTSProvider` 直接从 `ConfigManager` 读取，不通过 `TTSRequest` 传递
 
 **支持格式**:
 - 非流式：`wav`
@@ -148,7 +155,7 @@ private:
   "stream": false,
   "voice_setting": {
     "voice_id": "male-qn-qingse",
-    "speed": 1,
+    "speed": 1,  // 从 ConfigManager::GetConfig().minimaxSpeed 读取
     "vol": 1,
     "pitch": 0,
     "emotion": "happy"
@@ -184,34 +191,39 @@ private:
 
 ```cpp
 std::unique_ptr<ITTSProvider> TTSProviderFactory::Create(
-    const std::string& credentialJson) {
-    
-    try {
-        json cred = json::parse(credentialJson);
-        
-        std::string provider = cred.value("tts_provider", "xiaomi");
-        std::string apiKey = cred.value("tts_api_key", "");
-        
-        if (!apiKey.empty()) {
-            if (provider == "xiaomi") {
-                return std::make_unique<XiaomiTTSProvider>(apiKey);
-            } else if (provider == "minimax") {
-                return std::make_unique<MiniMaxTTSProvider>(apiKey);
-            }
-        }
-        
-        // API Key 为空或 Provider 不支持时，降级到 Windows SAPI
+    const std::string& mimoApiKey,
+    const std::string& minimaxApiKey,
+    const std::string& ttsEngine) {
+
+    if (ttsEngine == "sapi") {
         return std::make_unique<SapiTTSProvider>();
-    } catch (...) {
-        return nullptr;
     }
+
+    if (ttsEngine == "mimo") {
+        if (mimoApiKey.empty()) {
+            return std::make_unique<SapiTTSProvider>();
+        }
+        return std::make_unique<XiaomiTTSProvider>(mimoApiKey);
+    }
+
+    // AUTO 模式: minimax -> xiaomi -> sapi
+    if (!minimaxApiKey.empty()) {
+        return std::make_unique<MiniMaxTTSProvider>(minimaxApiKey);
+    }
+
+    if (!mimoApiKey.empty()) {
+        return std::make_unique<XiaomiTTSProvider>(mimoApiKey);
+    }
+
+    return std::make_unique<SapiTTSProvider>();
 }
 ```
 
 **降级策略**：
-1. 优先使用 `AI_PROVIDER` 中指定的 TTS Provider
-2. 如果 API Key 为空或 Provider 不支持，降级到 Windows SAPI
-3. Windows SAPI 通过 `TTSManager::SpeakWithSapi()` 实现
+1. `ttsEngine = "sapi"`: 直接使用 Windows SAPI
+2. `ttsEngine = "mimo"`: 强制使用 Xiaomi/MiMo，如果 API Key 为空则降级到 SAPI
+3. `ttsEngine = "auto"` (默认): 优先 MiniMax，失败后回滚到 Xiaomi/MiMo，最后降级到 SAPI
+4. 所有 Provider 的 API Key 都为空时，使用 Windows SAPI
 
 ## 使用示例
 
@@ -220,17 +232,13 @@ std::unique_ptr<ITTSProvider> TTSProviderFactory::Create(
 class TextToSpeech {
 private:
     std::unique_ptr<ITTSProvider> ttsProvider_;
-    
+
 public:
     void Speak(const std::string& text) {
         TTSRequest request;
         request.text = text;
-        request.voice = "male-qn-qingse";
-        request.style = "";  // 空表示使用默认风格
-        request.speed = 1.0f;
-        request.pitch = 0.0f;
-        request.volume = 1.0f;
-        
+        // 注意：voice、style、speed、pitch、volume 等参数由各 Provider 自己从 ConfigManager 读取
+
         ttsProvider_->RequestTTS(request, [this](const TTSResponse& response) {
             if (!response.success) {
                 LOG_ERROR("TTS failed: %s", response.errorMsg.c_str());
@@ -252,6 +260,13 @@ public:
 | `MonsterOrderWilds/MiniMaxTTSProvider.cpp` | MiniMax TTS 实现 |
 
 ## 实现说明
+
+**TTSRequest 设计原则**：
+- `TTSRequest` 只包含通用参数：`text`
+- 各 Provider 自己从 `ConfigManager` 读取需要的配置：
+  - `XiaomiTTSProvider` 读取 `mimoVoice`、`mimoStyle`
+  - `MiniMaxTTSProvider` 读取 `minimaxVoiceId`、`minimaxSpeed`
+- 这样避免 `TTSRequest` 膨胀，且配置连接更清晰
 
 **注意**：`MimoTTSClient` 与 `XiaomiTTSProvider` 是独立实现的，因为两者的接口定义不同（TTSRequest/TTSResponse 结构体不同）。如果需要复用 MimoTTSClient 的网络请求逻辑，需要进行接口转换。
 

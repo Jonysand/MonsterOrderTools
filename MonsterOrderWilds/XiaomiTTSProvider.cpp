@@ -1,6 +1,7 @@
 #include "framework.h"
 #include "ITTSProvider.h"
 #include "TTSProvider.h"
+#include "ConfigManager.h"
 #include "Network.h"
 #include <winhttp.h>
 #include <string>
@@ -77,7 +78,8 @@ void XiaomiTTSProvider::RequestTTS(const TTSRequest& request, TTSCallback callba
 }
 
 std::string XiaomiTTSProvider::BuildRequestBody(const TTSRequest& request) const {
-    std::string styleTag = request.style.empty() ? "" : "<style>" + request.style + "</style>";
+    const auto& config = ConfigManager::Inst()->GetConfig();
+    std::string styleTag = config.mimoStyle.empty() ? "" : "<style>" + config.mimoStyle + "</style>";
     std::string fullText = styleTag + request.text;
 
     nlohmann::json j;
@@ -86,7 +88,7 @@ std::string XiaomiTTSProvider::BuildRequestBody(const TTSRequest& request) const
         {{"role", "assistant"}, {"content", fullText}}
     };
     json audio;
-    audio["voice"] = request.voice.empty() ? "mimo_default" : request.voice;
+    audio["voice"] = config.mimoVoice.empty() ? "mimo_default" : config.mimoVoice;
     audio["format"] = "mp3";
     j["audio"] = audio;
     return j.dump();
