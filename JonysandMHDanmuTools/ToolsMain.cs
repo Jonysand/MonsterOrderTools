@@ -254,6 +254,10 @@ namespace MonsterOrderWindows
 
         public void OnOrderWindowLocked()
         {
+            if (_OrderedMonsterWindow != null)
+            {
+                _OrderedMonsterWindow.OnHotKeyLock();
+            }
             _Config.SaveConfig();
         }
 
@@ -264,7 +268,9 @@ namespace MonsterOrderWindows
             {
                 _ConfigWindow = new ConfigWindow();
                 _ConfigWindow.FillConfig(_Config.GetConfig());
+                _ConfigWindow.InitLockButtonState(_OrderedMonsterWindow.IsLocked);
                 GlobalEventListener.AddListener("ConfigChanged", (object msg) => ConfigChanged(msg));
+                _OrderedMonsterWindow.LockStateChanged += _ConfigWindow.OnLockStateChanged;
             }
             _ConfigWindow.Show();
         }
@@ -344,6 +350,11 @@ namespace MonsterOrderWindows
         static public ConfigService GetConfigService()
         {
             return _Config;
+        }
+
+        public OrderedMonsterWindow GetOrderedMonsterWindow()
+        {
+            return _OrderedMonsterWindow;
         }
 
         public void SetWindowVersion(int version)

@@ -1,5 +1,22 @@
 ## ADDED Requirements
 
+### Requirement: 锁定窗口按钮与热键状态同步
+系统 SHALL 通过事件机制确保锁定窗口按钮和热键的状态同步。
+
+#### Scenario: 点击按钮锁定
+- **WHEN** 用户点击"锁定窗口"按钮
+- **THEN** 按钮文本变为"解锁窗口"，窗口进入锁定状态
+- **AND** `LockStateChanged` 事件被触发
+
+#### Scenario: 使用热键锁定
+- **WHEN** 用户使用热键触发锁定
+- **THEN** 按钮文本变为"解锁窗口"，窗口进入锁定状态
+- **AND** `LockStateChanged` 事件被触发
+
+#### Scenario: 初始化配置窗口
+- **WHEN** 首次打开配置窗口
+- **THEN** 锁定按钮文本根据当前 `mIsLocked` 状态初始化
+
 ### Requirement: 窗口解锁位运算正确性
 系统 SHALL 使用 AND-NOT 操作清除 `WS_EX_TRANSPARENT` 标志位，而非 XOR 翻转。
 

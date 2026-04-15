@@ -29,6 +29,8 @@ namespace MonsterOrderWindows
         private string _defaultInfo = "发送'点怪 xxx'进行点怪";
         // 界面是否锁定
         private bool mIsLocked = false;
+        public bool IsLocked => mIsLocked;
+        public event EventHandler<bool> LockStateChanged;
         // ObservableCollection for virtualization support
         private ObservableCollection<MonsterOrderInfo> _orderCollection = new ObservableCollection<MonsterOrderInfo>();
         // 节流机制
@@ -115,7 +117,6 @@ namespace MonsterOrderWindows
                 uint extendedStyle = GetWindowLong(hwnd, -20);
                 SetWindowLong(hwnd, -20, extendedStyle | 0x20u);
                 Topmost = true;
-                GlobalEventListener.Invoke("OrderWindowLocked", "");
                 if (MainList.Items.Count > 0)
                     MainList.ScrollIntoView(MainList.Items[0]);
             }
@@ -149,6 +150,7 @@ namespace MonsterOrderWindows
         {
             mIsLocked = !mIsLocked;
             RefreshWindow();
+            LockStateChanged?.Invoke(this, mIsLocked);
         }
 
         // 跑马灯动画控制

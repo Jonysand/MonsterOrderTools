@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Windows;
@@ -387,18 +387,20 @@ namespace MonsterOrderWindows
 
         private void LockWindowButton_Click(object sender, RoutedEventArgs e)
         {
-            // 触发锁定/解锁点怪窗口
             GlobalEventListener.Invoke("OrderWindowLocked", null);
+        }
 
-            // 更新按钮文本
-            if (LockWindowButton.Content?.ToString() == "锁定窗口")
+        public void OnLockStateChanged(object sender, bool isLocked)
+        {
+            Dispatcher.Invoke(() =>
             {
-                LockWindowButton.Content = "解锁窗口";
-            }
-            else
-            {
-                LockWindowButton.Content = "锁定窗口";
-            }
+                LockWindowButton.Content = isLocked ? "解锁窗口" : "锁定窗口";
+            });
+        }
+
+        public void InitLockButtonState(bool isLocked)
+        {
+            LockWindowButton.Content = isLocked ? "解锁窗口" : "锁定窗口";
         }
 
         private void DefaultMarqueeTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
