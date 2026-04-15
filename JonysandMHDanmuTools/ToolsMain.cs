@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Windows;
+using System.Runtime.InteropServices;
 
 
 namespace MonsterOrderWindows
@@ -28,6 +29,19 @@ namespace MonsterOrderWindows
         private ConfigWindow _ConfigWindow = null;
         private OrderedMonsterWindow _OrderedMonsterWindow = null;
         static private ConfigService _Config = null;
+
+        [DllImport("user32.dll")]
+        private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RECT
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+
         /*
             this.PluginAuth = "鬼酒时雨;Hey_Coder";
             this.PluginName = "点怪姬";
@@ -50,7 +64,18 @@ namespace MonsterOrderWindows
                     MessageBox.Show($"加载配置文件失败,请将桌面上的错误报告发送给作者（/TДT)/\n{e}", "零食小插件", 0, MessageBoxImage.Error);
                 }
             }
-            
+
+            try
+            {
+                DanmuManager.GetInst();
+                MonsterData.GetInst().LoadJsonData();
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show($"启动失败,请将桌面上的错误报告发送给作者（/TДT)/\n{e}", "零食小插件", 0, MessageBoxImage.Error);
+                throw;
+            }
+
             try
             {
                 _OrderedMonsterWindow = new OrderedMonsterWindow();
@@ -67,21 +92,11 @@ namespace MonsterOrderWindows
                 throw;
             }
 
-            try
-            {
-                DanmuManager.GetInst();
-                MonsterData.GetInst().LoadJsonData();
-            }
-            catch (Exception e)
-            {
-                MessageBox.Show($"启动失败,请将桌面上的错误报告发送给作者（/TДT)/\n{e}", "零食小插件", 0, MessageBoxImage.Error);
-                throw;
-            }
-
             // 事件注册
             GlobalEventListener.AddListener("LOG", (object msg) => SendCommand("LOG:" + msg.ToString()));
             GlobalEventListener.AddListener("OrderWindowLocked", (object msg) => OnOrderWindowLocked());
             GlobalEventListener.AddListener("Message", (object msg) => OnOrderWindowLocked());
+            GlobalEventListener.AddListener("ConfigChanged", (object msg) => ConfigChanged(msg));
         }
 
         public void Stop()
@@ -113,9 +128,16 @@ namespace MonsterOrderWindows
             var parts = message.Split(':');
             if (message == "WindowPosition")
             {
-                double top = _OrderedMonsterWindow.Top;
-                double left = _OrderedMonsterWindow.Left;
+                IntPtr hwnd = new System.Windows.Interop.WindowInteropHelper(_OrderedMonsterWindow).Handle;
+                RECT rect;
+                GetWindowRect(hwnd, out rect);
+                double left = rect.Left;
+                double top = rect.Top;
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] WindowPosition: left={left}, top={top}");
                 _Config.Config.TopPos = new Point(left, top);
+                _Config.SaveConfig();
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] WindowPosition saved: {_Config.Config.TopPos}");
+                return;
             }
             else if (parts.Length < 2)
             {
