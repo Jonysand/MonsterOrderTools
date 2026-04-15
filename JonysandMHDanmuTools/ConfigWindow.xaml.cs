@@ -97,6 +97,20 @@ namespace MonsterOrderWindows
                     break;
                 }
             }
+
+            // 设置 MiniMax 音色（使用Tag属性）
+            for (int i = 0; i < MiniMaxVoiceComboBox.Items.Count; i++)
+            {
+                var item = MiniMaxVoiceComboBox.Items[i] as System.Windows.Controls.ComboBoxItem;
+                if (item != null && item.Tag?.ToString() == config.MINIMAX_VOICE_ID)
+                {
+                    MiniMaxVoiceComboBox.SelectedIndex = i;
+                    break;
+                }
+            }
+
+            // 设置 MiniMax 语速
+            MiniMaxSpeedSlider.Value = config.MINIMAX_SPEED;
         }
 
         public void SetStatus(ConnectionState state, DisconnectReason reason)
@@ -328,16 +342,6 @@ namespace MonsterOrderWindows
                 return;
             string engine = selectedItem.Tag?.ToString() ?? "auto";
             GlobalEventListener.Invoke("ConfigChanged", $"TTS_ENGINE:{engine}");
-
-            // 根据引擎选择显示/隐藏配置面板
-            if (MimoConfigPanel != null)
-            {
-                MimoConfigPanel.Visibility = engine == "sapi" ? Visibility.Collapsed : Visibility.Visible;
-            }
-            if (SapiConfigPanel != null)
-            {
-                SapiConfigPanel.Visibility = engine == "mimo" ? Visibility.Collapsed : Visibility.Visible;
-            }
         }
 
         private void MimoVoiceComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
@@ -362,6 +366,23 @@ namespace MonsterOrderWindows
                 return;
             string style = selectedItem.Tag?.ToString() ?? "";
             GlobalEventListener.Invoke("ConfigChanged", $"MIMO_STYLE:{style}");
+        }
+
+        private void MiniMaxVoiceComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            var comboBox = sender as System.Windows.Controls.ComboBox;
+            if (comboBox == null || comboBox.SelectedItem == null)
+                return;
+            var selectedItem = comboBox.SelectedItem as System.Windows.Controls.ComboBoxItem;
+            if (selectedItem == null)
+                return;
+            string voiceId = selectedItem.Tag?.ToString() ?? "female-tianmei";
+            GlobalEventListener.Invoke("ConfigChanged", $"MINIMAX_VOICE_ID:{voiceId}");
+        }
+
+        private void MiniMaxSpeedSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            GlobalEventListener.Invoke("ConfigChanged", $"MINIMAX_SPEED:{e.NewValue}");
         }
 
         private void LockWindowButton_Click(object sender, RoutedEventArgs e)

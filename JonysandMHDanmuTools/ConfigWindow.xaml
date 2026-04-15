@@ -216,10 +216,91 @@
                                     FontSize="14"
                                     SelectionChanged="TTSEngineComboBox_SelectionChanged">
                                     <ComboBoxItem Content="自动" IsSelected="True" Tag="auto" />
+                                    <ComboBoxItem Content="MiniMax" Tag="minimax" />
                                     <ComboBoxItem Content="小米MiMo" Tag="mimo" />
                                     <ComboBoxItem Content="Windows SAPI" Tag="sapi" />
                                 </ComboBox>
                             </StackPanel>
+                            <Border Name="MiniMaxConfigPanel" Margin="8,8,0,0" Visibility="Visible">
+                                <StackPanel>
+                                    <Label Content="MiniMax 设置" FontWeight="SemiBold" Foreground="#0078D4" Margin="0,4,0,4" />
+                                    
+                                    <StackPanel Orientation="Horizontal" Margin="0,4,0,4">
+                                        <Label Content="音色" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                        <ComboBox Name="MiniMaxVoiceComboBox" Width="200" 
+                                                  SelectionChanged="MiniMaxVoiceComboBox_SelectionChanged">
+                                            <ComboBoxItem Content="青涩青年音色" Tag="male-qn-qingse" />
+                                            <ComboBoxItem Content="精英青年音色" Tag="male-qn-jingying" />
+                                            <ComboBoxItem Content="霸道青年音色" Tag="male-qn-badao" />
+                                            <ComboBoxItem Content="青年大学生音色" Tag="male-qn-daxuesheng" />
+                                            <ComboBoxItem Content="少女音色" Tag="female-shaonv" />
+                                            <ComboBoxItem Content="御姐音色" Tag="female-yujie" />
+                                            <ComboBoxItem Content="成熟女性音色" Tag="female-chengshu" />
+                                            <ComboBoxItem Content="甜美女性音色" Tag="female-tianmei" IsSelected="True" />
+                                            <ComboBoxItem Content="青涩青年音色-beta" Tag="male-qn-qingse-jingpin" />
+                                            <ComboBoxItem Content="精英青年音色-beta" Tag="male-qn-jingying-jingpin" />
+                                            <ComboBoxItem Content="霸道青年音色-beta" Tag="male-qn-badao-jingpin" />
+                                            <ComboBoxItem Content="青年大学生音色-beta" Tag="male-qn-daxuesheng-jingpin" />
+                                            <ComboBoxItem Content="少女音色-beta" Tag="female-shaonv-jingpin" />
+                                            <ComboBoxItem Content="御姐音色-beta" Tag="female-yujie-jingpin" />
+                                            <ComboBoxItem Content="成熟女性音色-beta" Tag="female-chengshu-jingpin" />
+                                            <ComboBoxItem Content="甜美女性音色-beta" Tag="female-tianmei-jingpin" />
+                                            <ComboBoxItem Content="聪明男童" Tag="clever_boy" />
+                                            <ComboBoxItem Content="可爱男童" Tag="cute_boy" />
+                                            <ComboBoxItem Content="萌萌女童" Tag="lovely_girl" />
+                                            <ComboBoxItem Content="卡通猪小琪" Tag="cartoon_pig" />
+                                            <ComboBoxItem Content="病娇弟弟" Tag="bingjiao_didi" />
+                                            <ComboBoxItem Content="俊朗男友" Tag="junlang_nanyou" />
+                                            <ComboBoxItem Content="纯真学弟" Tag="chunzhen_xuedi" />
+                                            <ComboBoxItem Content="冷淡学长" Tag="lengdan_xiongzhang" />
+                                            <ComboBoxItem Content="霸道少爷" Tag="badao_shaoye" />
+                                            <ComboBoxItem Content="甜心小玲" Tag="tianxin_xiaoling" />
+                                            <ComboBoxItem Content="俏皮萌妹" Tag="qiaopi_mengmei" />
+                                            <ComboBoxItem Content="妩媚御姐" Tag="wumei_yujie" />
+                                            <ComboBoxItem Content="嗲嗲学妹" Tag="diadia_xuemei" />
+                                            <ComboBoxItem Content="淡雅学姐" Tag="danya_xuejie" />
+                                            <ComboBoxItem Content="沉稳高管" Tag="Chinese (Mandarin)_Reliable_Executive" />
+                                            <ComboBoxItem Content="新闻女声" Tag="Chinese (Mandarin)_News_Anchor" />
+                                            <ComboBoxItem Content="傲娇御姐" Tag="Chinese (Mandarin)_Mature_Woman" />
+                                            <ComboBoxItem Content="不羁青年" Tag="Chinese (Mandarin)_Unrestrained_Young_Man" />
+                                            <ComboBoxItem Content="嚣张小姐" Tag="Arrogant_Miss" />
+                                            <ComboBoxItem Content="机械战甲" Tag="Robot_Armor" />
+                                            <ComboBoxItem Content="热心大婶" Tag="Chinese (Mandarin)_Kind-hearted_Antie" />
+                                            <ComboBoxItem Content="港普空姐" Tag="Chinese (Mandarin)_HK_Flight_Attendant" />
+                                            <ComboBoxItem Content="搞笑大爷" Tag="Chinese (Mandarin)_Humorous_Elder" />
+                                            <ComboBoxItem Content="温润男声" Tag="Chinese (Mandarin)_Gentleman" />
+                                            <ComboBoxItem Content="温暖闺蜜" Tag="Chinese (Mandarin)_Warm_Bestie" />
+                                            <ComboBoxItem Content="播报男声" Tag="Chinese (Mandarin)_Male_Announcer" />
+                                            <ComboBoxItem Content="甜美女声" Tag="Chinese (Mandarin)_Sweet_Lady" />
+                                            <ComboBoxItem Content="南方小哥" Tag="Chinese (Mandarin)_Southern_Young_Man" />
+                                            <ComboBoxItem Content="阅历姐姐" Tag="Chinese (Mandarin)_Wise_Women" />
+                                            <ComboBoxItem Content="温润青年" Tag="Chinese (Mandarin)_Gentle_Youth" />
+                                            <ComboBoxItem Content="温暖少女" Tag="Chinese (Mandarin)_Warm_Girl" />
+                                            <ComboBoxItem Content="花甲奶奶" Tag="Chinese (Mandarin)_Kind-hearted_Elder" />
+                                            <ComboBoxItem Content="憨憨萌兽" Tag="Chinese (Mandarin)_Cute_Spirit" />
+                                            <ComboBoxItem Content="电台男主播" Tag="Chinese (Mandarin)_Radio_Host" />
+                                            <ComboBoxItem Content="抒情男声" Tag="Chinese (Mandarin)_Lyrical_Voice" />
+                                            <ComboBoxItem Content="率真弟弟" Tag="Chinese (Mandarin)_Straightforward_Boy" />
+                                            <ComboBoxItem Content="真诚青年" Tag="Chinese (Mandarin)_Sincere_Adult" />
+                                            <ComboBoxItem Content="温柔学姐" Tag="Chinese (Mandarin)_Gentle_Senior" />
+                                            <ComboBoxItem Content="嘴硬竹马" Tag="Chinese (Mandarin)_Stubborn_Friend" />
+                                            <ComboBoxItem Content="清脆少女" Tag="Chinese (Mandarin)_Crisp_Girl" />
+                                            <ComboBoxItem Content="清澈邻家弟弟" Tag="Chinese (Mandarin)_Pure-hearted_Boy" />
+                                            <ComboBoxItem Content="柔和少女" Tag="Chinese (Mandarin)_Soft_Girl" />
+                                        </ComboBox>
+                                    </StackPanel>
+                                    
+                                    <StackPanel Orientation="Horizontal" Margin="0,4,0,4">
+                                        <Label Content="语速" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                        <Slider Name="MiniMaxSpeedSlider" Minimum="1.0" Maximum="2" 
+                                                Value="1.5" Width="120" TickFrequency="0.1"
+                                                IsSnapToTickEnabled="True"
+                                                ValueChanged="MiniMaxSpeedSlider_ValueChanged" />
+                                        <TextBlock Text="{Binding ElementName=MiniMaxSpeedSlider, Path=Value, StringFormat=F1}" 
+                                                   VerticalAlignment="Center" Margin="8,0,0,0" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
                             <Border Name="MimoConfigPanel" Margin="8,8,0,0" Visibility="Visible">
                                 <StackPanel>
                                     <Label

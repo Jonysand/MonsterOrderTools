@@ -135,6 +135,20 @@ namespace MonsterOrderWindows
             set { _mimoSpeed = value; OnPropertyChanged(); }
         }
 
+        private string _minimaxVoiceId = "female-tianmei";
+        public string MinimaxVoiceId
+        {
+            get => _minimaxVoiceId;
+            set { _minimaxVoiceId = value; OnPropertyChanged(); }
+        }
+
+        private float _minimaxSpeed = 1.5f;
+        public float MinimaxSpeed
+        {
+            get => _minimaxSpeed;
+            set { _minimaxSpeed = value; OnPropertyChanged(); }
+        }
+
         private double _topPosX = 0;
         public double TopPosX
         {
@@ -195,6 +209,8 @@ namespace MonsterOrderWindows
             MimoVoice = config.MIMO_VOICE ?? "mimo_default";
             MimoStyle = config.MIMO_STYLE ?? "";
             MimoSpeed = config.MIMO_SPEED;
+            MinimaxVoiceId = config.MINIMAX_VOICE_ID ?? "female-tianmei";
+            MinimaxSpeed = config.MINIMAX_SPEED;
             TopPosX = config.TopPos.X;
             TopPosY = config.TopPos.Y;
             DefaultMarqueeText = config.DEFAULT_MARQUEE_TEXT ?? "";
@@ -221,6 +237,8 @@ namespace MonsterOrderWindows
             config.MIMO_VOICE = MimoVoice;
             config.MIMO_STYLE = MimoStyle;
             config.MIMO_SPEED = MimoSpeed;
+            config.MINIMAX_VOICE_ID = MinimaxVoiceId;
+            config.MINIMAX_SPEED = MinimaxSpeed;
             config.TopPos = new System.Windows.Point(TopPosX, TopPosY);
             config.DEFAULT_MARQUEE_TEXT = DefaultMarqueeText;
             config.TTS_CACHE_DAYS_TO_KEEP = TtsCacheDaysToKeep;

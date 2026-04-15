@@ -195,6 +195,13 @@ namespace MonsterOrderWindows
             {
                 _Config.Config.TTS_ENGINE = parts[1];
             }
+            else if (parts[0] == "MINIMAX_VOICE_ID")
+                _Config.Config.MINIMAX_VOICE_ID = parts[1];
+            else if (parts[0] == "MINIMAX_SPEED")
+            {
+                if (float.TryParse(parts[1], out float speed))
+                    _Config.Config.MINIMAX_SPEED = speed;
+            }
             else if (parts[0] == "MIMO_VOICE")
             {
                 _Config.Config.MIMO_VOICE = parts[1];

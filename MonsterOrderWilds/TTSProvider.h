@@ -42,6 +42,7 @@ public:
     TTSResponse ParseResponse(const std::string& responseBody) const;
 private:
     std::vector<uint8_t> Base64ToBytes(const std::string& base64) const;
+    std::vector<uint8_t> HexToBytes(const std::string& hex) const;
     std::string apiKey_;
     std::string lastError_;
     bool available_;

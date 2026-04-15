@@ -180,6 +180,42 @@ void TestMiniMaxTTSProvider_ParseResponse_Success()
     std::cout << "[PASS] TestMiniMaxTTSProvider_ParseResponse_Success" << std::endl;
 }
 
+void TestMiniMaxTTSProvider_HexToBytes()
+{
+    MiniMaxTTSProvider minimax("test_key");
+    
+    // "4849" hex = 'H'(0x48) 'I'(0x49)
+    auto result = minimax.HexToBytes("4849");
+    assert(result.size() == 2);
+    assert(result[0] == 0x48);
+    assert(result[1] == 0x49);
+    
+    // "616263" hex = 'a'(0x61) 'b'(0x62) 'c'(0x63)
+    result = minimax.HexToBytes("616263");
+    assert(result.size() == 3);
+    assert(result[0] == 0x61);
+    assert(result[1] == 0x62);
+    assert(result[2] == 0x63);
+    
+    std::cout << "[PASS] TestMiniMaxTTSProvider_HexToBytes" << std::endl;
+}
+
+void TestMiniMaxTTSProvider_ParseResponse_WithHexAudio()
+{
+    MiniMaxTTSProvider minimax("test_key");
+    // "4849" is hex encoded "HI"
+    std::string responseBody = "{\"data\":{\"audio\":\"4849\",\"status\":2}}";
+    
+    auto resp = minimax.ParseResponse(responseBody);
+    assert(resp.success == true);
+    // Hex "4849" = bytes [0x48, 0x49] = 'H', 'I'
+    assert(resp.audioData.size() == 2);
+    assert(resp.audioData[0] == 0x48);  // 'H'
+    assert(resp.audioData[1] == 0x49);  // 'I'
+    
+    std::cout << "[PASS] TestMiniMaxTTSProvider_ParseResponse_WithHexAudio" << std::endl;
+}
+
 void TestMiniMaxTTSProvider_ParseResponse_Error()
 {
     MiniMaxTTSProvider minimax("test_key");
@@ -240,6 +276,8 @@ void RunTTSProviderTests()
     TestMiniMaxTTSProvider_BuildRequest();
     TestMiniMaxTTSProvider_BuildRequestHeaders();
     TestMiniMaxTTSProvider_ParseResponse_Success();
+    TestMiniMaxTTSProvider_HexToBytes();
+    TestMiniMaxTTSProvider_ParseResponse_WithHexAudio();
     TestMiniMaxTTSProvider_ParseResponse_Error();
     // TestTTSProviderFactory_Create_Sapi();  // Requires SapiTTSProvider, disabled
     TestTTSProviderFactory_Create_Xiaomi();

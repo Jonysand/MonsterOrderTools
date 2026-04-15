@@ -28,6 +28,10 @@ struct ConfigData
     std::string mimoAudioFormat = "mp3";
     float mimoSpeed = 1.0f;
 
+    // MiniMax TTS 配置
+    std::string minimaxVoiceId = "female-tianmei";
+    float minimaxSpeed = 1.5f;
+
     // 窗口位置
     double topPosX = 0.0;
     double topPosY = 0.0;

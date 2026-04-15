@@ -81,7 +81,7 @@ std::string MiniMaxTTSProvider::BuildRequestBody(const TTSRequest& request) cons
     j["text"] = request.text;
     j["stream"] = false;
     j["voice_setting"] = {
-        {"voice_id", request.voice.empty() ? "male-qn-qingse" : request.voice},
+        {"voice_id", request.voice.empty() ? "female-tianmei" : request.voice},
         {"speed", request.speed > 0 ? request.speed : 1.0f},
         {"vol", 1},
         {"pitch", 0},
@@ -118,7 +118,7 @@ TTSResponse MiniMaxTTSProvider::ParseResponse(const std::string& responseBody) c
 
         if (j.contains("data") && j["data"].contains("audio") && j["data"]["audio"].is_string()) {
             std::string audioBase64 = j["data"]["audio"].get<std::string>();
-            result.audioData = Base64ToBytes(audioBase64);
+            result.audioData = HexToBytes(audioBase64);
             result.success = true;
         }
         else {
@@ -169,4 +169,14 @@ std::vector<uint8_t> MiniMaxTTSProvider::Base64ToBytes(const std::string& base64
     }
     
     return decoded;
+}
+
+std::vector<uint8_t> MiniMaxTTSProvider::HexToBytes(const std::string& hex) const {
+    std::vector<uint8_t> bytes;
+    for (size_t i = 0; i < hex.length(); i += 2) {
+        std::string byteStr = hex.substr(i, 2);
+        uint8_t byte = (uint8_t)std::strtol(byteStr.c_str(), nullptr, 16);
+        bytes.push_back(byte);
+    }
+    return bytes;
 }

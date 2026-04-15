@@ -208,6 +208,14 @@ namespace MonsterOrderWindows
                 () => GetFloat("mimoSpeed"),
                 v => SetValue("mimoSpeed", (float)v, ConfigFieldType.Float));
 
+            Register("minimaxVoiceId", ConfigFieldType.String,
+                () => GetString("minimaxVoiceId"),
+                v => SetValue("minimaxVoiceId", (string)v, ConfigFieldType.String));
+
+            Register("minimaxSpeed", ConfigFieldType.Float,
+                () => GetFloat("minimaxSpeed"),
+                v => SetValue("minimaxSpeed", (float)v, ConfigFieldType.Float));
+
             Register("topPosX", ConfigFieldType.Double,
                 () => GetDouble("topPosX"),
                 v => SetValue("topPosX", (double)v, ConfigFieldType.Double));
@@ -405,6 +413,18 @@ namespace MonsterOrderWindows
         {
             get => (float)ConfigFieldRegistry.Get("mimoSpeed");
             set { ConfigFieldRegistry.Set("mimoSpeed", value); OnPropertyChanged(); }
+        }
+
+        public String MINIMAX_VOICE_ID
+        {
+            get => (string)ConfigFieldRegistry.Get("minimaxVoiceId");
+            set { ConfigFieldRegistry.Set("minimaxVoiceId", value); OnPropertyChanged(); }
+        }
+
+        public float MINIMAX_SPEED
+        {
+            get => (float)ConfigFieldRegistry.Get("minimaxSpeed");
+            set { ConfigFieldRegistry.Set("minimaxSpeed", value); OnPropertyChanged(); }
         }
 
         public String DEFAULT_MARQUEE_TEXT
