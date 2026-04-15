@@ -142,7 +142,7 @@ namespace MonsterOrderWindows
             set { _minimaxVoiceId = value; OnPropertyChanged(); }
         }
 
-        private float _minimaxSpeed = 1.5f;
+        private float _minimaxSpeed = 1.0f;
         public float MinimaxSpeed
         {
             get => _minimaxSpeed;

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "framework.h"
 #include "EventSystem.h"
 #include "ConfigFieldRegistry.h"
@@ -30,7 +30,7 @@ struct ConfigData
 
     // MiniMax TTS 配置
     std::string minimaxVoiceId = "female-tianmei";
-    float minimaxSpeed = 1.5f;
+    float minimaxSpeed = 1.0f;
 
     // 窗口位置
     double topPosX = 0.0;
