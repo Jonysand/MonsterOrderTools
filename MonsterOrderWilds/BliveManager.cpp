@@ -1,4 +1,4 @@
-﻿#include "BliveManager.h"
+#include "BliveManager.h"
 #include "CredentialsManager.h"
 #include "WriteLog.h"
 #include "TextToSpeech.h"
@@ -418,6 +418,7 @@ void BliveManager::OnReceiveAppHeartbeatResponse(const std::string& response)
         switch (code)
         {
         case 0:
+        case 4004:
         {
             reconnectAttemptCount.store(0);
             {
