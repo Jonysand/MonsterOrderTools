@@ -19,6 +19,53 @@ namespace {
         return std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now().time_since_epoch()).count();
     }
+
+    constexpr int32_t CHECKIN_RETRY_MAX = 3;
+    constexpr int32_t CHECKIN_RETRY_DELAY_MS = 500;
+
+    bool InsertCheckinRecordWithRetry(sqlite3* db, uint64_t uid, int32_t checkinDate, int64_t timestamp, const std::string& username) {
+        sqlite3_stmt* stmt = nullptr;
+        const char* sql = "INSERT OR IGNORE INTO checkin_records (uid, checkin_date, created_at, username) VALUES (?, ?, ?, ?)";
+
+        for (int32_t retry = 0; retry < CHECKIN_RETRY_MAX; ++retry) {
+            if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+                LOG_ERROR(TEXT("ProfileManager: Failed to prepare checkin insert (attempt %d/%d): %hs"),
+                    retry + 1, CHECKIN_RETRY_MAX, sqlite3_errmsg(db));
+                if (stmt) {
+                    sqlite3_finalize(stmt);
+                    stmt = nullptr;
+                }
+                if (retry < CHECKIN_RETRY_MAX - 1) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(CHECKIN_RETRY_DELAY_MS));
+                }
+                continue;
+            }
+
+            sqlite3_bind_int64(stmt, 1, (sqlite3_int64)uid);
+            sqlite3_bind_int(stmt, 2, checkinDate);
+            sqlite3_bind_int64(stmt, 3, timestamp);
+            sqlite3_bind_text(stmt, 4, username.c_str(), -1, SQLITE_TRANSIENT);
+
+            int stepResult = sqlite3_step(stmt);
+            sqlite3_finalize(stmt);
+            stmt = nullptr;
+
+            if (stepResult == SQLITE_DONE) {
+                return true;
+            }
+
+            LOG_ERROR(TEXT("ProfileManager: Failed to insert checkin record (attempt %d/%d): %hs, step=%d"),
+                retry + 1, CHECKIN_RETRY_MAX, sqlite3_errmsg(db), stepResult);
+
+            if (retry < CHECKIN_RETRY_MAX - 1) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(CHECKIN_RETRY_DELAY_MS));
+            }
+        }
+
+        LOG_ERROR(TEXT("ProfileManager: Insert checkin record failed after %d attempts for uid=%llu, date=%d"),
+            CHECKIN_RETRY_MAX, uid, checkinDate);
+        return false;
+    }
 }
 
 std::string ProfileManager::GetDbPath() const {
@@ -359,33 +406,46 @@ void ProfileManager::RecordCheckinAsync(uint64_t uid, const std::string& usernam
         bool dbSuccess = true;
         if (self->storage_) {
             sqlite3* db = (sqlite3*)self->storage_;
-            sqlite3_stmt* stmt = nullptr;
-            const char* sql = "INSERT OR IGNORE INTO checkin_records (uid, checkin_date, created_at, username) VALUES (?, ?, ?, ?)";
-            
-            if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-                sqlite3_bind_int64(stmt, 1, (sqlite3_int64)uid);
-                sqlite3_bind_int(stmt, 2, checkinDate);
-                sqlite3_bind_int64(stmt, 3, timestamp);
-                sqlite3_bind_text(stmt, 4, username.c_str(), -1, SQLITE_TRANSIENT);
-                
-                if (sqlite3_step(stmt) != SQLITE_DONE) {
-                    LOG_ERROR(TEXT("ProfileManager: Failed to insert checkin record async: %hs"), sqlite3_errmsg(db));
-                    dbSuccess = false;
-                }
-                sqlite3_finalize(stmt);
-            } else {
-                LOG_ERROR(TEXT("ProfileManager: Failed to prepare checkin insert async: %hs"), sqlite3_errmsg(db));
+
+            if (!InsertCheckinRecordWithRetry(db, uid, checkinDate, timestamp, username)) {
+                LOG_ERROR(TEXT("ProfileManager: Checkin record INSERT failed for uid=%llu, username=%hs, date=%d, days=%d"),
+                    uid, username.c_str(), checkinDate, continuousDays);
                 dbSuccess = false;
             }
 
             if (dbSuccess) {
-                self->SaveProfileToDb(profile);
-                std::lock_guard<std::mutex> lock(self->profilesLock_);
-                self->profiles_[uid] = profile;
+                for (int32_t retry = 0; retry < CHECKIN_RETRY_MAX; ++retry) {
+                    self->SaveProfileToDb(profile);
+                    {
+                        std::lock_guard<std::mutex> lock(self->profilesLock_);
+                        self->profiles_[uid] = profile;
+                    }
+                    {
+                        std::lock_guard<std::mutex> lock(self->profilesLock_);
+                        auto it = self->profiles_.find(uid);
+                        if (it != self->profiles_.end() && it->second.lastCheckinDate == checkinDate) {
+                            break;
+                        }
+                    }
+                    LOG_WARNING(TEXT("ProfileManager: SaveProfileToDb verification failed (attempt %d/%d), retrying..."),
+                        retry + 1, CHECKIN_RETRY_MAX);
+                    if (retry < CHECKIN_RETRY_MAX - 1) {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(CHECKIN_RETRY_DELAY_MS));
+                    }
+                }
             }
+        } else {
+            LOG_ERROR(TEXT("ProfileManager: storage_ is null, cannot save checkin record for uid=%llu"), uid);
+            dbSuccess = false;
         }
 
-        LOG_INFO(TEXT("ProfileManager: Recorded checkin async for uid=%llu, days=%d"), uid, continuousDays);
+        if (dbSuccess) {
+            LOG_INFO(TEXT("ProfileManager: Recorded checkin async for uid=%llu, username=%hs, days=%d, date=%d"),
+                uid, username.c_str(), continuousDays, checkinDate);
+        } else {
+            LOG_ERROR(TEXT("ProfileManager: Failed to record checkin for uid=%llu, username=%hs, days=%d, date=%d"),
+                uid, username.c_str(), continuousDays, checkinDate);
+        }
     }).detach();
 }
 
