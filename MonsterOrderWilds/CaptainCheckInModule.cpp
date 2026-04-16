@@ -280,6 +280,31 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
 
 #if !TEST_CAPTAIN_REPLY_LOCAL
         if (shouldCheckin && profile.lastCheckinDate == event.sendDate) {
+            int32_t continuousDays = ProfileManager::Inst()->CalculateContinuousDays(event.uid, event.sendDate);
+            std::string repeatedAnswer = event.username + "今日已打卡，连续" + std::to_string(continuousDays) + "天";
+
+            std::wstring contentCopy = Utf8ToWstring(repeatedAnswer);
+            RECORD_HISTORY(contentCopy.c_str());
+
+            if (ConfigManager::Inst()->GetConfig().enableVoice) {
+                PlayCheckinTTS(repeatedAnswer, event.username);
+            }
+
+            SaveProfileAsync(profile);
+            return;
+        }
+#else
+        if (shouldCheckin && profile.lastCheckinDate == event.sendDate) {
+            int32_t continuousDays = ProfileManager::Inst()->CalculateContinuousDays(event.uid, event.sendDate);
+            std::string repeatedAnswer = event.username + "今日已打卡，连续" + std::to_string(continuousDays) + "天";
+
+            std::wstring contentCopy = Utf8ToWstring(repeatedAnswer);
+            RECORD_HISTORY(contentCopy.c_str());
+
+            if (ConfigManager::Inst()->GetConfig().enableVoice) {
+                PlayCheckinTTS(repeatedAnswer, event.username);
+            }
+
             SaveProfileAsync(profile);
             return;
         }

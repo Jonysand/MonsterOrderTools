@@ -331,18 +331,9 @@ bool TTSManager::PlayAudioData(const std::vector<uint8_t>& audioData, const std:
 
 void TTSManager::SpeakCheckinTTS(const TString& text, const std::string& username) {
 
-    if (!ttsProvider) {
-        LOG_ERROR(TEXT("SpeakCheckinTTS: ttsProvider is NULL"));
-        return;
-    }
-    
-    if (!ttsProvider->IsAvailable()) {
-        LOG_WARNING(TEXT("SpeakCheckinTTS: MiMo TTS not available"));
-        return;
-    }
-    
     AsyncTTSRequest req;
     req.text = text;
+    req.engineType = GetActiveEngineType();
     req.state = AsyncTTSState::Pending;
     req.startTime = std::chrono::steady_clock::now();
     req.responseFormat = "mp3";
@@ -604,9 +595,30 @@ void TTSManager::ProcessPendingRequest(std::list<AsyncTTSRequest>::iterator it)
     // 处理 SAPI 请求（同步播放）
     if (req.engineType == TTSEngineType::SAPI) {
         LOG_INFO(TEXT("TTS Async: Processing SAPI request"));
-        bool success = SpeakWithSapiSync(req.text);
-        req.state = success ? AsyncTTSState::Completed : AsyncTTSState::Failed;
-        req.errorMessage = success ? "" : "SAPI speak failed";
+        if (req.isCheckinTTS && !req.checkinUsername.empty()) {
+            std::wstring usernameW = Utf8ToWstring(req.checkinUsername);
+            std::wstring contentW = req.text;
+            if (g_checkinTTSPlayCallback) {
+                try {
+                    g_checkinTTSPlayCallback(usernameW.c_str(), contentW.c_str(), g_checkinTTSPlayUserData);
+                } catch (...) {
+                    LOG_ERROR(TEXT("CheckinTTSPlayCallback threw exception"));
+                }
+            }
+        }
+        req.state = AsyncTTSState::Playing;
+        req.playbackStarted = true;
+        std::thread([this, req]() {
+            bool success = SpeakWithSapiSync(req.text);
+            LOG_DEBUG(TEXT("TTS Async: SAPI playback finished, success=%d"), success);
+            std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
+            if (!asyncPendingQueue_.empty()) {
+                auto it = asyncPendingQueue_.begin();
+                if (it->state == AsyncTTSState::Playing && it->playbackStarted) {
+                    it->state = success ? AsyncTTSState::Completed : AsyncTTSState::Failed;
+                }
+            }
+        }).detach();
         return;
     }
 
