@@ -20,6 +20,12 @@ extern void* g_checkinTTSPlayUserData;
 DEFINE_SINGLETON(TTSManager)
 
 #pragma comment(lib, "sapi.lib")
+
+namespace {
+    // SAPI event IDs (not all defined in Windows 10 SDK headers, using documented values)
+    constexpr int SPEI_STREAM_ENDED_ID = 11;  // SPEI_STREAM_ENDED
+}
+
 TTSManager::TTSManager()
 {
     // Initialize COM library
@@ -475,6 +481,26 @@ bool TTSManager::SpeakWithSapiSync(const TString& text)
     return SUCCEEDED(hr);
 }
 
+void CALLBACK TTSManager::SapiSpeakCallback(WPARAM wParam, LPARAM lParam)
+{
+    TTSManager* pManager = reinterpret_cast<TTSManager*>(wParam);
+    if (pManager == nullptr) return;
+
+    SPEVENT* pEvent = reinterpret_cast<SPEVENT*>(lParam);
+    if (pEvent == nullptr) return;
+
+    if (pEvent->eEventId == SPEI_STREAM_ENDED_ID) {
+        LOG_DEBUG(TEXT("TTS Async: SAPI SPEI_STREAM_ENDED received"));
+        std::lock_guard<std::recursive_mutex> lock(pManager->asyncMutex_);
+        if (!pManager->asyncPendingQueue_.empty()) {
+            auto it = pManager->asyncPendingQueue_.begin();
+            if (it->engineType == TTSEngineType::SAPI && it->state == AsyncTTSState::Playing) {
+                it->sapiStreamEnded = true;
+            }
+        }
+    }
+}
+
 void TTSManager::RefreshTTSProvider()
 {
     const auto& config = ConfigManager::Inst()->GetConfig();
@@ -592,7 +618,7 @@ void TTSManager::ProcessPendingRequest(std::list<AsyncTTSRequest>::iterator it)
 {
     AsyncTTSRequest& req = *it;
 
-    // 处理 SAPI 请求（同步播放）
+    // 处理 SAPI 请求（异步播放 + SPEVENT 回调）
     if (req.engineType == TTSEngineType::SAPI) {
         LOG_INFO(TEXT("TTS Async: Processing SAPI request"));
         if (req.isCheckinTTS && !req.checkinUsername.empty()) {
@@ -608,17 +634,54 @@ void TTSManager::ProcessPendingRequest(std::list<AsyncTTSRequest>::iterator it)
         }
         req.state = AsyncTTSState::Playing;
         req.playbackStarted = true;
-        std::thread([this, req]() {
-            bool success = SpeakWithSapiSync(req.text);
-            LOG_DEBUG(TEXT("TTS Async: SAPI playback finished, success=%d"), success);
-            std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
-            if (!asyncPendingQueue_.empty()) {
-                auto it = asyncPendingQueue_.begin();
-                if (it->state == AsyncTTSState::Playing && it->playbackStarted) {
-                    it->state = success ? AsyncTTSState::Completed : AsyncTTSState::Failed;
-                }
+        req.sapiStreamEnded = false;
+
+        {
+            std::lock_guard<std::mutex> lock(sapiMutex_);
+            if (pVoice == NULL) {
+                LOG_ERROR(TEXT("TTS Async: pVoice is NULL, SAPI playback failed"));
+                req.state = AsyncTTSState::Failed;
+                req.errorMessage = "pVoice is NULL";
+                return;
             }
-        }).detach();
+
+            ISpObjectToken* pChineseToken = NULL;
+            HRESULT hrToken = SpFindBestToken(SPCAT_VOICES, L"Language=804", NULL, &pChineseToken);
+            if (SUCCEEDED(hrToken) && pChineseToken) {
+                pVoice->SetVoice(pChineseToken);
+                LOG_DEBUG(TEXT("TTS Async: SAPI set Chinese voice"));
+                pChineseToken->Release();
+            }
+
+            int speechRate = ConfigManager::Inst()->GetConfig().speechRate;
+            int speechVolume = ConfigManager::Inst()->GetConfig().speechVolume;
+            int pitch = ConfigManager::Inst()->GetConfig().speechPitch;
+            pVoice->SetRate(speechRate);
+            pVoice->SetVolume(speechVolume);
+            std::wstring pitchStr = (pitch >= 0 ? L"+" : L"") + std::to_wstring(pitch) + L"st";
+
+            std::wstring safeText;
+            safeText.reserve(req.text.size());
+            for (wchar_t ch : req.text) {
+                if (ch == L'<') safeText += L"&lt;";
+                else if (ch == L'&') safeText += L"&amp;";
+                else if (ch == L'>') safeText += L"&gt;";
+                else safeText += ch;
+            }
+
+            std::wstring ssml = L"<speak version='1.0' xml:lang='zh-CN'><prosody pitch='" + pitchStr + L"'>" + safeText + L"</prosody></speak>";
+            HRESULT hr = pVoice->Speak(ssml.c_str(), SPF_IS_XML | SPF_ASYNC, NULL);
+            if (SUCCEEDED(hr)) {
+                LOG_DEBUG(TEXT("TTS Async: SAPI Speak started with SPF_ASYNC"));
+                pVoice->SetNotifyCallbackFunction(SapiSpeakCallback, (WPARAM)this, 0);
+                ULONGLONG interestMask = SPFEI(SPEI_STREAM_ENDED_ID);
+                pVoice->SetInterest(interestMask, interestMask);
+            } else {
+                LOG_ERROR(TEXT("TTS Async: SAPI Speak failed, hr=0x%08X"), hr);
+                req.state = AsyncTTSState::Failed;
+                req.errorMessage = "SAPI speak failed";
+            }
+        }
         return;
     }
 
@@ -728,7 +791,18 @@ void TTSManager::ProcessRequestingState(AsyncTTSRequest& req)
 void TTSManager::ProcessPlayingState(AsyncTTSRequest& req)
 {
     std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
-    
+
+    // 处理 SAPI 请求完成
+    if (req.engineType == TTSEngineType::SAPI) {
+        if (req.sapiStreamEnded) {
+            LOG_INFO(TEXT("TTS Async: SAPI playback completed (SPEI_STREAM_ENDED)"));
+            req.state = AsyncTTSState::Completed;
+            consecutiveFailures = 0;
+            lastFailureTime = std::chrono::steady_clock::now();
+        }
+        return;
+    }
+
     if (audioPlayer == NULL) {
         req.state = AsyncTTSState::Failed;
         req.errorMessage = "audioPlayer is NULL";

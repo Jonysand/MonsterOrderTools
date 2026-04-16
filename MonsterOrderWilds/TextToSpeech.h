@@ -44,6 +44,7 @@ struct AsyncTTSRequest
 	std::string voice;                     // 语音
 	int speed = 0;                          // 语速
 	bool playbackStarted = false;            // 是否已开始播放
+	bool sapiStreamEnded = false;            // SAPI流是否已结束
 	std::function<void(bool success, const std::string& errorMsg)> callback;  // 完成回调
 };
 
@@ -111,6 +112,8 @@ private:
 	void ProcessRequestingState(AsyncTTSRequest& req);
 	// 处理Playing状态 - 检查播放完成
 	void ProcessPlayingState(AsyncTTSRequest& req);
+	// SAPI播放完成回调
+	static void CALLBACK SapiSpeakCallback(WPARAM wParam, LPARAM lParam);
 	// 处理失败/超时
 	void HandleRequestFailure(AsyncTTSRequest& req);
 	// 清理已完成/失败的请求
