@@ -7,6 +7,12 @@
 #include "StringUtils.h"
 
 #pragma warning(disable: 4996)
+
+extern "C" {
+typedef void(__stdcall* OnCheckinTTSPlayCallback)(const wchar_t* username, const wchar_t* content, void* userData);
+extern OnCheckinTTSPlayCallback g_checkinTTSPlayCallback;
+extern void* g_checkinTTSPlayUserData;
+}
 #include <sapi.h> // Include SAPI header for ISpVoice
 #include <cstringt.h>
 #include <sphelper.h>
@@ -729,6 +735,18 @@ void TTSManager::ProcessPlayingState(AsyncTTSRequest& req)
         req.audioData.clear();
         req.startTime = std::chrono::steady_clock::now();  // 重置超时计时
         LOG_INFO(TEXT("TTS Async: Audio playback started"));
+
+        if (req.isCheckinTTS && !req.checkinUsername.empty()) {
+            std::wstring usernameW = Utf8ToWstring(req.checkinUsername);
+            std::wstring contentW = req.text;
+            if (g_checkinTTSPlayCallback) {
+                try {
+                    g_checkinTTSPlayCallback(usernameW.c_str(), contentW.c_str(), g_checkinTTSPlayUserData);
+                } catch (...) {
+                    LOG_ERROR(TEXT("CheckinTTSPlayCallback threw exception"));
+                }
+            }
+        }
     }
 
     // 检查播放完成：只有真正开始播放了才检查完成状态

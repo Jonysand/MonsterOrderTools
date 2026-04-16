@@ -9,6 +9,7 @@
 typedef void(__stdcall* OnDanmuProcessedCallback)(const wchar_t* userName, const wchar_t* monsterName, void* userData);
 typedef void(__stdcall* OnQueueNodeCallback)(const wchar_t* userId, long long timeStamp, bool priority, const wchar_t* userName, const wchar_t* monsterName, int guardLevel, int temperedLevel, void* userData);
 typedef void(__stdcall* OnAIReplyCallback)(const wchar_t* username, const wchar_t* content, void* userData);
+typedef void(__stdcall* OnCheckinTTSPlayCallback)(const wchar_t* username, const wchar_t* content, void* userData);
 
 #ifdef __cplusplus
 extern "C" {
@@ -50,6 +51,8 @@ extern "C" {
     __declspec(dllexport) void __stdcall DataBridge_SetDanmuProcessedCallback(OnDanmuProcessedCallback callback, void* userData);
 
     __declspec(dllexport) void __stdcall DataBridge_SetAIReplyCallback(OnAIReplyCallback callback, void* userData);
+
+__declspec(dllexport) void __stdcall DataBridge_SetCheckinTTSPlayCallback(OnCheckinTTSPlayCallback callback, void* userData);
 
 #ifdef __cplusplus
 }

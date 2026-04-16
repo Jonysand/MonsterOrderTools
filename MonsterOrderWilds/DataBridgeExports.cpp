@@ -502,3 +502,16 @@ __declspec(dllexport) void __stdcall DataBridge_SetAIReplyCallback(OnAIReplyCall
     g_aiReplyCallback = callback;
     g_aiReplyUserData = userData;
 }
+
+extern "C" {
+OnCheckinTTSPlayCallback g_checkinTTSPlayCallback = nullptr;
+void* g_checkinTTSPlayUserData = nullptr;
+}
+std::mutex g_checkinTTSPlayMutex;
+
+__declspec(dllexport) void __stdcall DataBridge_SetCheckinTTSPlayCallback(OnCheckinTTSPlayCallback callback, void* userData)
+{
+    std::lock_guard<std::mutex> lock(g_checkinTTSPlayMutex);
+    g_checkinTTSPlayCallback = callback;
+    g_checkinTTSPlayUserData = userData;
+}

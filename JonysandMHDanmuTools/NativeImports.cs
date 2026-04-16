@@ -90,11 +90,17 @@ namespace MonsterOrderWindows
         [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Unicode)]
         public static extern void DataBridge_SetAIReplyCallback(OnAIReplyCallback callback, IntPtr userData);
 
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Unicode)]
+        public static extern void DataBridge_SetCheckinTTSPlayCallback(OnCheckinTTSPlayCallback callback, IntPtr userData);
+
         [UnmanagedFunctionPointer(CallingConvention.StdCall, CharSet = CharSet.Unicode)]
         public delegate void DanmuProcessedCallback(string userName, string monsterName, IntPtr userData);
 
         [UnmanagedFunctionPointer(CallingConvention.StdCall, CharSet = CharSet.Unicode)]
         public delegate void OnAIReplyCallback(string username, string content, IntPtr userData);
+
+        [UnmanagedFunctionPointer(CallingConvention.StdCall, CharSet = CharSet.Unicode)]
+        public delegate void OnCheckinTTSPlayCallback(string username, string content, IntPtr userData);
 
         [UnmanagedFunctionPointer(CallingConvention.StdCall, CharSet = CharSet.Unicode)]
         public delegate void OnQueueNodeCallback(string userId, long timeStamp, bool priority, string userName, string monsterName, int guardLevel, int temperedLevel, IntPtr userData);

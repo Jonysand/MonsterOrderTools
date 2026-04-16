@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Windows.Media;
 
 namespace MonsterOrderWindows
@@ -7,6 +7,7 @@ namespace MonsterOrderWindows
     {
         private static NativeImports.DanmuProcessedCallback danmuProcessedCallback;
         private static NativeImports.OnAIReplyCallback aiReplyCallback;
+        private static NativeImports.OnCheckinTTSPlayCallback checkinTTSPlayCallback;
 
         static DanmuManager _Inst = null;
 
@@ -24,6 +25,9 @@ namespace MonsterOrderWindows
 
             aiReplyCallback = OnAIReplyCallback;
             NativeImports.DataBridge_SetAIReplyCallback(aiReplyCallback, IntPtr.Zero);
+
+            checkinTTSPlayCallback = OnCheckinTTSPlayCallback;
+            NativeImports.DataBridge_SetCheckinTTSPlayCallback(checkinTTSPlayCallback, IntPtr.Zero);
         }
 
         public void LoadHistoryOrder()
@@ -45,6 +49,12 @@ namespace MonsterOrderWindows
         }
 
         private static void OnAIReplyCallback(string username, string content, IntPtr userData)
+        {
+            var bubbleInfo = new AIBubbleInfo(username, content);
+            GlobalEventListener.Invoke("AIReplyBubble", bubbleInfo);
+        }
+
+        private static void OnCheckinTTSPlayCallback(string username, string content, IntPtr userData)
         {
             var bubbleInfo = new AIBubbleInfo(username, content);
             GlobalEventListener.Invoke("AIReplyBubble", bubbleInfo);
