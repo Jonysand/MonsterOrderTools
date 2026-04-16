@@ -85,7 +85,7 @@ void TestGetFallbackAnswer_ConsecutiveDays()
     evt.checkinDate = 20260406;
     
     std::string answer = CaptainCheckInModule::Inst()->GetFallbackAnswer(evt);
-    assert(answer == "舰长B今日第7天打卡！");
+    assert(answer == "舰长B连续第7天打卡！");
     std::cout << "[PASS] TestGetFallbackAnswer_ConsecutiveDays" << std::endl;
 }
 
@@ -98,7 +98,7 @@ void TestGetFallbackAnswer_ManyDays()
     evt.checkinDate = 20260406;
     
     std::string answer = CaptainCheckInModule::Inst()->GetFallbackAnswer(evt);
-    assert(answer == "舰长C今日第100天打卡！");
+    assert(answer == "舰长C连续第100天打卡！");
     std::cout << "[PASS] TestGetFallbackAnswer_ManyDays" << std::endl;
 }
 

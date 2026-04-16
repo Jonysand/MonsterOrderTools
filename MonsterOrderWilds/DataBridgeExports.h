@@ -11,6 +11,9 @@ typedef void(__stdcall* OnQueueNodeCallback)(const wchar_t* userId, long long ti
 typedef void(__stdcall* OnAIReplyCallback)(const wchar_t* username, const wchar_t* content, void* userData);
 typedef void(__stdcall* OnCheckinTTSPlayCallback)(const wchar_t* username, const wchar_t* content, void* userData);
 
+extern OnAIReplyCallback g_aiReplyCallback;
+extern void* g_aiReplyUserData;
+
 #ifdef __cplusplus
 extern "C" {
 #endif

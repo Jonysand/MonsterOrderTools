@@ -154,6 +154,7 @@ DanmuProcessResult DanmuProcessor::ProcessDanmu(const DanmuData& danmu)
         CaptainDanmuEvent capEvent;
         capEvent.uid = std::stoull(danmu.userId.empty() ? "0" : danmu.userId);
         capEvent.guardLevel = 3;  // 模拟舰长
+        capEvent.hasMedal = danmu.hasMedal;
         capEvent.username = danmu.userName;
         capEvent.content = danmu.message;
         capEvent.serverTimestamp = danmu.timestamp;
@@ -169,11 +170,12 @@ DanmuProcessResult DanmuProcessor::ProcessDanmu(const DanmuData& danmu)
         NotifyCaptainDanmu(capEvent);
     }
 #else
-    if (danmu.guardLevel != 0)
+    if (danmu.guardLevel != 0 || danmu.hasMedal)
     {
         CaptainDanmuEvent capEvent;
         capEvent.uid = std::stoull(danmu.userId.empty() ? "0" : danmu.userId);
         capEvent.guardLevel = danmu.guardLevel;
+        capEvent.hasMedal = danmu.hasMedal;
         capEvent.username = danmu.userName;
         capEvent.content = danmu.message;
         capEvent.serverTimestamp = danmu.timestamp;
@@ -185,6 +187,9 @@ DanmuProcessResult DanmuProcessor::ProcessDanmu(const DanmuData& danmu)
         } else {
             capEvent.sendDate = 0;
         }
+
+        LOG_DEBUG(TEXT("[DanmuProcessor] Notifying CaptainDanmu: username=%s, guardLevel=%d, hasMedal=%d, content=%s"),
+            capEvent.username.c_str(), capEvent.guardLevel, capEvent.hasMedal, capEvent.content.c_str());
 
         NotifyCaptainDanmu(capEvent);
     }

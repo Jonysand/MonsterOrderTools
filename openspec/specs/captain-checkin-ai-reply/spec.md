@@ -2,6 +2,38 @@
 
 ## 修复记录
 
+### 2026-04-16: 非舰长+有粉丝牌打卡功能
+
+**新增功能**：
+
+1. **打卡触发条件扩展**
+   - 原条件：`guardLevel != 0`（仅舰长）
+   - 新条件：`guardLevel != 0 || hasMedal`（舰长或有粉丝牌均可触发）
+
+2. **学习机制限制**
+   - 仅舰长（`guardLevel > 0`）才进行弹幕学习和关键词提取
+   - 非舰长用户不进行学习，但可正常打卡
+
+3. **非舰长打卡回复**
+   - 舰长：调用 AI 生成回复 + TTS 播报 + 气泡显示
+   - 非舰长+有粉丝牌：固定回复模板 + 气泡显示（无 TTS）
+
+4. **固定回复模板更新**
+   - 原格式：`"{username}今日第{continuousDays}天打卡！"`
+   - 新格式：`"{username}连续第{continuousDays}天打卡！"`
+
+5. **数据结构变更**
+   - `CaptainDanmuEvent` 添加 `hasMedal` 字段（是否佩戴粉丝牌）
+
+**相关文件修改**：
+- `MonsterOrderWilds/CaptainCheckInModule.h` - 添加 `hasMedal` 字段
+- `MonsterOrderWilds/CaptainCheckInModule.cpp` - 学习逻辑、TTS 逻辑、回复生成逻辑
+- `MonsterOrderWilds/DanmuProcessor.h` - 添加 `hasMedal` 字段
+- `MonsterOrderWilds/DanmuProcessor.cpp` - 传递 `hasMedal` 值
+- `MonsterOrderWilds/DataBridgeExports.h` - 导出 `g_aiReplyCallback` 供气泡显示使用
+
+---
+
 ### 2026-04-12: TempAudio目录只保存签到TTS
 
 **修复的问题**：
@@ -85,7 +117,8 @@
 
 ### FR-1: 舰长发言学习
 
-- 仅处理 guard_level ≥ 3 的舰长弹幕
+- **仅处理舰长弹幕**（`guardLevel > 0`）
+- 非舰长用户（有粉丝牌）不进行学习，但可正常打卡
 - 记录弹幕内容到用户画像的 danmuHistory（最多100条，超出移除最早）
 - 关键词存入 keywords（按频率排序，最多50条）
 - 防刷屏机制：
@@ -97,9 +130,10 @@
 
 ### FR-2: 打卡检测
 
+- **触发条件**：`guardLevel != 0 || hasMedal`（舰长或有粉丝牌均可触发）
 - 支持可配置的触发词列表（**默认"打卡,签到"**）
 - 触发词用逗号分隔，支持中文和英文
-- 检测到打卡消息时触发 AI 回复生成
+- 检测到打卡消息时触发回复生成
 - ⚠️ **重要**：如果配置为空或被删除，打卡检测功能将完全失效
 
 ### FR-3: 连续打卡天数计算
@@ -117,13 +151,23 @@
 - API 调用失败时回退到固定模板
 - API Key 为空时直接使用固定模板
 - **AI 回复通过 TTS 播报**，使用 `ConfigManager.ttsEngine` 配置（mimo/sapi/auto）
+- **非舰长用户不走 AI 回复，直接使用固定模板**
 
 **详见**: `ai-chat-provider-spec.md`
 
 ### FR-5: 固定回复模板
 
 - `"{username}打卡成功！"`
-- `"{username}今日第{continuousDays}天打卡！"`
+- `"{username}连续第{continuousDays}天打卡！"`
+
+### FR-6: 非舰长打卡行为
+
+| 场景 | 气泡显示 | TTS 播报 | 数据库记录 |
+|------|---------|---------|-----------|
+| 非舰长+有粉丝牌+首次打卡 | ✅ | ✅（受 enableVoice 控制） | ✅ |
+| 非舰长+有粉丝牌+重复打卡 | ✅ | ✅（受 enableVoice 控制） | ✅ |
+| 舰长+首次打卡 | ✅ | ✅ | ✅ |
+| 舰长+重复打卡 | ✅ | ✅ | ✅ |
 
 ## 配置字段
 
@@ -154,6 +198,7 @@
 struct CaptainDanmuEvent {
     uint64_t uid = 0;
     int32_t guardLevel = 0;
+    bool hasMedal = false;      // 是否佩戴粉丝牌
     std::string username;
     std::string content;
     int64_t serverTimestamp = 0;
@@ -238,7 +283,7 @@ UpdateKeywordFrequency() - 更新关键词频率
 ### 打卡阶段
 
 ```
-弹幕接收
+弹幕接收 (guardLevel != 0 || hasMedal)
     ↓
 IsCheckinMessage() 检测打卡
     ↓
@@ -246,11 +291,11 @@ RecordCheckin() 持久化打卡记录
     ↓
 CalculateContinuousDays() 计算天数
     ↓
-GenerateCheckinAnswerAsync() 生成回复
+判断 guardLevel > 0？
+    ├─ 是 → GenerateCheckinAnswerAsync() 生成 AI 回复 → TTS 播报
+    └─ 否 → GetFallbackAnswer() 固定回复模板
     ↓
-获取AI回复文本 → ITTSProvider TTS播报（自动处理引擎回退）
-    ↓
-调用 `TTSCacheManager::SaveCheckinAudio()` 缓存音频（`打卡_{username}_{timestamp}.mp3`）
+气泡显示 (g_aiReplyCallback)
 ```
 
 **事件解耦**：`DanmuProcessor` 与 `CaptainCheckInModule` 通过 `CaptainDanmuHandler` 回调接口解耦，无直接头文件依赖。
@@ -262,7 +307,7 @@ GenerateCheckinAnswerAsync() 生成回复
 ## AI Prompt 模板
 
 ```
-用户{username}是一位舰长，今日第{continuousDays}天打卡。
+用户{username}是一位舰长，连续第{continuousDays}天打卡。
 他的发言习惯包含：{keywords}
 最近发言：{recentMessages}
 请在回复中明确提到用户{username}的姓名，用轻松友好且有点皮的语气回复他的打卡，控制在20字以内。

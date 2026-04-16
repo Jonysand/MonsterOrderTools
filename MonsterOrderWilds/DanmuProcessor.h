@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "framework.h"
 #include "MonsterDataManager.h"
 #include "PriorityQueueManager.h"
@@ -108,6 +108,7 @@ public:
     struct CaptainDanmuEvent {
         uint64_t uid = 0;
         int32_t guardLevel = 0;
+        bool hasMedal = false;
         std::string username;
         std::string content;
         int64_t serverTimestamp = 0;

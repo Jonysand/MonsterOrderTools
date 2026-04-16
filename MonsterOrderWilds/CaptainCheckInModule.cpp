@@ -10,6 +10,7 @@
 #include "TTSProvider.h"
 #include "TTSCacheManager.h"
 #include "DanmuProcessor.h"
+#include "DataBridgeExports.h"
 #include "cppjieba/Jieba.hpp"
 #include <set>
 #include <mutex>
@@ -204,6 +205,10 @@ bool CaptainCheckInModule::ShouldLearn(const UserProfile& profile, const Captain
 #if TEST_CAPTAIN_REPLY_LOCAL
     return true;  // 跳过防刷屏检查，方便本地测试
 #else
+    if (event.guardLevel <= 0) {
+        return false;
+    }
+
     int64_t now = GetCurrentTimestamp();
 
     if (now - profile.lastDanmuTimestamp < LEARN_TIME_WINDOW_MS) {
@@ -237,7 +242,12 @@ bool CaptainCheckInModule::ShouldSkipDuplicateContent(UserProfile& profile, cons
 void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
     if (!enabled_) return;
 
+    LOG_DEBUG(TEXT("[CaptainCheckInModule] PushDanmuEvent: username=%s, uid=%llu, guardLevel=%d, hasMedal=%d, content=%s"),
+        event.username.c_str(), event.uid, event.guardLevel, event.hasMedal, event.content.c_str());
+
     bool shouldCheckin = IsCheckinMessage(event.content);
+
+    LOG_DEBUG(TEXT("[CaptainCheckInModule] shouldCheckin=%d"), shouldCheckin);
 
     {
         lock_guard<std::mutex> lock(profilesLock_);
@@ -259,18 +269,16 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
         UserProfile& profile = it->second;
         profile.username = event.username;
 
-        if (!ShouldLearn(profile, event)) {
-            return;
+        if (ShouldLearn(profile, event)) {
+            profile.lastDanmuTimestamp = event.serverTimestamp;
+
+            profile.danmuHistory.push_back({event.serverTimestamp, event.content});
+            if (profile.danmuHistory.size() > MAX_DANMU_HISTORY_SIZE) {
+                profile.danmuHistory.erase(profile.danmuHistory.begin());
+            }
+
+            ExtractKeywords(profile, event.content);
         }
-
-        profile.lastDanmuTimestamp = event.serverTimestamp;
-
-        profile.danmuHistory.push_back({event.serverTimestamp, event.content});
-        if (profile.danmuHistory.size() > MAX_DANMU_HISTORY_SIZE) {
-            profile.danmuHistory.erase(profile.danmuHistory.begin());
-        }
-
-        ExtractKeywords(profile, event.content);
 
 #if !TEST_CAPTAIN_REPLY_LOCAL
         if (ShouldSkipDuplicateContent(profile, event.content)) {
@@ -278,8 +286,8 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
         }
 #endif
 
-#if !TEST_CAPTAIN_REPLY_LOCAL
         if (shouldCheckin && profile.lastCheckinDate == event.sendDate) {
+            LOG_DEBUG(TEXT("[CaptainCheckInModule] Repeated checkin detected for uid=%llu, date=%d"), event.uid, event.sendDate);
             int32_t continuousDays = ProfileManager::Inst()->CalculateContinuousDays(event.uid, event.sendDate);
             std::string repeatedAnswer = event.username + "今日已打卡，连续" + std::to_string(continuousDays) + "天";
 
@@ -293,24 +301,9 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
             SaveProfileAsync(profile);
             return;
         }
-#else
-        if (shouldCheckin && profile.lastCheckinDate == event.sendDate) {
-            int32_t continuousDays = ProfileManager::Inst()->CalculateContinuousDays(event.uid, event.sendDate);
-            std::string repeatedAnswer = event.username + "今日已打卡，连续" + std::to_string(continuousDays) + "天";
-
-            std::wstring contentCopy = Utf8ToWstring(repeatedAnswer);
-            RECORD_HISTORY(contentCopy.c_str());
-
-            if (ConfigManager::Inst()->GetConfig().enableVoice) {
-                PlayCheckinTTS(repeatedAnswer, event.username);
-            }
-
-            SaveProfileAsync(profile);
-            return;
-        }
-#endif
 
         if (shouldCheckin) {
+            LOG_DEBUG(TEXT("[CaptainCheckInModule] Processing checkin for uid=%llu, guardLevel=%d, date=%d"), event.uid, event.guardLevel, event.sendDate);
             int32_t checkinDate = event.sendDate;
             int32_t continuousDays = ProfileManager::Inst()->CalculateContinuousDays(event.uid, checkinDate);
 
@@ -326,17 +319,31 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
             checkinEvt.checkinDate = checkinDate;
             checkinEvt.lastCheckinDate = profile.lastCheckinDate;
 
-            GenerateCheckinAnswerAsync(checkinEvt, [this, event](const AnswerResult& result) {
-                if (result.success && !result.answerContent.empty()) {
-                    std::wstring contentCopy = Utf8ToWstring(result.answerContent);
+            if (event.guardLevel > 0) {
+                GenerateCheckinAnswerAsync(checkinEvt, [this, event](const AnswerResult& result) {
+                    if (result.success && !result.answerContent.empty()) {
+                        std::wstring contentCopy = Utf8ToWstring(result.answerContent);
 
-                    RECORD_HISTORY(contentCopy.c_str());
+                        RECORD_HISTORY(contentCopy.c_str());
 
-                    if (ConfigManager::Inst()->GetConfig().enableVoice) {
-                        PlayCheckinTTS(result.answerContent, event.username);
+                        if (ConfigManager::Inst()->GetConfig().enableVoice) {
+                            PlayCheckinTTS(result.answerContent, event.username);
+                        }
                     }
+                });
+            } else {
+                std::string fixedAnswer = GetFallbackAnswer(checkinEvt);
+                std::wstring contentCopy = Utf8ToWstring(fixedAnswer);
+                RECORD_HISTORY(contentCopy.c_str());
+
+                std::wstring usernameW = Utf8ToWstring(event.username);
+                std::wstring answerW = Utf8ToWstring(fixedAnswer);
+                g_aiReplyCallback(usernameW.c_str(), answerW.c_str(), g_aiReplyUserData);
+
+                if (ConfigManager::Inst()->GetConfig().enableVoice) {
+                    PlayCheckinTTS(fixedAnswer, event.username);
                 }
-            });
+            }
         } else {
             SaveProfileAsync(profile);
         }
@@ -560,7 +567,7 @@ std::string CaptainCheckInModule::BuildPrompt(const CheckinEvent& event, const U
     }
 
     std::ostringstream oss;
-    oss << "用户" << event.username << "是一位舰长，今日第" << event.continuousDays << "天打卡" << lastCheckinInfo << "。\n"
+    oss << "用户" << event.username << "是一位舰长，连续第" << event.continuousDays << "天打卡" << lastCheckinInfo << "。\n"
         << "他的发言习惯包含：" << keywords << "\n"
         << "最近发言：" << recentMessages << "\n"
         << "请在回复中明确提到用户" << event.username << "的姓名，用轻松友好且有点皮的语气回复他的打卡，控制在20字以内。\n"
@@ -574,7 +581,7 @@ std::string CaptainCheckInModule::GetFallbackAnswer(const CheckinEvent& event) {
     }
     else {
         std::ostringstream oss;
-        oss << event.username << "今日第" << event.continuousDays << "天打卡！";
+        oss << event.username << "连续第" << event.continuousDays << "天打卡！";
         return oss.str();
     }
 }
