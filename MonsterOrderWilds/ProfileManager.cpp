@@ -25,7 +25,7 @@ namespace {
 
     bool InsertCheckinRecordWithRetry(sqlite3* db, uint64_t uid, int32_t checkinDate, int64_t timestamp, const std::string& username) {
         sqlite3_stmt* stmt = nullptr;
-        const char* sql = "INSERT OR IGNORE INTO checkin_records (uid, checkin_date, created_at, username) VALUES (?, ?, ?, ?)";
+        const char* sql = "INSERT INTO checkin_records (uid, checkin_date, created_at, username) VALUES (?, ?, ?, ?) ON CONFLICT(uid, checkin_date) DO UPDATE SET created_at = excluded.created_at, username = excluded.username WHERE checkin_records.created_at != excluded.created_at";
 
         for (int32_t retry = 0; retry < CHECKIN_RETRY_MAX; ++retry) {
             if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
@@ -357,7 +357,7 @@ void ProfileManager::RecordCheckin(uint64_t uid, const std::string& username, in
         sqlite3* db = (sqlite3*)storage_;
         
         sqlite3_stmt* stmt = nullptr;
-        const char* sql = "INSERT INTO checkin_records (uid, checkin_date, created_at, username) VALUES (?, ?, ?, ?)";
+        const char* sql = "INSERT INTO checkin_records (uid, checkin_date, created_at, username) VALUES (?, ?, ?, ?) ON CONFLICT(uid, checkin_date) DO UPDATE SET created_at = excluded.created_at, username = excluded.username WHERE checkin_records.created_at != excluded.created_at";
         
         if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
             sqlite3_bind_int64(stmt, 1, uid);

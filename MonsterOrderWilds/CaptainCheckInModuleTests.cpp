@@ -154,12 +154,33 @@ void TestCalculateContinuousDays_ProfileManagerIntegration()
 {
     uint64_t testUid = 888777666;
     int32_t today = 20260406;
-    
+
     ProfileManager::Inst()->RecordCheckin(testUid, "TestUser", today);
     int32_t days = ProfileManager::Inst()->CalculateContinuousDays(testUid, today);
-    
+
     assert(days >= 1);
     std::cout << "[PASS] TestCalculateContinuousDays_ProfileManagerIntegration" << std::endl;
+}
+
+void TestCheckinUpsertBehavior()
+{
+    uint64_t testUid = 999888777;
+    int32_t date1 = 20260410;
+    int32_t date2 = 20260411;
+
+    ProfileManager::Inst()->RecordCheckin(testUid, "UpsertTestUser", date1);
+    int32_t days1 = ProfileManager::Inst()->CalculateContinuousDays(testUid, date1);
+    assert(days1 == 1);
+
+    ProfileManager::Inst()->RecordCheckin(testUid, "UpsertTestUser", date1);
+    int32_t days1Repeat = ProfileManager::Inst()->CalculateContinuousDays(testUid, date1);
+    assert(days1Repeat == 1);
+
+    ProfileManager::Inst()->RecordCheckin(testUid, "UpsertTestUser", date2);
+    int32_t days2 = ProfileManager::Inst()->CalculateContinuousDays(testUid, date2);
+    assert(days2 == 2);
+
+    std::cout << "[PASS] TestCheckinUpsertBehavior" << std::endl;
 }
 
 void TestGenerateCheckinAnswerAsync_Callback()
@@ -201,6 +222,7 @@ void RunCaptainCheckInModuleTests()
     TestIsCheckinMessage_WithSpaces();
     TestSetTriggerWords_UpdatesCorrectly();
     TestCalculateContinuousDays_ProfileManagerIntegration();
+    TestCheckinUpsertBehavior();
     TestGenerateCheckinAnswerAsync_Callback();
     std::cout << "========== CaptainCheckInModule Tests: ALL PASS ==========" << std::endl;
 }
