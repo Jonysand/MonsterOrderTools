@@ -494,18 +494,24 @@ void TTSManager::ProcessAsyncTTS()
         }
     }
 
-    // 如果未达到并发上限，从队列取新的请求
-    while (activeRequestCount_ < MAX_CONCURRENT_TTS && !asyncPendingQueue_.empty()) {
-        AsyncTTSRequest& req = asyncPendingQueue_.front();
-        if (req.state != AsyncTTSState::Pending) {
-            break;
-        }
-        req.startTime = std::chrono::steady_clock::now();
-        activeRequestCount_++;
-        LOG_INFO(TEXT("TTS Async: Starting new request for: %s (active: %d)"), 
-            req.text.c_str(), activeRequestCount_.load());
-        ProcessPendingRequest(asyncPendingQueue_.begin());
-    }
+	// 如果未达到并发上限，从队列取新的请求（遍历队列找 Pending，不只是检查队首）
+	while (activeRequestCount_ < MAX_CONCURRENT_TTS && !asyncPendingQueue_.empty()) {
+		bool foundPending = false;
+		for (auto it = asyncPendingQueue_.begin(); it != asyncPendingQueue_.end(); ++it) {
+			if (it->state == AsyncTTSState::Pending) {
+				it->startTime = std::chrono::steady_clock::now();
+				activeRequestCount_++;
+				LOG_INFO(TEXT("TTS Async: Starting new request for: %s (active: %d)"),
+					it->text.c_str(), activeRequestCount_.load());
+				ProcessPendingRequest(it);
+				foundPending = true;
+				break;
+			}
+		}
+		if (!foundPending) {
+			break;
+		}
+	}
 }
 
 void TTSManager::ProcessPendingRequest(std::list<AsyncTTSRequest>::iterator it)
@@ -561,10 +567,11 @@ void TTSManager::ProcessPendingRequest(std::list<AsyncTTSRequest>::iterator it)
             it->audioData = response.audioData;
             it->state = AsyncTTSState::Playing;
             LOG_INFO(TEXT("TTS Async: API request succeeded, starting playback"));
-            
+
             if (it->isCheckinTTS && !it->checkinUsername.empty()) {
                 TTSCacheManager::Inst()->SaveCheckinAudio(it->checkinUsername, response.audioData, GetTickCount64());
             }
+
             if (it->callback) {
                 it->callback(true, "");
             }

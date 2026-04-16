@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "framework.h"
 #include <mutex>
 #include <list>
@@ -141,7 +141,7 @@ private:
 	// 异步TTS请求队列（API并发请求，播放串行）
 	std::list<AsyncTTSRequest> asyncPendingQueue_;      // 等待队列
 	std::atomic<int> activeRequestCount_{ 0 };   // 当前正在处理的请求数量
-	static constexpr int MAX_CONCURRENT_TTS = 3;       // API并发请求数
+	static constexpr int MAX_CONCURRENT_TTS = 64;      // API并发请求数
 	static constexpr int MAX_ASYNC_QUEUE_SIZE = 0;      // 队列大小限制（0=不限制）
 	static constexpr int MAX_RETRY_COUNT = 0;           // 最大重试次数
 	static constexpr int API_TIMEOUT_SECONDS = 5;       // API请求超时（秒）
