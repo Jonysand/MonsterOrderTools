@@ -3,11 +3,9 @@
 #include <mutex>
 #include <list>
 
-#if USE_MIMO_TTS
 #include "TTSProvider.h"
 #include "AudioPlayer.h"
 #include "TTSCacheManager.h"
-#endif
 
 struct ISpVoice;
 
@@ -87,7 +85,6 @@ public:
 	bool PlayAudioData(const std::vector<uint8_t>& audioData, const std::string& format = "mp3");
 	void SpeakCheckinTTS(const TString& text, const std::string& username);
 private:
-#if USE_MIMO_TTS
 	// 异步TTS方法
 	void SpeakWithMimoAsync(const TString& text, std::function<void(bool success, const std::string& errorMsg)> callback = nullptr);
 	// 处理异步TTS状态机
@@ -102,7 +99,6 @@ private:
 	void HandleRequestFailure(AsyncTTSRequest& req);
 	// 清理已完成/失败的请求
 	void CleanupCompletedRequests();
-#endif
 
 	void HandleDmOrderFood(const std::wstring& text, const std::wstring& uname);
 
@@ -132,7 +128,6 @@ private:
 	std::mutex sapiMutex_;
 	std::recursive_mutex asyncMutex_;  // 保护异步TTS请求状态（使用递归锁以便在ProcessAsyncTTS锁内调用子函数）
 
-#if USE_MIMO_TTS
 	// TTS提供者
 	std::unique_ptr<ITTSProvider> ttsProvider;
 	// 音频播放器
@@ -169,7 +164,6 @@ private:
 	bool IsInCooldown(const std::string& comboId);
 	void UpdateCooldown(const std::string& comboId);
 	void CleanupExpiredCooldowns();
-#endif
 
 	// 引擎降级相关
 	bool isFallback{ false };              // 是否已降级到SAPI

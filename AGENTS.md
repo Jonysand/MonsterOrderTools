@@ -56,7 +56,6 @@
 - 添加文件后检查 `.vcxproj.filters` 文件，确保新增文件在正确的 `<Filter>` 节点下
 
 ### 编译宏
-- USE_MIMO_TTS: 编译时开关，默认启用（设为0可排除MiMo代码）
 - RUN_UNIT_TESTS: Debug 模式启用，用于单元测试
 
 ### 调试日志规则

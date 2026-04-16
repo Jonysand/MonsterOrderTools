@@ -1,4 +1,4 @@
-﻿// header.h : include file for standard system include files,
+// header.h : include file for standard system include files,
 // or project specific include files
 //
 
@@ -41,12 +41,6 @@ using json = nlohmann::json;
 
 // md5 & sha256
 #include "hashpp.h"
-
-// 小米MiMo TTS 编译时开关
-// 设为 0 可完全排除小米MiMo相关代码（适用于无网络环境或不需要小米MiMo的场景）
-#ifndef USE_MIMO_TTS
-#define USE_MIMO_TTS 1
-#endif
 
 // 本地测试宏 - 跳过舰长检测，方便本地测试 captain-checkin-ai-reply 功能
 #ifndef TEST_CAPTAIN_REPLY_LOCAL

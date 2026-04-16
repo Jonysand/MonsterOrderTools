@@ -52,7 +52,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;RUN_UNIT_TESTS;USE_CAPTAIN_CHECKIN;USE_MIMO_TTS=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;RUN_UNIT_TESTS;USE_CAPTAIN_CHECKIN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>false</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)../ExternalLibs/Foundation/include;$(ProjectDir)../ExternalLibs/Net/include;$(ProjectDir)external;$(ProjectDir)..;$(ProjectDir)..\external;$(ProjectDir)..\external/sqlite_orm/include;$(ProjectDir)..\external/cppjieba/include;$(ProjectDir)..\external/cppjieba/deps/limonp/include;$(ProjectDir)../ExternalLibs</AdditionalIncludeDirectories>
@@ -69,7 +69,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;RUN_UNIT_TESTS;USE_CAPTAIN_CHECKIN;USE_MIMO_TTS=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;RUN_UNIT_TESTS;USE_CAPTAIN_CHECKIN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>false</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)../ExternalLibs/Foundation/include;$(ProjectDir)../ExternalLibs/Net/include;$(ProjectDir)external;$(ProjectDir)..;$(ProjectDir)..\external;$(ProjectDir)..\external/sqlite_orm/include;$(ProjectDir)..\external/cppjieba/include;$(ProjectDir)..\external/cppjieba/deps/limonp/include;$(ProjectDir)../ExternalLibs</AdditionalIncludeDirectories>

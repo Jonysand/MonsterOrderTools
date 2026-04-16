@@ -26,7 +26,7 @@ TTSManager::TTSManager()
     lastFailureTime = std::chrono::steady_clock::now();
     lastRecoveryAttempt = std::chrono::steady_clock::now();
 
-#if USE_MIMO_TTS
+
     const auto& config = ConfigManager::Inst()->GetConfig();
     ttsProvider = TTSProviderFactory::Create(
         GetMIMO_API_KEY(),
@@ -34,18 +34,18 @@ TTSManager::TTSManager()
         config.ttsEngine);
     audioPlayer = new AudioPlayer();
     TTSCacheManager::Inst()->Initialize();
-#endif
+
 }
 
 TTSManager::~TTSManager()
 {
-#if USE_MIMO_TTS
+
     ttsProvider.reset();
     if (audioPlayer != NULL) {
         delete audioPlayer;
         audioPlayer = NULL;
     }
-#endif
+
 
     if (pVoice != NULL) {
         pVoice->Release();
@@ -62,7 +62,7 @@ void TTSManager::Tick()
     LastTickTime = now;
 
     // 检查是否需要尝试恢复MiMo TTS
-#if USE_MIMO_TTS
+
     if (ShouldTryRecovery()) {
         TryRecovery();
     }
@@ -70,7 +70,7 @@ void TTSManager::Tick()
     // 处理异步TTS状态机
     ProcessAsyncTTS();
     CleanupCompletedRequests();
-#endif
+
 
     if (!NormalMsgQueue.empty())
     {
@@ -110,7 +110,7 @@ void TTSManager::Tick()
             ++it;
     }
     
-#if USE_MIMO_TTS
+
     for (auto it = dynamicComboMap_.begin(); it != dynamicComboMap_.end(); ) {
         it->second.combo_timeout -= deltaTime;
         if (it->second.combo_timeout <= 0.0f) {
@@ -132,7 +132,7 @@ void TTSManager::Tick()
         CleanupExpiredCooldowns();
         lastCooldownCleanup = GetTickCount64();
     }
-#endif
+
 }
 
 void TTSManager::HandleSpeekDm(const json& data)
@@ -293,7 +293,7 @@ bool TTSManager::Speak(const TString& text)
 {
     LOG_INFO(TEXT("=== TTS Speak called with text: %s ==="), text.c_str());
     
-#if USE_MIMO_TTS
+
     TTSEngine engine = GetActiveEngine();
     
     LOG_INFO(TEXT("TTS Engine: %d, isFallback: %d"), (int)engine, (int)isFallback);
@@ -304,7 +304,7 @@ bool TTSManager::Speak(const TString& text)
         SpeakWithMimoAsync(text);
         return true;  // 返回true表示请求已提交（不代表播放完成）
     }
-#endif
+
     
     // 使用Windows SAPI
     LOG_INFO(TEXT("Using SAPI fallback"));
@@ -312,7 +312,7 @@ bool TTSManager::Speak(const TString& text)
 }
 
 bool TTSManager::PlayAudioData(const std::vector<uint8_t>& audioData, const std::string& format) {
-#if USE_MIMO_TTS
+
     if (audioPlayer == NULL) {
         LOG_ERROR(TEXT("PlayAudioData: audioPlayer is NULL"));
         return false;
@@ -322,14 +322,10 @@ bool TTSManager::PlayAudioData(const std::vector<uint8_t>& audioData, const std:
         LOG_ERROR(TEXT("PlayAudioData: AudioPlayer::Play failed"));
     }
     return success;
-#else
-    LOG_WARNING(TEXT("PlayAudioData: MIMO TTS not enabled, using SAPI"));
-    return false;
-#endif
 }
 
 void TTSManager::SpeakCheckinTTS(const TString& text, const std::string& username) {
-#if USE_MIMO_TTS
+
     if (!ttsProvider) {
         LOG_ERROR(TEXT("SpeakCheckinTTS: ttsProvider is NULL"));
         return;
@@ -353,7 +349,7 @@ void TTSManager::SpeakCheckinTTS(const TString& text, const std::string& usernam
         asyncPendingQueue_.push_back(req);
     }
     LOG_DEBUG(TEXT("SpeakCheckinTTS: Request added to queue for: %s"), text.c_str());
-#endif
+
 }
 
 bool TTSManager::SpeakWithSapi(const TString& text)
@@ -412,7 +408,7 @@ bool TTSManager::SpeakWithSapi(const TString& text)
     return SUCCEEDED(hr);
 }
 
-#if USE_MIMO_TTS
+
 void TTSManager::SpeakWithMimoAsync(const TString& text, std::function<void(bool success, const std::string& errorMsg)> callback)
 {
     LOG_INFO(TEXT("=== SpeakWithMimoAsync called ==="));
@@ -715,30 +711,27 @@ void TTSManager::CleanupCompletedRequests()
         }
     }
 }
-#endif
+
 
 bool TTSManager::IsUsingMimoTTS() const
 {
-#if USE_MIMO_TTS
+
     TTSEngine engine = GetActiveEngine();
     return (engine == TTSEngine::MIMO || (engine == TTSEngine::AUTO && !isFallback));
-#else
-    return false;
-#endif
 }
 
 void TTSManager::RefreshEngineStatus()
 {
-#if USE_MIMO_TTS
+
     isFallback = false;
     consecutiveFailures = 0;
     LOG_INFO(TEXT("TTS engine status refreshed"));
-#endif
+
 }
 
 TTSManager::TTSEngine TTSManager::GetActiveEngine() const
 {
-#if USE_MIMO_TTS
+
     const auto& config = ConfigManager::Inst()->GetConfig();
     if (config.ttsEngine.empty()) {
         return TTSEngine::AUTO;
@@ -751,26 +744,23 @@ TTSManager::TTSEngine TTSManager::GetActiveEngine() const
     } else {
         return TTSEngine::AUTO;
     }
-#else
-    return TTSEngine::SAPI;
-#endif
 }
 
 void TTSManager::TriggerFallback()
 {
-#if USE_MIMO_TTS
+
     if (!isFallback) {
         isFallback = true;
         fallbackReason = "Consecutive failures exceeded limit";
         LOG_WARNING(TEXT("TTS engine fallback triggered: switching to SAPI after %d consecutive failures"),
             consecutiveFailures);
     }
-#endif
+
 }
 
 void TTSManager::TryRecovery()
 {
-#if USE_MIMO_TTS
+
     if (!ttsProvider) {
         return;
     }
@@ -786,12 +776,12 @@ void TTSManager::TryRecovery()
         lastRecoveryAttempt = std::chrono::steady_clock::now();
         LOG_WARNING(TEXT("MiMo TTS recovery failed - API still not available"));
     }
-#endif
+
 }
 
 bool TTSManager::ShouldTryRecovery() const
 {
-#if USE_MIMO_TTS
+
     if (!isFallback) {
         return false;
     }
@@ -799,9 +789,6 @@ bool TTSManager::ShouldTryRecovery() const
     auto now = std::chrono::steady_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - lastRecoveryAttempt).count();
     return elapsed >= RECOVERY_INTERVAL_SECONDS;
-#else
-    return false;
-#endif
 }
 
 bool TTSManager::IsInCooldown(const std::string& comboId) {
