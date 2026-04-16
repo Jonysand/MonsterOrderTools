@@ -19,11 +19,21 @@ enum class AsyncTTSState
 	Failed          // 失败
 };
 
+// TTS引擎类型枚举
+enum class TTSEngineType
+{
+	Auto,
+	MiniMax,
+	MiMo,
+	SAPI
+};
+
 // 异步TTS请求结构
 struct AsyncTTSRequest
 {
 	TString text;                           // 播报文本
 	AsyncTTSState state = AsyncTTSState::Pending;  // 当前状态
+	TTSEngineType engineType = TTSEngineType::Auto;  // 引擎类型
 	std::vector<uint8_t> audioData;        // API返回的音频数据
 	std::string responseFormat;            // 音频格式
 	std::chrono::steady_clock::time_point startTime;  // 状态开始时间
@@ -79,6 +89,12 @@ public:
 	void RefreshEngineStatus();
 	// 使用SAPI进行语音播报
 	bool SpeakWithSapi(const TString& text);
+	// 获取当前配置的引擎类型
+	TTSEngineType GetActiveEngineType() const;
+	// SAPI同步播放（用于队列管理）
+	bool SpeakWithSapiSync(const TString& text);
+	// 重新创建TTSProvider（用于运行时切换引擎）
+	void RefreshTTSProvider();
 
 public:
 	bool Speak(const TString& text);

@@ -22,7 +22,10 @@ void ConfigFieldRegistry::RegisterAll()
     if (!fields.empty()) return;
 
     REGISTER_FIELD("idCode", std::string, idCode, ConfigFieldType::String);
-    REGISTER_FIELD("ttsEngine", std::string, ttsEngine, ConfigFieldType::String);
+    REGISTER_FIELD_WITH_CALLBACK("ttsEngine", std::string, ttsEngine, ConfigFieldType::String,
+        [](ConfigData& cfg) {
+            TTSManager::Inst()->RefreshTTSProvider();
+        });
     REGISTER_FIELD("mimoApiKey", std::string, mimoApiKey, ConfigFieldType::String);
     REGISTER_FIELD("mimoVoice", std::string, mimoVoice, ConfigFieldType::String);
     REGISTER_FIELD("mimoStyle", std::string, mimoStyle, ConfigFieldType::String);

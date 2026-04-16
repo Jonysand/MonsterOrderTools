@@ -35,6 +35,10 @@ TTSManager::TTSManager()
     audioPlayer = new AudioPlayer();
     TTSCacheManager::Inst()->Initialize();
 
+    ConfigManager::Inst()->AddConfigChangedListener([this](const ConfigData& config) {
+        this->RefreshTTSProvider();
+    });
+
 }
 
 TTSManager::~TTSManager()
@@ -292,23 +296,18 @@ void TTSManager::HandleSpeekEnter(const json& data)
 bool TTSManager::Speak(const TString& text)
 {
     LOG_INFO(TEXT("=== TTS Speak called with text: %s ==="), text.c_str());
-    
 
-    TTSEngine engine = GetActiveEngine();
-    
-    LOG_INFO(TEXT("TTS Engine: %d, isFallback: %d"), (int)engine, (int)isFallback);
-    
-    if (engine == TTSEngine::MIMO || (engine == TTSEngine::AUTO && !isFallback)) {
-        LOG_INFO(TEXT("Submitting async MiMo TTS for: %s"), text.c_str());
-        // 异步提交到MiMo TTS队列，立即返回（不阻塞调用线程）
-        SpeakWithMimoAsync(text);
-        return true;  // 返回true表示请求已提交（不代表播放完成）
-    }
+    AsyncTTSRequest req;
+    req.text = text;
+    req.engineType = GetActiveEngineType();
+    req.state = AsyncTTSState::Pending;
+    req.startTime = std::chrono::steady_clock::now();
 
-    
-    // 使用Windows SAPI
-    LOG_INFO(TEXT("Using SAPI fallback"));
-    return SpeakWithSapi(text);
+    LOG_INFO(TEXT("TTS Engine type: %d"), (int)req.engineType);
+
+    std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
+    asyncPendingQueue_.push_back(req);
+    return true;
 }
 
 bool TTSManager::PlayAudioData(const std::vector<uint8_t>& audioData, const std::string& format) {
@@ -406,6 +405,88 @@ bool TTSManager::SpeakWithSapi(const TString& text)
     HRESULT hr = pVoice->Speak(ssml.c_str(), SPF_IS_XML | SPF_ASYNC, NULL);
     LOG_DEBUG(TEXT("SpeakWithSapi: Speak result=0x%08X"), hr);
     return SUCCEEDED(hr);
+}
+
+TTSEngineType TTSManager::GetActiveEngineType() const
+{
+    const auto& config = ConfigManager::Inst()->GetConfig();
+    if (config.ttsEngine.empty() || config.ttsEngine == "auto") {
+        return TTSEngineType::Auto;
+    }
+    if (config.ttsEngine == "minimax") {
+        return TTSEngineType::MiniMax;
+    }
+    if (config.ttsEngine == "mimo") {
+        return TTSEngineType::MiMo;
+    }
+    if (config.ttsEngine == "sapi") {
+        return TTSEngineType::SAPI;
+    }
+    return TTSEngineType::Auto;
+}
+
+bool TTSManager::SpeakWithSapiSync(const TString& text)
+{
+    std::lock_guard<std::mutex> lock(sapiMutex_);
+
+    if (pVoice == NULL) {
+        LOG_ERROR(TEXT("SpeakWithSapiSync: pVoice is NULL"));
+        return false;
+    }
+
+    {
+        ISpObjectToken* pChineseToken = NULL;
+        HRESULT hrToken = SpFindBestToken(SPCAT_VOICES, L"Language=804", NULL, &pChineseToken);
+        if (SUCCEEDED(hrToken) && pChineseToken) {
+            pVoice->SetVoice(pChineseToken);
+            LOG_DEBUG(TEXT("SpeakWithSapiSync: Set Chinese voice"));
+            pChineseToken->Release();
+        } else {
+            LOG_DEBUG(TEXT("SpeakWithSapiSync: Chinese voice not found, hr=0x%08X"), hrToken);
+        }
+    }
+
+    int speechRate = ConfigManager::Inst()->GetConfig().speechRate;
+    int speechVolume = ConfigManager::Inst()->GetConfig().speechVolume;
+    int pitch = ConfigManager::Inst()->GetConfig().speechPitch;
+    LOG_DEBUG(TEXT("SpeakWithSapiSync: rate=%d, volume=%d, pitch=%d"), speechRate, speechVolume, pitch);
+
+    pVoice->SetRate(speechRate);
+    pVoice->SetVolume(speechVolume);
+    std::wstring pitchStr = (pitch >= 0 ? L"+" : L"") + std::to_wstring(pitch) + L"st";
+
+    std::wstring safeText;
+    safeText.reserve(text.size());
+    for (wchar_t ch : text) {
+        if (ch == L'<') {
+            safeText += L"&lt;";
+        }
+        else if (ch == L'&') {
+            safeText += L"&amp;";
+        }
+        else if (ch == L'>') {
+            safeText += L"&gt;";
+        }
+        else {
+            safeText += ch;
+        }
+    }
+
+    std::wstring ssml = L"<speak version='1.0' xml:lang='zh-CN'><prosody pitch='" + pitchStr + L"'>" + safeText + L"</prosody></speak>";
+    HRESULT hr = pVoice->Speak(ssml.c_str(), SPF_IS_XML, NULL);
+    LOG_DEBUG(TEXT("SpeakWithSapiSync: Speak result=0x%08X"), hr);
+    return SUCCEEDED(hr);
+}
+
+void TTSManager::RefreshTTSProvider()
+{
+    const auto& config = ConfigManager::Inst()->GetConfig();
+    LOG_INFO(TEXT("Refreshing TTS provider, engine: %s"), config.ttsEngine.c_str());
+    ttsProvider = TTSProviderFactory::Create(
+        GetMIMO_API_KEY(),
+        GetMINIMAX_API_KEY(),
+        config.ttsEngine);
+    LOG_INFO(TEXT("TTS provider refreshed successfully"));
 }
 
 
@@ -513,6 +594,17 @@ void TTSManager::ProcessAsyncTTS()
 void TTSManager::ProcessPendingRequest(std::list<AsyncTTSRequest>::iterator it)
 {
     AsyncTTSRequest& req = *it;
+
+    // 处理 SAPI 请求（同步播放）
+    if (req.engineType == TTSEngineType::SAPI) {
+        LOG_INFO(TEXT("TTS Async: Processing SAPI request"));
+        bool success = SpeakWithSapiSync(req.text);
+        req.state = success ? AsyncTTSState::Completed : AsyncTTSState::Failed;
+        req.errorMessage = success ? "" : "SAPI speak failed";
+        return;
+    }
+
+    // 处理 MiniMax/MiMo 请求
     // Pending → Requesting: 发起API请求
     if (req.text.empty()) {
         LOG_ERROR(TEXT("TTS Async: req.text is empty!"));
