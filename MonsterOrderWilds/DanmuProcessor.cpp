@@ -158,7 +158,7 @@ DanmuProcessResult DanmuProcessor::ProcessDanmu(const DanmuData& danmu)
         capEvent.content = danmu.message;
         capEvent.serverTimestamp = danmu.timestamp;
 
-        std::time_t timeSec = danmu.timestamp / 1000;
+        std::time_t timeSec = danmu.timestamp;
         std::tm tmResult = {};
         if (localtime_s(&tmResult, &timeSec) == 0) {
             capEvent.sendDate = (tmResult.tm_year + 1900) * 10000 + (tmResult.tm_mon + 1) * 100 + tmResult.tm_mday;
@@ -178,7 +178,7 @@ DanmuProcessResult DanmuProcessor::ProcessDanmu(const DanmuData& danmu)
         capEvent.content = danmu.message;
         capEvent.serverTimestamp = danmu.timestamp;
 
-        std::time_t timeSec = danmu.timestamp / 1000;
+        std::time_t timeSec = danmu.timestamp;
         std::tm tmResult = {};
         if (localtime_s(&tmResult, &timeSec) == 0) {
             capEvent.sendDate = (tmResult.tm_year + 1900) * 10000 + (tmResult.tm_mon + 1) * 100 + tmResult.tm_mday;

@@ -30,6 +30,23 @@ namespace {
     constexpr int64_t LEARN_TIME_WINDOW_MS = 5000;
     constexpr int32_t MAX_SAME_CONTENT_SKIP = 3;
 
+    bool IsLeapYear(int32_t year) {
+        return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
+    }
+
+    int32_t GetDaysInMonth(int32_t year, int32_t month) {
+        switch (month) {
+            case 1: case 3: case 5: case 7: case 8: case 10: case 12:
+                return 31;
+            case 4: case 6: case 9: case 11:
+                return 30;
+            case 2:
+                return IsLeapYear(year) ? 29 : 28;
+            default:
+                return 30;
+        }
+    }
+
     const std::set<std::string> STOP_WORDS = {
         "的", "了", "在", "是", "我", "你", "他", "她", "它",
         "这", "那", "都", "和", "与", "或", "一", "一下",
@@ -282,6 +299,7 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
             checkinEvt.username = event.username;
             checkinEvt.continuousDays = continuousDays;
             checkinEvt.checkinDate = checkinDate;
+            checkinEvt.lastCheckinDate = profile.lastCheckinDate;
 
             GenerateCheckinAnswerAsync(checkinEvt, [this, event](const AnswerResult& result) {
                 if (result.success && !result.answerContent.empty()) {
@@ -483,8 +501,41 @@ std::string CaptainCheckInModule::BuildPrompt(const CheckinEvent& event, const U
         recentMessages = "（暂无历史发言）";
     }
 
+    std::string lastCheckinInfo;
+    if (event.lastCheckinDate > 0) {
+        int32_t lastYear = event.lastCheckinDate / 10000;
+        int32_t lastMonth = (event.lastCheckinDate % 10000) / 100;
+        int32_t lastDay = event.lastCheckinDate % 100;
+        int32_t daysSinceLastCheckin = 0;
+        if (event.checkinDate > event.lastCheckinDate) {
+            int32_t currentYear = event.checkinDate / 10000;
+            int32_t currentMonth = (event.checkinDate % 10000) / 100;
+            int32_t currentDay = event.checkinDate % 100;
+            if (currentYear == lastYear && currentMonth == lastMonth) {
+                daysSinceLastCheckin = currentDay - lastDay;
+            } else if (currentYear == lastYear && currentMonth == lastMonth + 1) {
+                int32_t lastMonthDays = GetDaysInMonth(lastYear, lastMonth);
+                if (currentDay == 1) {
+                    daysSinceLastCheckin = lastMonthDays - lastDay + 1;
+                }
+            } else if (currentMonth == 1 && lastMonth == 12 && currentYear == lastYear + 1) {
+                if (currentDay == 1) {
+                    daysSinceLastCheckin = 31 - lastDay + 1;
+                }
+            } else {
+                daysSinceLastCheckin = currentDay;
+            }
+        }
+        std::ostringstream infoOss;
+        infoOss << "，上次打卡是" << lastMonth << "月" << lastDay << "日";
+        if (daysSinceLastCheckin > 0) {
+            infoOss << "（" << daysSinceLastCheckin << "天前）";
+        }
+        lastCheckinInfo = infoOss.str();
+    }
+
     std::ostringstream oss;
-    oss << "用户" << event.username << "是一位舰长，今日第" << event.continuousDays << "天打卡。\n"
+    oss << "用户" << event.username << "是一位舰长，今日第" << event.continuousDays << "天打卡" << lastCheckinInfo << "。\n"
         << "他的发言习惯包含：" << keywords << "\n"
         << "最近发言：" << recentMessages << "\n"
         << "请在回复中明确提到用户" << event.username << "的姓名，用轻松友好且有点皮的语气回复他的打卡，控制在20字以内。\n"

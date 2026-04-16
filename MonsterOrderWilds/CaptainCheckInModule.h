@@ -28,6 +28,7 @@ struct CheckinEvent {
     std::string username;
     int32_t continuousDays = 0;
     int32_t checkinDate = 0;
+    int32_t lastCheckinDate = 0;
 };
 
 struct AnswerResult {
