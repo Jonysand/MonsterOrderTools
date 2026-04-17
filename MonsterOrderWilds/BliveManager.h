@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "framework.h"
 #include "Network.h"
 #include "EventSystem.h"
@@ -47,6 +47,9 @@ inline const char* DisconnectReasonToString(DisconnectReason reason) {
 
 
 static constexpr int MAX_RECONNECT_ATTEMPTS = 5;
+static constexpr uint64_t RECONNECT_DELAY_MS = 1000;
+static constexpr uint64_t WS_HEARTBEAT_RECONNECT_DELAY_MS = 2000;
+static constexpr uint64_t INITIAL_HEARTBEAT_DELAY_MS = 5000;
 
 
 class BliveManager

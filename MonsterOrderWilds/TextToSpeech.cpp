@@ -77,78 +77,75 @@ void TTSManager::Tick()
     float deltaTime = std::chrono::duration<float>(now - LastTickTime).count();
     LastTickTime = now;
 
-    // 检查是否需要尝试恢复MiMo TTS
-
     if (ShouldTryRecovery()) {
         TryRecovery();
     }
 
-    // 处理异步TTS状态机
     ProcessAsyncTTS();
     CleanupCompletedRequests();
 
-
-    if (!NormalMsgQueue.empty())
     {
-        LOG_INFO(TEXT("=== NormalMsgQueue has %zu messages ==="), NormalMsgQueue.size());
-        if (ConfigManager::Inst()->GetConfig().enableVoice) {
-            LOG_INFO(TEXT("=== enableVoice is true, calling Speak ==="));
-            Speak(NormalMsgQueue.front());
-        } else {
-            LOG_INFO(TEXT("=== enableVoice is false, skipping Speak ==="));
-        }
-        NormalMsgQueue.pop_front();
-    }
-    if (!GiftMsgQueue.empty())
-    {
-        if (ConfigManager::Inst()->GetConfig().enableVoice)
-            Speak(GiftMsgQueue.front());
-        GiftMsgQueue.pop_front();
-    }
-    if (!HistoryLogMsgQueue.empty())
-    {
-        RECORD_HISTORY(HistoryLogMsgQueue.front().c_str());
-        HistoryLogMsgQueue.pop_front();
-    }
-    
-    for (auto it = ComboGiftMsgPrepareMap.begin(); it != ComboGiftMsgPrepareMap.end(); )
-    {
-        it->second.combo_timeout -= deltaTime;
-        if (it->second.combo_timeout <= 0.0f)
+        std::lock_guard<std::mutex> lock(queueMutex_);
+        if (!NormalMsgQueue.empty())
         {
-            TString msg = TEXT("感谢 ") + utf8_to_wstring(it->second.uname) + TEXT(" 赠送的") + std::to_wstring(it->second.gift_num) + TEXT("个") + utf8_to_wstring(it->second.gift_name);
-            if (ConfigManager::Inst()->GetConfig().enableVoice && (!ConfigManager::Inst()->GetConfig().onlySpeekPaidGift || it->second.paid))
-                GiftMsgQueue.push_back(msg);
-            HistoryLogMsgQueue.push_back(msg);
-            it = ComboGiftMsgPrepareMap.erase(it);
-        }
-        else
-            ++it;
-    }
-    
-
-    for (auto it = dynamicComboMap_.begin(); it != dynamicComboMap_.end(); ) {
-        it->second.combo_timeout -= deltaTime;
-        if (it->second.combo_timeout <= 0.0f) {
-            if (!it->second.firstReported || it->second.gift_num > 0) {
-                TString msg = TEXT("感谢 ") + utf8_to_wstring(it->second.uname) + 
-                              TEXT(" 赠送的") + std::to_wstring(it->second.gift_num) + 
-                              TEXT("个") + utf8_to_wstring(it->second.gift_name);
-                GiftMsgQueue.push_back(msg);
-                HistoryLogMsgQueue.push_back(msg);
+            LOG_INFO(TEXT("=== NormalMsgQueue has %zu messages ==="), NormalMsgQueue.size());
+            if (ConfigManager::Inst()->GetConfig().enableVoice) {
+                LOG_INFO(TEXT("=== enableVoice is true, calling Speak ==="));
+                Speak(NormalMsgQueue.front());
+            } else {
+                LOG_INFO(TEXT("=== enableVoice is false, skipping Speak ==="));
             }
-            it = dynamicComboMap_.erase(it);
-        } else {
-            ++it;
+            NormalMsgQueue.pop_front();
+        }
+        if (!GiftMsgQueue.empty())
+        {
+            if (ConfigManager::Inst()->GetConfig().enableVoice)
+                Speak(GiftMsgQueue.front());
+            GiftMsgQueue.pop_front();
+        }
+        if (!HistoryLogMsgQueue.empty())
+        {
+            RECORD_HISTORY(HistoryLogMsgQueue.front().c_str());
+            HistoryLogMsgQueue.pop_front();
+        }
+
+        for (auto it = ComboGiftMsgPrepareMap.begin(); it != ComboGiftMsgPrepareMap.end(); )
+        {
+            it->second.combo_timeout -= deltaTime;
+            if (it->second.combo_timeout <= 0.0f)
+            {
+                TString msg = TEXT("感谢 ") + utf8_to_wstring(it->second.uname) + TEXT(" 赠送的") + std::to_wstring(it->second.gift_num) + TEXT("个") + utf8_to_wstring(it->second.gift_name);
+                if (ConfigManager::Inst()->GetConfig().enableVoice && (!ConfigManager::Inst()->GetConfig().onlySpeekPaidGift || it->second.paid))
+                    GiftMsgQueue.push_back(msg);
+                HistoryLogMsgQueue.push_back(msg);
+                it = ComboGiftMsgPrepareMap.erase(it);
+            }
+            else
+                ++it;
+        }
+
+        for (auto it = dynamicComboMap_.begin(); it != dynamicComboMap_.end(); ) {
+            it->second.combo_timeout -= deltaTime;
+            if (it->second.combo_timeout <= 0.0f) {
+                if (!it->second.firstReported || it->second.gift_num > 0) {
+                    TString msg = TEXT("感谢 ") + utf8_to_wstring(it->second.uname) +
+                                  TEXT(" 赠送的") + std::to_wstring(it->second.gift_num) +
+                                  TEXT("个") + utf8_to_wstring(it->second.gift_name);
+                    GiftMsgQueue.push_back(msg);
+                    HistoryLogMsgQueue.push_back(msg);
+                }
+                it = dynamicComboMap_.erase(it);
+            } else {
+                ++it;
+            }
         }
     }
-    
+
     static int64_t lastCooldownCleanup = 0;
-    if (GetTickCount64() - lastCooldownCleanup > 60000) {
+    if (GetTickCount64() - lastCooldownCleanup > COOLDOWN_CLEANUP_INTERVAL_MS) {
         CleanupExpiredCooldowns();
         lastCooldownCleanup = GetTickCount64();
     }
-
 }
 
 void TTSManager::HandleSpeekDm(const json& data)
@@ -162,7 +159,10 @@ void TTSManager::HandleSpeekDm(const json& data)
     const auto& uname = data["uname"].get<std::string>();
     const auto& msg = utf8_to_wstring(data["msg"].get<std::string>());
     TString msgTString = utf8_to_wstring(uname) + TEXT(" 说：") + msg;
-    HistoryLogMsgQueue.push_back(msgTString);
+    {
+        std::lock_guard<std::mutex> lock(queueMutex_);
+        HistoryLogMsgQueue.push_back(msgTString);
+    }
     if (ConfigManager::Inst()->GetConfig().onlySpeekWearingMedal && !wearing_medal)
         return;
     if (ConfigManager::Inst()->GetConfig().onlySpeekGuardLevel != 0 && (guard_level == 0 || guard_level > ConfigManager::Inst()->GetConfig().onlySpeekGuardLevel))
@@ -174,7 +174,10 @@ void TTSManager::HandleSpeekDm(const json& data)
     else if (msg == TEXT("签到") || msg == TEXT("打卡")) {
     }
     else
+    {
+        std::lock_guard<std::mutex> lock(queueMutex_);
         NormalMsgQueue.push_back(msgTString);
+    }
 }
 
 void TTSManager::HandleSpeekSendGift(const json& data)
@@ -187,73 +190,77 @@ void TTSManager::HandleSpeekSendGift(const json& data)
     std::string gift_id = std::to_string(data["gift_id"].get<int>());
     std::string combo_id = open_id + gift_id;
 
-    if (IsInCooldown(combo_id)) {
-        auto it = dynamicComboMap_.find(combo_id);
-        if (it != dynamicComboMap_.end()) {
-            it->second.gift_num += gift_num;
-            it->second.lastUpdateTime = GetTickCount64();
-            it->second.combo_timeout = DYNAMIC_COMBO_WINDOW_SECONDS;
-        }
-        return;
-    }
+    {
+        std::lock_guard<std::mutex> lock(queueMutex_);
 
-    if (paid && data.contains("combo_info")) {
-        std::string official_combo_id = data["combo_info"]["combo_id"].get<std::string>();
-        int combo_timeout = data["combo_info"]["combo_timeout"].get<int>();
-        int combo_base_num = data["combo_info"]["combo_base_num"].get<int>();
-        int combo_count = data["combo_info"]["combo_count"].get<int>();
-        gift_num = combo_base_num * combo_count;
-        
-        auto it = ComboGiftMsgPrepareMap.find(official_combo_id);
-        if (it != ComboGiftMsgPrepareMap.end()) {
-            it->second.combo_timeout = combo_timeout;
-            it->second.gift_num = gift_num;
-        } else {
-            ComboGiftMsgEntry info;
-            info.uname = uname;
-            info.gift_name = gift_name;
-            info.gift_num = gift_num;
-            info.combo_timeout = combo_timeout;
-            info.paid = paid;
-            ComboGiftMsgPrepareMap.emplace(official_combo_id, std::move(info));
+        if (IsInCooldown(combo_id)) {
+            auto it = dynamicComboMap_.find(combo_id);
+            if (it != dynamicComboMap_.end()) {
+                it->second.gift_num += gift_num;
+                it->second.lastUpdateTime = GetTickCount64();
+                it->second.combo_timeout = DYNAMIC_COMBO_WINDOW_SECONDS;
+            }
+            return;
         }
-    } else {
-        auto it = dynamicComboMap_.find(combo_id);
-        if (it != dynamicComboMap_.end()) {
-            it->second.gift_num += gift_num;
-            it->second.lastUpdateTime = GetTickCount64();
-            it->second.combo_timeout = DYNAMIC_COMBO_WINDOW_SECONDS;
-            
-            if (!it->second.firstReported && it->second.gift_num >= 3) {
-                TString firstMsg = TEXT("感谢 ") + utf8_to_wstring(it->second.uname) + 
-                                   TEXT(" 开始赠送") + utf8_to_wstring(it->second.gift_name);
-                GiftMsgQueue.push_back(firstMsg);
-                HistoryLogMsgQueue.push_back(firstMsg);
-                it->second.firstReported = true;
-                UpdateCooldown(combo_id);
+
+        if (paid && data.contains("combo_info")) {
+            std::string official_combo_id = data["combo_info"]["combo_id"].get<std::string>();
+            int combo_timeout = data["combo_info"]["combo_timeout"].get<int>();
+            int combo_base_num = data["combo_info"]["combo_base_num"].get<int>();
+            int combo_count = data["combo_info"]["combo_count"].get<int>();
+            gift_num = combo_base_num * combo_count;
+
+            auto it = ComboGiftMsgPrepareMap.find(official_combo_id);
+            if (it != ComboGiftMsgPrepareMap.end()) {
+                it->second.combo_timeout = combo_timeout;
+                it->second.gift_num = gift_num;
+            } else {
+                ComboGiftMsgEntry info;
+                info.uname = uname;
+                info.gift_name = gift_name;
+                info.gift_num = gift_num;
+                info.combo_timeout = combo_timeout;
+                info.paid = paid;
+                ComboGiftMsgPrepareMap.emplace(official_combo_id, std::move(info));
             }
         } else {
-            DynamicComboEntry entry;
-            entry.combo_id = combo_id;
-            entry.uname = uname;
-            entry.gift_name = gift_name;
-            entry.gift_num = gift_num;
-            entry.combo_timeout = DYNAMIC_COMBO_WINDOW_SECONDS;
-            entry.paid = paid;
-            entry.firstReported = false;
-            entry.lastUpdateTime = GetTickCount64();
-            dynamicComboMap_.emplace(combo_id, std::move(entry));
-            
-            if (gift_num < 3) {
-                TString msg = TEXT("感谢 ") + utf8_to_wstring(uname) + TEXT(" 赠送的") + 
-                              std::to_wstring(gift_num) + TEXT("个") + utf8_to_wstring(gift_name);
-                GiftMsgQueue.push_back(msg);
-                HistoryLogMsgQueue.push_back(msg);
-                UpdateCooldown(combo_id);
-                
-                auto findIt = dynamicComboMap_.find(combo_id);
-                if (findIt != dynamicComboMap_.end()) {
-                    findIt->second.firstReported = true;
+            auto it = dynamicComboMap_.find(combo_id);
+            if (it != dynamicComboMap_.end()) {
+                it->second.gift_num += gift_num;
+                it->second.lastUpdateTime = GetTickCount64();
+                it->second.combo_timeout = DYNAMIC_COMBO_WINDOW_SECONDS;
+
+                if (!it->second.firstReported && it->second.gift_num >= 3) {
+                    TString firstMsg = TEXT("感谢 ") + utf8_to_wstring(it->second.uname) +
+                                       TEXT(" 开始赠送") + utf8_to_wstring(it->second.gift_name);
+                    GiftMsgQueue.push_back(firstMsg);
+                    HistoryLogMsgQueue.push_back(firstMsg);
+                    it->second.firstReported = true;
+                    UpdateCooldown(combo_id);
+                }
+            } else {
+                DynamicComboEntry entry;
+                entry.combo_id = combo_id;
+                entry.uname = uname;
+                entry.gift_name = gift_name;
+                entry.gift_num = gift_num;
+                entry.combo_timeout = DYNAMIC_COMBO_WINDOW_SECONDS;
+                entry.paid = paid;
+                entry.firstReported = false;
+                entry.lastUpdateTime = GetTickCount64();
+                dynamicComboMap_.emplace(combo_id, std::move(entry));
+
+                if (gift_num < 3) {
+                    TString msg = TEXT("感谢 ") + utf8_to_wstring(uname) + TEXT(" 赠送的") +
+                                  std::to_wstring(gift_num) + TEXT("个") + utf8_to_wstring(gift_name);
+                    GiftMsgQueue.push_back(msg);
+                    HistoryLogMsgQueue.push_back(msg);
+                    UpdateCooldown(combo_id);
+
+                    auto findIt = dynamicComboMap_.find(combo_id);
+                    if (findIt != dynamicComboMap_.end()) {
+                        findIt->second.firstReported = true;
+                    }
                 }
             }
         }
@@ -266,6 +273,7 @@ void TTSManager::HandleSpeekSC(const json& data)
     const auto& rmb = data["rmb"].get<int>();
     const auto& message = data["message"].get<std::string>();
     TString msg = TEXT("感谢 ") + utf8_to_wstring(uname) + TEXT(" 赠送的") + std::to_wstring(rmb) + TEXT("元SC：") + utf8_to_wstring(message);
+    std::lock_guard<std::mutex> lock(queueMutex_);
     HistoryLogMsgQueue.push_back(msg);
     GiftMsgQueue.push_back(msg);
 }
@@ -276,7 +284,7 @@ void TTSManager::HandleSpeekGuard(const json& data)
     const auto& guard_level = data["guard_level"].get<int>();
     const auto& guard_num = data["guard_num"].get<int>();
     const auto& guard_unit = data["guard_unit"].get<std::string>();
-    
+
     TString guard_name;
     switch (guard_level)
     {
@@ -294,6 +302,7 @@ void TTSManager::HandleSpeekGuard(const json& data)
         return;
     }
     TString msg = TEXT("感谢 ") + utf8_to_wstring(uname) + TEXT(" 上船") + std::to_wstring(guard_num) + utf8_to_wstring(guard_unit) + TEXT("的") + guard_name;
+    std::lock_guard<std::mutex> lock(queueMutex_);
     HistoryLogMsgQueue.push_back(msg);
     GiftMsgQueue.push_back(msg);
 }
@@ -302,6 +311,7 @@ void TTSManager::HandleSpeekEnter(const json& data)
 {
     const auto& uname = data["uname"].get<std::string>();
     TString msg = utf8_to_wstring(uname) + TEXT(" 进入直播间");
+    std::lock_guard<std::mutex> lock(queueMutex_);
     HistoryLogMsgQueue.push_back(msg);
 }
 
@@ -309,16 +319,16 @@ bool TTSManager::Speak(const TString& text)
 {
     LOG_INFO(TEXT("=== TTS Speak called with text: %s ==="), text.c_str());
 
-    AsyncTTSRequest req;
-    req.text = text;
-    req.engineType = GetActiveEngineType();
-    req.state = AsyncTTSState::Pending;
-    req.startTime = std::chrono::steady_clock::now();
+    auto reqPtr = std::make_shared<AsyncTTSRequest>();
+    reqPtr->text = text;
+    reqPtr->engineType = GetActiveEngineType();
+    reqPtr->state = AsyncTTSState::Pending;
+    reqPtr->startTime = std::chrono::steady_clock::now();
 
-    LOG_INFO(TEXT("TTS Engine type: %d"), (int)req.engineType);
+    LOG_INFO(TEXT("TTS Engine type: %d"), (int)reqPtr->engineType);
 
-    std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
-    asyncPendingQueue_.push_back(req);
+    std::lock_guard<std::mutex> lock(asyncMutex_);
+    asyncPendingQueue_.push_back(reqPtr);
     return true;
 }
 
@@ -337,18 +347,18 @@ bool TTSManager::PlayAudioData(const std::vector<uint8_t>& audioData, const std:
 
 void TTSManager::SpeakCheckinTTS(const TString& text, const std::string& username) {
 
-    AsyncTTSRequest req;
-    req.text = text;
-    req.engineType = GetActiveEngineType();
-    req.state = AsyncTTSState::Pending;
-    req.startTime = std::chrono::steady_clock::now();
-    req.responseFormat = "mp3";
-    req.isCheckinTTS = true;
-    req.checkinUsername = username;
+    auto reqPtr = std::make_shared<AsyncTTSRequest>();
+    reqPtr->text = text;
+    reqPtr->engineType = GetActiveEngineType();
+    reqPtr->state = AsyncTTSState::Pending;
+    reqPtr->startTime = std::chrono::steady_clock::now();
+    reqPtr->responseFormat = "mp3";
+    reqPtr->isCheckinTTS = true;
+    reqPtr->checkinUsername = username;
 
     {
-        std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
-        asyncPendingQueue_.push_back(req);
+        std::lock_guard<std::mutex> lock(asyncMutex_);
+        asyncPendingQueue_.push_back(reqPtr);
     }
     LOG_DEBUG(TEXT("SpeakCheckinTTS: Request added to queue for: %s"), text.c_str());
 
@@ -491,11 +501,11 @@ void CALLBACK TTSManager::SapiSpeakCallback(WPARAM wParam, LPARAM lParam)
 
     if (pEvent->eEventId == SPEI_STREAM_ENDED_ID) {
         LOG_DEBUG(TEXT("TTS Async: SAPI SPEI_STREAM_ENDED received"));
-        std::lock_guard<std::recursive_mutex> lock(pManager->asyncMutex_);
+        std::lock_guard<std::mutex> lock(pManager->asyncMutex_);
         if (!pManager->asyncPendingQueue_.empty()) {
             auto it = pManager->asyncPendingQueue_.begin();
-            if (it->engineType == TTSEngineType::SAPI && it->state == AsyncTTSState::Playing) {
-                it->sapiStreamEnded = true;
+            if ((*it)->engineType == TTSEngineType::SAPI && (*it)->state == AsyncTTSState::Playing) {
+                (*it)->sapiStreamEnded = true;
             }
         }
     }
@@ -536,25 +546,25 @@ void TTSManager::SpeakWithMimoAsync(const TString& text, std::function<void(bool
     }
 
     // 创建异步请求并加入等待队列
-    AsyncTTSRequest req;
-    req.text = text;
-    req.state = AsyncTTSState::Pending;
-    req.startTime = std::chrono::steady_clock::now();
-    req.callback = callback;
+    auto reqPtr = std::make_shared<AsyncTTSRequest>();
+    reqPtr->text = text;
+    reqPtr->state = AsyncTTSState::Pending;
+    reqPtr->startTime = std::chrono::steady_clock::now();
+    reqPtr->callback = callback;
 
     // 获取配置参数
     const auto& config = ConfigManager::Inst()->GetConfig();
     if (!config.mimoAudioFormat.empty()) {
-        req.responseFormat = config.mimoAudioFormat;
+        reqPtr->responseFormat = config.mimoAudioFormat;
     } else {
-        req.responseFormat = "mp3";
+        reqPtr->responseFormat = "mp3";
     }
 
     // 需要加锁保护asyncPendingQueue_
     size_t queueSize;
     {
-        std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
-        asyncPendingQueue_.push_back(req);
+        std::lock_guard<std::mutex> lock(asyncMutex_);
+        asyncPendingQueue_.push_back(reqPtr);
         queueSize = asyncPendingQueue_.size();
     }
     LOG_DEBUG(TEXT("SpeakWithMimoAsync: Request added to queue, queue size: %zu"), queueSize);
@@ -563,30 +573,31 @@ void TTSManager::SpeakWithMimoAsync(const TString& text, std::function<void(bool
 void TTSManager::ProcessAsyncTTS()
 {
     // 处理所有当前活跃的请求（需要加锁保护asyncPendingQueue_）
-    std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
-    
+    std::lock_guard<std::mutex> lock(asyncMutex_);
+
     // 处理活跃请求：遍历当前活跃的请求
     int processed = 0;
     while (processed < activeRequestCount_ && !asyncPendingQueue_.empty()) {
         auto it = asyncPendingQueue_.begin();
-        AsyncTTSRequest& req = *it;
-        switch (req.state) {
+        auto& reqPtr = *it;
+        AsyncTTSRequest& req = *reqPtr;
+        switch (reqPtr->state) {
         case AsyncTTSState::Pending:
-            ProcessPendingRequest(it);
+            ProcessPendingRequestInternal(it);
             processed++;
             break;
         case AsyncTTSState::Requesting:
-            ProcessRequestingState(req);
+            ProcessRequestingStateInternal(*reqPtr);
             processed++;
             break;
         case AsyncTTSState::Playing:
-            ProcessPlayingState(req);
+            ProcessPlayingStateInternal(*reqPtr);
             processed++;
             break;
         case AsyncTTSState::Completed:
         case AsyncTTSState::Failed:
             LOG_INFO(TEXT("TTS Async: Request %s, cleaning up"),
-                req.state == AsyncTTSState::Completed ? TEXT("completed") : TEXT("failed"));
+                reqPtr->state == AsyncTTSState::Completed ? TEXT("completed") : TEXT("failed"));
             asyncPendingQueue_.pop_front();
             activeRequestCount_--;
             processed++;
@@ -598,12 +609,12 @@ void TTSManager::ProcessAsyncTTS()
 	while (activeRequestCount_ < MAX_CONCURRENT_TTS && !asyncPendingQueue_.empty()) {
 		bool foundPending = false;
 		for (auto it = asyncPendingQueue_.begin(); it != asyncPendingQueue_.end(); ++it) {
-			if (it->state == AsyncTTSState::Pending) {
-				it->startTime = std::chrono::steady_clock::now();
+			if ((*it)->state == AsyncTTSState::Pending) {
+				(*it)->startTime = std::chrono::steady_clock::now();
 				activeRequestCount_++;
 				LOG_INFO(TEXT("TTS Async: Starting new request for: %s (active: %d)"),
-					it->text.c_str(), activeRequestCount_.load());
-				ProcessPendingRequest(it);
+					(*it)->text.c_str(), activeRequestCount_.load());
+				ProcessPendingRequestInternal(it);
 				foundPending = true;
 				break;
 			}
@@ -614,9 +625,10 @@ void TTSManager::ProcessAsyncTTS()
 	}
 }
 
-void TTSManager::ProcessPendingRequest(std::list<AsyncTTSRequest>::iterator it)
+void TTSManager::ProcessPendingRequestInternal(std::list<std::shared_ptr<AsyncTTSRequest>>::iterator it)
 {
-    AsyncTTSRequest& req = *it;
+    auto& reqPtr = *it;
+    AsyncTTSRequest& req = *reqPtr;
 
     // 处理 SAPI 请求（异步播放 + SPEVENT 回调）
     if (req.engineType == TTSEngineType::SAPI) {
@@ -719,37 +731,37 @@ void TTSManager::ProcessPendingRequest(std::list<AsyncTTSRequest>::iterator it)
     LOG_INFO(TEXT("TTS Async: Sending API request for: %s"), req.text.c_str());
 
     // 发起异步请求（回调在HTTP线程执行）
-    // 注意：不能捕获req的引用，因为回调执行时req可能已经被pop_front()
-    // 解决方案：通过传入的迭代器找到对应的请求
-    std::lock_guard<std::recursive_mutex> queueLock(asyncMutex_);
+    // 注意：捕获shared_ptr而不是迭代器，shared_ptr在回调执行期间始终有效
+    // 因为即使请求从队列中被移除，只要lambda还持有shared_ptr，内存就不会释放
+    // 注意：这里不需要获取asyncMutex_，因为调用此函数的ProcessAsyncTTS已经持有锁
+    // HTTP回调会在不同线程执行，回调内部会获取锁
     if (asyncPendingQueue_.empty()) {
         LOG_ERROR(TEXT("TTS Async: Request queue is empty, cannot send request"));
         return;
     }
-    ttsProvider->RequestTTS(ttsReq, [this, it](const TTSResponse& response) {
+    ttsProvider->RequestTTS(ttsReq, [this, reqPtr](const TTSResponse& response) {
         // 回调在HTTP线程中执行，需要线程安全地修改状态
-        std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
-        if (it == asyncPendingQueue_.end()) {
-            return;  // 请求已被清理
-        }
+        std::lock_guard<std::mutex> lock(asyncMutex_);
+        // reqPtr 是 shared_ptr，只要lambda还持有它，请求就不会被释放
+        // 即使请求已从队列中移除，只要回调还在执行，shared_ptr就有效
         if (response.success && !response.audioData.empty()) {
-            it->audioData = response.audioData;
-            it->state = AsyncTTSState::Playing;
+            reqPtr->audioData = response.audioData;
+            reqPtr->state = AsyncTTSState::Playing;
             LOG_INFO(TEXT("TTS Async: API request succeeded, starting playback"));
 
-            if (it->isCheckinTTS && !it->checkinUsername.empty()) {
-                TTSCacheManager::Inst()->SaveCheckinAudio(it->checkinUsername, response.audioData, GetTickCount64());
+            if (reqPtr->isCheckinTTS && !reqPtr->checkinUsername.empty()) {
+                TTSCacheManager::Inst()->SaveCheckinAudio(reqPtr->checkinUsername, response.audioData, GetTickCount64());
             }
 
-            if (it->callback) {
-                it->callback(true, "");
+            if (reqPtr->callback) {
+                reqPtr->callback(true, "");
             }
         } else {
-            it->errorMessage = response.errorMsg;
-            it->state = AsyncTTSState::Failed;
+            reqPtr->errorMessage = response.errorMsg;
+            reqPtr->state = AsyncTTSState::Failed;
             LOG_ERROR(TEXT("TTS Async: API request failed: %s"), utf8_to_wstring(response.errorMsg).c_str());
-            if (it->callback) {
-                it->callback(false, response.errorMsg);
+            if (reqPtr->callback) {
+                reqPtr->callback(false, response.errorMsg);
             }
         }
     });
@@ -758,11 +770,10 @@ void TTSManager::ProcessPendingRequest(std::list<AsyncTTSRequest>::iterator it)
     req.startTime = std::chrono::steady_clock::now();
 }
 
-void TTSManager::ProcessRequestingState(AsyncTTSRequest& req)
+void TTSManager::ProcessRequestingStateInternal(AsyncTTSRequest& req)
 {
-    // 使用锁检查状态，避免与回调竞态
-    std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
-    
+    // 注意：此函数在ProcessAsyncTTS持有asyncMutex_时被调用，不要再获取锁
+
     if (req.state != AsyncTTSState::Requesting) {
         return;
     }
@@ -783,14 +794,14 @@ void TTSManager::ProcessRequestingState(AsyncTTSRequest& req)
         // 等到下次Tick，如果audioData有数据会转为Playing，没有才会真正失败
         // 为了避免无限等待，最多等待2个额外的超时周期
         if (elapsed >= API_TIMEOUT_SECONDS * 3) {
-            HandleRequestFailure(req);
+            HandleRequestFailureInternal(req);
         }
     }
 }
 
-void TTSManager::ProcessPlayingState(AsyncTTSRequest& req)
+void TTSManager::ProcessPlayingStateInternal(AsyncTTSRequest& req)
 {
-    std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
+    // 注意：此函数在ProcessAsyncTTS持有asyncMutex_时被调用，不要再获取锁
 
     // 处理 SAPI 请求完成
     if (req.engineType == TTSEngineType::SAPI) {
@@ -867,8 +878,10 @@ void TTSManager::ProcessPlayingState(AsyncTTSRequest& req)
     }
 }
 
-void TTSManager::HandleRequestFailure(AsyncTTSRequest& req)
+void TTSManager::HandleRequestFailureInternal(AsyncTTSRequest& req)
 {
+    // 注意：此函数在ProcessAsyncTTS持有asyncMutex_时被调用，不要再获取锁
+
     // 重试逻辑
     if (req.retryCount < MAX_RETRY_COUNT) {
         req.retryCount++;
@@ -897,10 +910,10 @@ void TTSManager::HandleRequestFailure(AsyncTTSRequest& req)
 void TTSManager::CleanupCompletedRequests()
 {
     // 清理Completed和Failed状态的请求
-    std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
+    std::lock_guard<std::mutex> lock(asyncMutex_);
     while (!asyncPendingQueue_.empty()) {
         auto& front = asyncPendingQueue_.front();
-        if (front.state == AsyncTTSState::Completed || front.state == AsyncTTSState::Failed) {
+        if (front->state == AsyncTTSState::Completed || front->state == AsyncTTSState::Failed) {
             asyncPendingQueue_.pop_front();
         } else {
             break;  // 队列是FIFO，前面的已完成才清理
@@ -1015,5 +1028,6 @@ void TTSManager::HandleDmOrderFood(const std::wstring& msg, const std::wstring& 
     static std::mt19937 rng(std::random_device{}());
     std::uniform_int_distribution<int> dist(0, 60);
     int randomValue = dist(rng);
+    std::lock_guard<std::mutex> lock(queueMutex_);
     NormalMsgQueue.push_back(uname + TEXT(" 下单的 ") + msgWithoutPrefix + TEXT(" 已接单，预计") + std::to_wstring(randomValue) + TEXT("分钟后送达！"));
 }

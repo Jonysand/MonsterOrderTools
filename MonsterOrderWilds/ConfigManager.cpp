@@ -1,4 +1,4 @@
-﻿#include "framework.h"
+#include "framework.h"
 #include "ConfigManager.h"
 #include "WriteLog.h"
 #include <fstream>
@@ -278,7 +278,11 @@ void ConfigManager::SetSpeechRate(int value)
 
 void ConfigManager::SetSpeechPitch(int value)
 {
-    if (config_.speechPitch != value) { config_.speechPitch = value; dirty_ = true; NotifyConfigChanged(); }
+    lock_.lock();
+    bool changed = config_.speechPitch != value;
+    if (changed) { config_.speechPitch = value; dirty_ = true; }
+    lock_.unlock();
+    if (changed) NotifyConfigChanged();
 }
 
 void ConfigManager::SetSpeechVolume(int value)

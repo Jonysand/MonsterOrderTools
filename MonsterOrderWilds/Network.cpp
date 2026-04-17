@@ -1,4 +1,4 @@
-﻿#include "Network.h"
+#include "Network.h"
 #include "BliveManager.h"
 #include "CredentialsManager.h"
 #include "WriteLog.h"
@@ -312,44 +312,56 @@ namespace Network
         WinHttpSetOption(ctx->hRequest, WINHTTP_OPTION_CONTEXT_VALUE, ctx.get(), sizeof(*ctx));
 
         std::thread([ctx, cleanupFlag, headers, body]() {
-            if (!headers.empty()) {
-                TString tcharHeaders = ProtoUtils::ConvertToTCHAR(headers.c_str());
-                WinHttpAddRequestHeaders(ctx->hRequest, tcharHeaders.c_str(), (DWORD)tcharHeaders.size(), WINHTTP_ADDREQ_FLAG_ADD | WINHTTP_ADDREQ_FLAG_REPLACE);
-            }
+            try {
+                if (!headers.empty()) {
+                    TString tcharHeaders = ProtoUtils::ConvertToTCHAR(headers.c_str());
+                    WinHttpAddRequestHeaders(ctx->hRequest, tcharHeaders.c_str(), (DWORD)tcharHeaders.size(), WINHTTP_ADDREQ_FLAG_ADD | WINHTTP_ADDREQ_FLAG_REPLACE);
+                }
 
-            BOOL sendResult = WinHttpSendRequest(
-                ctx->hRequest,
-                WINHTTP_NO_ADDITIONAL_HEADERS, 0,
-                body.empty() ? WINHTTP_NO_REQUEST_DATA : (LPVOID)body.data(),
-                (DWORD)body.size(),
-                (DWORD)body.size(),
-                reinterpret_cast<DWORD_PTR>(ctx.get())
-            );
+                BOOL sendResult = WinHttpSendRequest(
+                    ctx->hRequest,
+                    WINHTTP_NO_ADDITIONAL_HEADERS, 0,
+                    body.empty() ? WINHTTP_NO_REQUEST_DATA : (LPVOID)body.data(),
+                    (DWORD)body.size(),
+                    (DWORD)body.size(),
+                    reinterpret_cast<DWORD_PTR>(ctx.get())
+                );
 
-            if (!sendResult) {
-                ctx->error.store(GetLastError());
-            } else {
-                BOOL receiveResult = WinHttpReceiveResponse(ctx->hRequest, NULL);
-                if (!receiveResult) {
+                if (!sendResult) {
                     ctx->error.store(GetLastError());
                 } else {
-                    ctx->error.store(HttpsAsyncUtils::ReadResponseData(ctx.get()));
-                }
-            }
-
-            {
-                if (cleanupFlag->exchange(true)) return;
-                std::lock_guard<std::mutex> lock(ctx->mtx);
-                if (ctx->callback) {
-                    try {
-                        ctx->callback(ctx->error.load() == 0, ctx->response, ctx->error.load());
-                    } catch (...) {
-                        LOG_ERROR(TEXT("[Network] HttpsRequest callback exception (completion)"));
+                    BOOL receiveResult = WinHttpReceiveResponse(ctx->hRequest, NULL);
+                    if (!receiveResult) {
+                        ctx->error.store(GetLastError());
+                    } else {
+                        ctx->error.store(HttpsAsyncUtils::ReadResponseData(ctx.get()));
                     }
                 }
-                WinHttpSetStatusCallback(ctx->hRequest, NULL, WINHTTP_CALLBACK_FLAG_ALL_NOTIFICATIONS, 0);
-                if (ctx->hRequest) WinHttpCloseHandle(ctx->hRequest);
-                if (ctx->hConnect) WinHttpCloseHandle(ctx->hConnect);
+
+                {
+                    if (cleanupFlag->exchange(true)) return;
+                    std::lock_guard<std::mutex> lock(ctx->mtx);
+                    if (ctx->callback) {
+                        try {
+                            ctx->callback(ctx->error.load() == 0, ctx->response, ctx->error.load());
+                        } catch (...) {
+                            LOG_ERROR(TEXT("[Network] HttpsRequest callback exception (completion)"));
+                        }
+                    }
+                    WinHttpSetStatusCallback(ctx->hRequest, NULL, WINHTTP_CALLBACK_FLAG_ALL_NOTIFICATIONS, 0);
+                    if (ctx->hRequest) WinHttpCloseHandle(ctx->hRequest);
+                    if (ctx->hConnect) WinHttpCloseHandle(ctx->hConnect);
+                }
+            } catch (...) {
+                LOG_ERROR(TEXT("[Network] HttpsRequest thread exception"));
+                try {
+                    if (cleanupFlag->exchange(true)) return;
+                    std::lock_guard<std::mutex> lock(ctx->mtx);
+                    if (ctx->callback) {
+                        ctx->callback(false, "", -1);
+                    }
+                } catch (...) {
+                }
             }
         }).detach();
     }

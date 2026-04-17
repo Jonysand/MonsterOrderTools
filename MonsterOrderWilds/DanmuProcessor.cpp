@@ -286,6 +286,12 @@ bool DanmuProcessor::PassesFilter(const DanmuData& danmu) const
     if (onlyMedalOrder_ && !danmu.hasMedal)
         return false;
 
+    if (onlySpeekGuardLevel_ > 0 && danmu.guardLevel != onlySpeekGuardLevel_)
+        return false;
+
+    if (onlySpeekPaidGift_ && !danmu.isPaidGift)
+        return false;
+
     return true;
 }
 

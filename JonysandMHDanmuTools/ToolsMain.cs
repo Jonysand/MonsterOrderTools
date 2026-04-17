@@ -52,6 +52,8 @@ namespace MonsterOrderWindows
 
         public void Inited()
         {
+            InitConfigHandlers();
+
             if (_Config == null)
             {
                 try
@@ -143,113 +145,58 @@ namespace MonsterOrderWindows
             {
                 return;
             }
-            else if (parts[0] == "ID_CODE")
+
+            var key = parts[0];
+            var value = parts[1];
+
+            if (_configHandlers != null && _configHandlers.TryGetValue(key, out var handler))
             {
-                _Config.Config.ID_CODE = parts[1];
+                handler(key, value);
             }
-            else if (parts[0] == "ONLY_MEDAL_ORDER")
-            {
-                _Config.Config.ONLY_MEDAL_ORDER = parts[1] == "1";
-            }
-            else if (parts[0] == "ENABLE_VOICE")
-            {
-                _Config.Config.ENABLE_VOICE = parts[1] == "1";
-            }
-            else if (parts[0] == "SPEECH_RATE")
-            {
-                if (int.TryParse(parts[1], out int speechRate))
-                {
-                    _Config.Config.SPEECH_RATE = speechRate;
-                }
-            }
-            else if (parts[0] == "SPEECH_PITCH")
-            {
-                if (int.TryParse(parts[1], out int speechPitch))
-                {
-                    _Config.Config.SPEECH_PITCH = speechPitch;
-                }
-            }
-            else if (parts[0] == "SPEECH_VOLUME")
-            {
-                if (int.TryParse(parts[1], out int speechVolume))
-                {
-                    _Config.Config.SPEECH_VOLUME = speechVolume;
-                }
-            }
-            else if (parts[0] == "ONLY_SPEEK_WEARING_MEDAL")
-            {
-                _Config.Config.ONLY_SPEEK_WEARING_MEDAL = parts[1] == "1";
-            }
-            else if (parts[0] == "ONLY_SPEEK_GUARD_LEVEL")
-            {
-                if (int.TryParse(parts[1], out int guardLevel))
-                {
-                    _Config.Config.ONLY_SPEEK_GUARD_LEVEL = guardLevel;
-                }
-            }
-            else if (parts[0] == "ONLY_SPEEK_PAID_GIFT")
-            {
-                _Config.Config.ONLY_SPEEK_PAID_GIFT = parts[1] == "1";
-            }
-            else if (parts[0] == "OPACITY")
-            {
-                if (int.TryParse(parts[1], out int opacity))
-                {
-                    _Config.Config.OPACITY = opacity;
-                    if (_OrderedMonsterWindow != null)
-                    {
-                        _OrderedMonsterWindow.RefreshWindow();
-                    }
-                }
-            }
-            else if (parts[0] == "PENETRATING_MODE_OPACITY")
-            {
-                if (int.TryParse(parts[1], out int penetratingOpacity))
-                {
-                    _Config.Config.PENETRATING_MODE_OPACITY = penetratingOpacity;
-                    if (_OrderedMonsterWindow != null)
-                    {
-                        _OrderedMonsterWindow.RefreshWindow();
-                    }
-                }
-            }
-            else if (parts[0] == "TTS_ENGINE")
-            {
-                _Config.Config.TTS_ENGINE = parts[1];
-            }
-            else if (parts[0] == "MINIMAX_VOICE_ID")
-                _Config.Config.MINIMAX_VOICE_ID = parts[1];
-            else if (parts[0] == "MINIMAX_SPEED")
-            {
-                if (float.TryParse(parts[1], out float speed))
-                    _Config.Config.MINIMAX_SPEED = speed;
-            }
-            else if (parts[0] == "MIMO_VOICE")
-            {
-                _Config.Config.MIMO_VOICE = parts[1];
-            }
-            else if (parts[0] == "MIMO_STYLE")
-            {
-                _Config.Config.MIMO_STYLE = parts[1];
-            }
-            else if (parts[0] == "MIMO_API_KEY")
-            {
-                _Config.Config.MIMO_API_KEY = parts[1];
-            }
-            else if (parts[0] == "DEFAULT_MARQUEE_TEXT")
-            {
-                _Config.Config.DEFAULT_MARQUEE_TEXT = parts[1];
-                GlobalEventListener.Invoke("MarqueeTextChanged", parts[1]);
-            }
-            else if (parts[0] == "ENABLE_CAPTAIN_CHECKIN_AI")
-            {
-                _Config.Config.ENABLE_CAPTAIN_CHECKIN_AI = parts[1] == "1";
-            }
-            else if (parts[0] == "CHECKIN_TRIGGER_WORDS")
-            {
-                _Config.Config.CHECKIN_TRIGGER_WORDS = parts[1];
-            }
+
             _Config.SaveConfig();
+        }
+
+        private Dictionary<string, Action<string, string>> _configHandlers;
+
+        private void InitConfigHandlers()
+        {
+            _configHandlers = new Dictionary<string, Action<string, string>>
+            {
+                ["ID_CODE"] = (k, v) => _Config.Config.ID_CODE = v,
+                ["ONLY_MEDAL_ORDER"] = (k, v) => _Config.Config.ONLY_MEDAL_ORDER = v == "1",
+                ["ENABLE_VOICE"] = (k, v) => _Config.Config.ENABLE_VOICE = v == "1",
+                ["SPEECH_RATE"] = (k, v) => { if (int.TryParse(v, out int val)) _Config.Config.SPEECH_RATE = val; },
+                ["SPEECH_PITCH"] = (k, v) => { if (int.TryParse(v, out int val)) _Config.Config.SPEECH_PITCH = val; },
+                ["SPEECH_VOLUME"] = (k, v) => { if (int.TryParse(v, out int val)) _Config.Config.SPEECH_VOLUME = val; },
+                ["ONLY_SPEEK_WEARING_MEDAL"] = (k, v) => _Config.Config.ONLY_SPEEK_WEARING_MEDAL = v == "1",
+                ["ONLY_SPEEK_GUARD_LEVEL"] = (k, v) => { if (int.TryParse(v, out int val)) _Config.Config.ONLY_SPEEK_GUARD_LEVEL = val; },
+                ["ONLY_SPEEK_PAID_GIFT"] = (k, v) => _Config.Config.ONLY_SPEEK_PAID_GIFT = v == "1",
+                ["OPACITY"] = (k, v) => {
+                    if (int.TryParse(v, out int val)) {
+                        _Config.Config.OPACITY = val;
+                        _OrderedMonsterWindow?.RefreshWindow();
+                    }
+                },
+                ["PENETRATING_MODE_OPACITY"] = (k, v) => {
+                    if (int.TryParse(v, out int val)) {
+                        _Config.Config.PENETRATING_MODE_OPACITY = val;
+                        _OrderedMonsterWindow?.RefreshWindow();
+                    }
+                },
+                ["TTS_ENGINE"] = (k, v) => _Config.Config.TTS_ENGINE = v,
+                ["MINIMAX_VOICE_ID"] = (k, v) => _Config.Config.MINIMAX_VOICE_ID = v,
+                ["MINIMAX_SPEED"] = (k, v) => { if (float.TryParse(v, out float val)) _Config.Config.MINIMAX_SPEED = val; },
+                ["MIMO_VOICE"] = (k, v) => _Config.Config.MIMO_VOICE = v,
+                ["MIMO_STYLE"] = (k, v) => _Config.Config.MIMO_STYLE = v,
+                ["MIMO_API_KEY"] = (k, v) => _Config.Config.MIMO_API_KEY = v,
+                ["DEFAULT_MARQUEE_TEXT"] = (k, v) => {
+                    _Config.Config.DEFAULT_MARQUEE_TEXT = v;
+                    GlobalEventListener.Invoke("MarqueeTextChanged", v);
+                },
+                ["ENABLE_CAPTAIN_CHECKIN_AI"] = (k, v) => _Config.Config.ENABLE_CAPTAIN_CHECKIN_AI = v == "1",
+                ["CHECKIN_TRIGGER_WORDS"] = (k, v) => _Config.Config.CHECKIN_TRIGGER_WORDS = v,
+            };
         }
 
         public void OnOrderWindowLocked()

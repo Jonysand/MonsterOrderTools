@@ -548,11 +548,6 @@ int32_t ProfileManager::CalculateContinuousDays(uint64_t uid, int32_t checkinDat
             }
         }
     }
-    else if (year == lastYear + 2 && month == 1 && lastMonth == 12) {
-        if (day == 1 && lastDay == 31) {
-            return lastContinuousDays + 1;
-        }
-    }
 
     return 1;
 }

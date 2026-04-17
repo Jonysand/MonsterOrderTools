@@ -2,6 +2,7 @@
 #include "framework.h"
 #include <mutex>
 #include <list>
+#include <memory>
 
 #include "TTSProvider.h"
 #include "AudioPlayer.h"
@@ -106,16 +107,16 @@ private:
 	void SpeakWithMimoAsync(const TString& text, std::function<void(bool success, const std::string& errorMsg)> callback = nullptr);
 	// 处理异步TTS状态机
 	void ProcessAsyncTTS();
-	// 处理Pending状态 - 发起API请求
-	void ProcessPendingRequest(std::list<AsyncTTSRequest>::iterator it);
-	// 处理Requesting状态 - 检查API响应
-	void ProcessRequestingState(AsyncTTSRequest& req);
-	// 处理Playing状态 - 检查播放完成
-	void ProcessPlayingState(AsyncTTSRequest& req);
+	// 处理Pending状态 - 发起API请求（内部版，不获取锁）
+	void ProcessPendingRequestInternal(std::list<std::shared_ptr<AsyncTTSRequest>>::iterator it);
+	// 处理Requesting状态 - 检查API响应（内部版，不获取锁）
+	void ProcessRequestingStateInternal(AsyncTTSRequest& req);
+	// 处理Playing状态 - 检查播放完成（内部版，不获取锁）
+	void ProcessPlayingStateInternal(AsyncTTSRequest& req);
 	// SAPI播放完成回调
 	static void CALLBACK SapiSpeakCallback(WPARAM wParam, LPARAM lParam);
-	// 处理失败/超时
-	void HandleRequestFailure(AsyncTTSRequest& req);
+	// 处理失败/超时（内部版，不获取锁，由ProcessAsyncTTS在持有锁时调用）
+	void HandleRequestFailureInternal(AsyncTTSRequest& req);
 	// 清理已完成/失败的请求
 	void CleanupCompletedRequests();
 
@@ -145,7 +146,8 @@ private:
 	std::chrono::steady_clock::time_point LastTickTime;
 	ISpVoice* pVoice{ NULL };
 	std::mutex sapiMutex_;
-	std::recursive_mutex asyncMutex_;  // 保护异步TTS请求状态（使用递归锁以便在ProcessAsyncTTS锁内调用子函数）
+	std::mutex asyncMutex_;  // 保护异步TTS请求状态
+	std::mutex queueMutex_;  // 保护 NormalMsgQueue, GiftMsgQueue, HistoryLogMsgQueue 等队列
 
 	// TTS提供者
 	std::unique_ptr<ITTSProvider> ttsProvider;
@@ -153,7 +155,7 @@ private:
 	AudioPlayer* audioPlayer{ NULL };
 
 	// 异步TTS请求队列（API并发请求，播放串行）
-	std::list<AsyncTTSRequest> asyncPendingQueue_;      // 等待队列
+	std::list<std::shared_ptr<AsyncTTSRequest>> asyncPendingQueue_;      // 等待队列
 	std::atomic<int> activeRequestCount_{ 0 };   // 当前正在处理的请求数量
 	static constexpr int MAX_CONCURRENT_TTS = 64;      // API并发请求数
 	static constexpr int MAX_ASYNC_QUEUE_SIZE = 0;      // 队列大小限制（0=不限制）
@@ -192,4 +194,5 @@ private:
 	std::chrono::steady_clock::time_point lastRecoveryAttempt;  // 上次恢复尝试时间
 	static constexpr int MAX_CONSECUTIVE_FAILURES = 3;  // 最大连续失败次数
 	static constexpr int RECOVERY_INTERVAL_SECONDS = 300;  // 恢复尝试间隔（秒）
+	static constexpr int64_t COOLDOWN_CLEANUP_INTERVAL_MS = 60000;  // 冷却清理间隔（毫秒）
 };

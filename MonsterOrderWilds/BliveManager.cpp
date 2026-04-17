@@ -272,7 +272,7 @@ void BliveManager::OnReceiveStartResponse(const std::string& response)
 		LOG_ERROR(TEXT("JSON error: %s"), ProtoUtils::Decode(e.what()).c_str());
         {
             std::lock_guard<Lock> lock(delayedTasksLock);
-            delayedTasks.push_back({ [this]() { Start(); }, 1000 });
+            delayedTasks.push_back({ [this]() { Start(); }, RECONNECT_DELAY_MS });
         }
         return;
 	}
@@ -311,7 +311,7 @@ void BliveManager::OnReceiveStartResponse(const std::string& response)
                     SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::NetworkError);
                     {
                         std::lock_guard<Lock> lock(delayedTasksLock);
-                        delayedTasks.push_back({ [this]() { Start(); }, 1000 });
+                        delayedTasks.push_back({ [this]() { Start(); }, RECONNECT_DELAY_MS });
                     }
                 }
             }
@@ -319,7 +319,7 @@ void BliveManager::OnReceiveStartResponse(const std::string& response)
         // 开始app心跳
         {
             std::lock_guard<Lock> lock(delayedTasksLock);
-            delayedTasks.push_back({ [this]() { StartAppHeartBeat(); }, 5000 });
+            delayedTasks.push_back({ [this]() { StartAppHeartBeat(); }, INITIAL_HEARTBEAT_DELAY_MS });
         }
         break;
     }
@@ -331,7 +331,7 @@ void BliveManager::OnReceiveStartResponse(const std::string& response)
         SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::NetworkError);
         {
             std::lock_guard<Lock> lock(delayedTasksLock);
-            delayedTasks.push_back({ [this]() { Start(); }, 1000 });
+            delayedTasks.push_back({ [this]() { Start(); }, RECONNECT_DELAY_MS });
         }
         break;
     }
@@ -340,7 +340,7 @@ void BliveManager::OnReceiveStartResponse(const std::string& response)
         SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::NetworkError);
         {
             std::lock_guard<Lock> lock(delayedTasksLock);
-            delayedTasks.push_back({ [this]() { Start(); }, 1000 });
+            delayedTasks.push_back({ [this]() { Start(); }, RECONNECT_DELAY_MS });
         }
     }
 }
@@ -432,7 +432,7 @@ void BliveManager::OnReceiveAppHeartbeatResponse(const std::string& response)
             LOG_ERROR(TEXT("Error OnReceiveAppHeartbeatResponse: %s"), ProtoUtils::Decode(response).c_str());
             {
                 std::lock_guard<Lock> lock(delayedTasksLock);
-                delayedTasks.push_back({ [this]() { Start(); }, 1000 });
+                delayedTasks.push_back({ [this]() { Start(); }, RECONNECT_DELAY_MS });
             }
             break;
         }
@@ -442,7 +442,7 @@ void BliveManager::OnReceiveAppHeartbeatResponse(const std::string& response)
         SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::HeartbeatTimeout);
         {
             std::lock_guard<Lock> lock(delayedTasksLock);
-            delayedTasks.push_back({ [this]() { Start(); }, 1000 });
+            delayedTasks.push_back({ [this]() { Start(); }, RECONNECT_DELAY_MS });
         }
     }
 }
@@ -518,7 +518,7 @@ void BliveManager::HandleWSMessage()
             LOG_DEBUG(TEXT("OP_AUTH_REPLY"));
             {
                 std::lock_guard<Lock> lock(delayedTasksLock);
-                delayedTasks.push_back({ [this]() { StartWebsocketHeartBeat(); }, 2000 });
+                delayedTasks.push_back({ [this]() { StartWebsocketHeartBeat(); }, WS_HEARTBEAT_RECONNECT_DELAY_MS });
             }
             break;
         default:
@@ -526,7 +526,7 @@ void BliveManager::HandleWSMessage()
             LOG_ERROR(TEXT("Receive UNKNOWN from server websocket: %s"), ProtoUtils::Decode(packet.body).c_str());
             {
                 std::lock_guard<Lock> lock(delayedTasksLock);
-                delayedTasks.push_back({ [this]() { Start(); }, 1000 });
+                delayedTasks.push_back({ [this]() { Start(); }, RECONNECT_DELAY_MS });
             }
             break;
         }
@@ -576,7 +576,7 @@ void BliveManager::HandleSmsReply(const std::string& msg)
                     SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::ServerClose);
                     {
                         std::lock_guard<Lock> lock(delayedTasksLock);
-                        delayedTasks.push_back({ [this]() { Start(); }, 1000 });
+                        delayedTasks.push_back({ [this]() { Start(); }, RECONNECT_DELAY_MS });
                     }
                 }
             }

@@ -1,4 +1,4 @@
-﻿#include "framework.h"
+#include "framework.h"
 #include "PriorityQueueManager.h"
 #include "WriteLog.h"
 #include <fstream>
@@ -188,15 +188,19 @@ bool PriorityQueueManager::SaveList(const std::string& configPath)
             j.push_back(item);
         }
 
-        std::ofstream file(path);
-        if (!file.is_open())
+        std::string tempPath = path + ".tmp";
+        std::ofstream tempFile(tempPath);
+        if (!tempFile.is_open())
         {
-            LOG_ERROR(TEXT("PriorityQueueManager: Cannot open file for writing: %s"), path.c_str());
+            LOG_ERROR(TEXT("PriorityQueueManager: Cannot open temp file for writing: %s"), tempPath.c_str());
             return false;
         }
 
-        file << j.dump(4);
-        file.close();
+        tempFile << j.dump(4);
+        tempFile.close();
+
+        std::filesystem::rename(tempPath, path);
+
         dirty_ = false;
         return true;
     }

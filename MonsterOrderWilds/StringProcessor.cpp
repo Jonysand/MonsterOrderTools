@@ -1,4 +1,4 @@
-﻿#include "framework.h"
+#include "framework.h"
 #include "StringProcessor.h"
 #include <algorithm>
 #include <codecvt>
@@ -8,15 +8,19 @@
 // 静态缓存成员
 std::unordered_map<std::string, std::wstring> StringProcessor::utf8ToWstringCache_;
 std::unordered_map<std::wstring, std::string> StringProcessor::wstringToUtf8Cache_;
+std::mutex StringProcessor::cacheMutex_;
 
 std::wstring StringProcessor::Utf8ToWstring(const std::string& str)
 {
     if (str.empty()) return std::wstring();
 
-    // 检查缓存
-    auto it = utf8ToWstringCache_.find(str);
-    if (it != utf8ToWstringCache_.end())
-        return it->second;
+    // 检查缓存（加锁保护）
+    {
+        std::lock_guard<std::mutex> lock(cacheMutex_);
+        auto it = utf8ToWstringCache_.find(str);
+        if (it != utf8ToWstringCache_.end())
+            return it->second;
+    }
 
     int wideLength = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, nullptr, 0);
     if (wideLength == 0) return std::wstring();
@@ -24,9 +28,12 @@ std::wstring StringProcessor::Utf8ToWstring(const std::string& str)
     std::wstring result(wideLength - 1, L'\0');
     MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, &result[0], wideLength);
 
-    // 存入缓存
-    if (utf8ToWstringCache_.size() < MAX_CACHE_SIZE)
-        utf8ToWstringCache_[str] = result;
+    // 存入缓存（加锁保护）
+    {
+        std::lock_guard<std::mutex> lock(cacheMutex_);
+        if (utf8ToWstringCache_.size() < MAX_CACHE_SIZE)
+            utf8ToWstringCache_[str] = result;
+    }
 
     return result;
 }
@@ -35,10 +42,13 @@ std::string StringProcessor::WstringToUtf8(const std::wstring& wstr)
 {
     if (wstr.empty()) return std::string();
 
-    // 检查缓存
-    auto it = wstringToUtf8Cache_.find(wstr);
-    if (it != wstringToUtf8Cache_.end())
-        return it->second;
+    // 检查缓存（加锁保护）
+    {
+        std::lock_guard<std::mutex> lock(cacheMutex_);
+        auto it = wstringToUtf8Cache_.find(wstr);
+        if (it != wstringToUtf8Cache_.end())
+            return it->second;
+    }
 
     int utf8Length = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, nullptr, 0, nullptr, nullptr);
     if (utf8Length == 0) return std::string();
@@ -46,9 +56,12 @@ std::string StringProcessor::WstringToUtf8(const std::wstring& wstr)
     std::string result(utf8Length - 1, '\0');
     WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, &result[0], utf8Length, nullptr, nullptr);
 
-    // 存入缓存
-    if (wstringToUtf8Cache_.size() < MAX_CACHE_SIZE)
-        wstringToUtf8Cache_[wstr] = result;
+    // 存入缓存（加锁保护）
+    {
+        std::lock_guard<std::mutex> lock(cacheMutex_);
+        if (wstringToUtf8Cache_.size() < MAX_CACHE_SIZE)
+            wstringToUtf8Cache_[wstr] = result;
+    }
 
     return result;
 }
@@ -137,11 +150,13 @@ std::string StringProcessor::Replace(const std::string& str, const std::string& 
 
 void StringProcessor::ClearCache()
 {
+    std::lock_guard<std::mutex> lock(cacheMutex_);
     utf8ToWstringCache_.clear();
     wstringToUtf8Cache_.clear();
 }
 
 size_t StringProcessor::GetCacheSize()
 {
+    std::lock_guard<std::mutex> lock(cacheMutex_);
     return utf8ToWstringCache_.size() + wstringToUtf8Cache_.size();
 }

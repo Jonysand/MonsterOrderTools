@@ -1,8 +1,9 @@
-﻿#pragma once
+#pragma once
 #include "framework.h"
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <mutex>
 
 // 字符串处理模块 - 负责中文字符串处理和名称规范化
 class StringProcessor
@@ -38,4 +39,5 @@ private:
     static std::unordered_map<std::string, std::wstring> utf8ToWstringCache_;
     static std::unordered_map<std::wstring, std::string> wstringToUtf8Cache_;
     static constexpr size_t MAX_CACHE_SIZE = 1024;
+    static std::mutex cacheMutex_;
 };

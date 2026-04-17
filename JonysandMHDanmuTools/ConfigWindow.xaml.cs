@@ -180,8 +180,6 @@ namespace MonsterOrderWindows
 
         private void OnConfirmIDCode(object sender, RoutedEventArgs e)
         {
-            // DanmuManager.GetInst().SetMedalName(MedalNameTextBox.Text);
-            GlobalEventListener.Invoke("ConfigChanged", "ID_CODE:" + IdentityCodeTextBox.Password);
             ToolsMain.SendCommand("ConfirmIDCode:" + IdentityCodeTextBox.Password);
         }
 
