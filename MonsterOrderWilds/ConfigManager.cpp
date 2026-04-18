@@ -115,7 +115,10 @@ bool ConfigManager::LoadConfig()
             if (j.contains("MIMO_VOICE")) config_.mimoVoice = j["MIMO_VOICE"].get<std::string>();
             if (j.contains("MIMO_STYLE")) config_.mimoStyle = j["MIMO_STYLE"].get<std::string>();
             if (j.contains("MIMO_AUDIO_FORMAT")) config_.mimoAudioFormat = j["MIMO_AUDIO_FORMAT"].get<std::string>();
-            if (j.contains("MIMO_SPEED")) config_.mimoSpeed = j["MIMO_SPEED"].get<float>();
+
+            // MiniMax TTS 配置
+            if (j.contains("MINIMAX_VOICE_ID")) config_.minimaxVoiceId = j["MINIMAX_VOICE_ID"].get<std::string>();
+            if (j.contains("MINIMAX_SPEED")) config_.minimaxSpeed = j["MINIMAX_SPEED"].get<float>();
 
             if (j.contains("TTS_CACHE_DAYS_TO_KEEP")) config_.ttsCacheDaysToKeep = j["TTS_CACHE_DAYS_TO_KEEP"].get<int>();
 
@@ -178,7 +181,10 @@ bool ConfigManager::SaveConfig(bool force)
         j["MIMO_VOICE"] = config_.mimoVoice;
         j["MIMO_STYLE"] = config_.mimoStyle;
         j["MIMO_AUDIO_FORMAT"] = config_.mimoAudioFormat;
-        j["MIMO_SPEED"] = config_.mimoSpeed;
+
+        // MiniMax TTS 配置
+        j["MINIMAX_VOICE_ID"] = config_.minimaxVoiceId;
+        j["MINIMAX_SPEED"] = config_.minimaxSpeed;
 
         j["TTS_CACHE_DAYS_TO_KEEP"] = config_.ttsCacheDaysToKeep;
 
@@ -371,15 +377,6 @@ void ConfigManager::SetMimoAudioFormat(const std::string& value)
     lock_.lock();
     bool changed = config_.mimoAudioFormat != value;
     if (changed) { config_.mimoAudioFormat = value; dirty_ = true; }
-    lock_.unlock();
-    if (changed) NotifyConfigChanged();
-}
-
-void ConfigManager::SetMimoSpeed(float value)
-{
-    lock_.lock();
-    bool changed = config_.mimoSpeed != value;
-    if (changed) { config_.mimoSpeed = value; dirty_ = true; }
     lock_.unlock();
     if (changed) NotifyConfigChanged();
 }

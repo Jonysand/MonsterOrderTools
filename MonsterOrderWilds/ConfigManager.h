@@ -26,7 +26,6 @@ struct ConfigData
     std::string mimoVoice = "mimo_default";
     std::string mimoStyle = "";
     std::string mimoAudioFormat = "mp3";
-    float mimoSpeed = 1.0f;
 
     // MiniMax TTS 配置
     std::string minimaxVoiceId = "female-tianmei";
@@ -79,7 +78,6 @@ public:
     void SetMimoVoice(const std::string& value);
     void SetMimoStyle(const std::string& value);
     void SetMimoAudioFormat(const std::string& value);
-    void SetMimoSpeed(float value);
     void SetWindowPosition(double x, double y);
     void SetTtsCacheDaysToKeep(int value);
     void SetEnableCaptainCheckinAI(bool value);

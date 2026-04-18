@@ -179,7 +179,7 @@
                                     FontFamily="Segoe UI Variable"
                                     FontSize="14"
                                     SelectionChanged="OnlyGuardLevel_SelectionChanged">
-                                    <ComboBoxItem Content="所有人" IsSelected="True" />
+                                    <ComboBoxItem Content="所有人" />
                                     <ComboBoxItem Content="舰长" />
                                     <ComboBoxItem Content="提督" />
                                     <ComboBoxItem Content="总督" />
@@ -237,7 +237,7 @@
                                             <ComboBoxItem Content="少女音色" Tag="female-shaonv" />
                                             <ComboBoxItem Content="御姐音色" Tag="female-yujie" />
                                             <ComboBoxItem Content="成熟女性音色" Tag="female-chengshu" />
-                                            <ComboBoxItem Content="甜美女性音色" Tag="female-tianmei" IsSelected="True" />
+                                            <ComboBoxItem Content="甜美女性音色" Tag="female-tianmei" />
                                             <ComboBoxItem Content="青涩青年音色-beta" Tag="male-qn-qingse-jingpin" />
                                             <ComboBoxItem Content="精英青年音色-beta" Tag="male-qn-jingying-jingpin" />
                                             <ComboBoxItem Content="霸道青年音色-beta" Tag="male-qn-badao-jingpin" />
@@ -294,7 +294,7 @@
                                     <StackPanel Orientation="Horizontal" Margin="0,4,0,4">
                                         <Label Content="语速" VerticalAlignment="Center" Margin="0,0,8,0" />
                                         <Slider Name="MiniMaxSpeedSlider" Minimum="1.0" Maximum="2" 
-                                                Value="1.5" Width="120" TickFrequency="0.1"
+                                                Width="120" TickFrequency="0.1"
                                                 IsSnapToTickEnabled="True"
                                                 ValueChanged="MiniMaxSpeedSlider_ValueChanged" />
                                         <TextBlock Text="{Binding ElementName=MiniMaxSpeedSlider, Path=Value, StringFormat=F1}" 
@@ -323,7 +323,7 @@
                                             Width="120"
                                             FontSize="14"
                                             SelectionChanged="MimoVoiceComboBox_SelectionChanged">
-                                            <ComboBoxItem Content="默认语音" IsSelected="True" Tag="mimo_default" />
+                                            <ComboBoxItem Content="默认语音" Tag="mimo_default" />
                                             <ComboBoxItem Content="中文语音" Tag="default_zh" />
                                             <ComboBoxItem Content="英文语音" Tag="default_en" />
                                         </ComboBox>
@@ -340,7 +340,7 @@
                                             Width="150"
                                             FontSize="14"
                                             SelectionChanged="MimoStyleComboBox_SelectionChanged">
-                                            <ComboBoxItem Content="默认" IsSelected="True" Tag="" />
+                                            <ComboBoxItem Content="默认" Tag="" />
                                             <ComboBoxItem Content="温柔轻声" Tag="温柔轻声" />
                                             <ComboBoxItem Content="激昂慷慨" Tag="激昂慷慨" />
                                             <ComboBoxItem Content="新闻播报" Tag="新闻播报" />
@@ -371,7 +371,6 @@
                                             Name="VoiceRateSlider"
                                             Minimum="-10"
                                             Maximum="10"
-                                            Value="0"
                                             TickFrequency="1"
                                             IsSnapToTickEnabled="True"
                                             Width="120"
@@ -397,7 +396,6 @@
                                             Name="VoicePitchSlider"
                                             Minimum="-10"
                                             Maximum="10"
-                                            Value="0"
                                             TickFrequency="1"
                                             IsSnapToTickEnabled="True"
                                             Width="120"
@@ -423,7 +421,6 @@
                                             Name="VoiceVolumeSlider"
                                             Minimum="0"
                                             Maximum="100"
-                                            Value="50"
                                             TickFrequency="1"
                                             IsSnapToTickEnabled="True"
                                             Width="120"
@@ -499,7 +496,6 @@
                                     Name="OpacitySlider"
                                     Minimum="0"
                                     Maximum="100"
-                                    Value="80"
                                     TickFrequency="1"
                                     IsSnapToTickEnabled="True"
                                     Width="150"
@@ -527,7 +523,6 @@
                                     Name="PenetratingModeOpacitySlider"
                                     Minimum="0"
                                     Maximum="100"
-                                    Value="50"
                                     TickFrequency="1"
                                     IsSnapToTickEnabled="True"
                                     Width="150"

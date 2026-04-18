@@ -33,7 +33,6 @@ namespace MonsterOrderBridge
             MimoVoice = gcnew System::String(config.mimoVoice.c_str());
             MimoStyle = gcnew System::String(config.mimoStyle.c_str());
             MimoAudioFormat = gcnew System::String(config.mimoAudioFormat.c_str());
-            MimoSpeed = config.mimoSpeed;
             TopPosX = config.topPosX;
             TopPosY = config.topPosY;
             DefaultMarqueeText = gcnew System::String(config.defaultMarqueeText.c_str(), 0, -1, System::Text::Encoding::UTF8);
@@ -61,7 +60,6 @@ namespace MonsterOrderBridge
             data.mimoVoice = msclr::interop::marshal_as<std::string>(MimoVoice);
             data.mimoStyle = msclr::interop::marshal_as<std::string>(MimoStyle);
             data.mimoAudioFormat = msclr::interop::marshal_as<std::string>(MimoAudioFormat);
-            data.mimoSpeed = MimoSpeed;
             data.topPosX = TopPosX;
             data.topPosY = TopPosY;
 

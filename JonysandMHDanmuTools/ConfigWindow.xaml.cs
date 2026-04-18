@@ -238,19 +238,23 @@ namespace MonsterOrderWindows
 
         private void VoiceRateSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
+            if (_isInitializing) return;
             GlobalEventListener.Invoke("ConfigChanged", $"SPEECH_RATE:{e.NewValue}");
         }
         private void VoicePitchSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
+            if (_isInitializing) return;
             GlobalEventListener.Invoke("ConfigChanged", $"SPEECH_PITCH:{e.NewValue}");
         }
         private void VoiceVolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
+            if (_isInitializing) return;
             GlobalEventListener.Invoke("ConfigChanged", $"SPEECH_VOLUME:{e.NewValue}");
         }
 
         private void OnlyMedalCheckBox_Changed(object sender, RoutedEventArgs e)
         {
+            if (_isInitializing) return;
             if (OnlyMedalCheckBox.IsChecked == true)
                 GlobalEventListener.Invoke("ConfigChanged", "ONLY_SPEEK_WEARING_MEDAL:1");
             else
@@ -259,6 +263,7 @@ namespace MonsterOrderWindows
 
         private void OnlyGuardLevel_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
+            if (_isInitializing) return;
             var comboBox = sender as System.Windows.Controls.ComboBox;
             if (comboBox == null || comboBox.SelectedItem == null)
                 return;
@@ -287,6 +292,7 @@ namespace MonsterOrderWindows
 
         private void OnlyPaidGiftCheckBox_Changed(object sender, RoutedEventArgs e)
         {
+            if (_isInitializing) return;
             if (OnlyPaidGiftCheckBox.IsChecked == true)
                 GlobalEventListener.Invoke("ConfigChanged", "ONLY_SPEEK_PAID_GIFT:1");
             else
@@ -295,11 +301,13 @@ namespace MonsterOrderWindows
 
         private void OpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
+            if (_isInitializing) return;
             GlobalEventListener.Invoke("ConfigChanged", $"OPACITY:{e.NewValue}");
         }
 
         private void PenetratingModeOpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
+            if (_isInitializing) return;
             GlobalEventListener.Invoke("ConfigChanged", $"PENETRATING_MODE_OPACITY:{e.NewValue}");
         }
 
@@ -351,6 +359,7 @@ namespace MonsterOrderWindows
 
         private void MimoVoiceComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
+            if (_isInitializing) return;
             var comboBox = sender as System.Windows.Controls.ComboBox;
             if (comboBox == null || comboBox.SelectedItem == null)
                 return;
@@ -363,6 +372,7 @@ namespace MonsterOrderWindows
 
         private void MimoStyleComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
+            if (_isInitializing) return;
             var comboBox = sender as System.Windows.Controls.ComboBox;
             if (comboBox == null || comboBox.SelectedItem == null)
                 return;
@@ -375,6 +385,7 @@ namespace MonsterOrderWindows
 
         private void MiniMaxVoiceComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
+            if (_isInitializing) return;
             var comboBox = sender as System.Windows.Controls.ComboBox;
             if (comboBox == null || comboBox.SelectedItem == null)
                 return;
@@ -387,6 +398,7 @@ namespace MonsterOrderWindows
 
         private void MiniMaxSpeedSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
+            if (_isInitializing) return;
             GlobalEventListener.Invoke("ConfigChanged", $"MINIMAX_SPEED:{e.NewValue}");
         }
 

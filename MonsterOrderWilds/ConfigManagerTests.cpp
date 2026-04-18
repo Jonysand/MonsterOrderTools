@@ -1,4 +1,4 @@
-﻿#include "framework.h"
+#include "framework.h"
 #include "ConfigManager.h"
 #include "DanmuProcessor.h"
 #include "UnitTestLog.h"
@@ -19,7 +19,6 @@ void TestConfigManager_DefaultValues()
     assert(config.speechVolume == 50);
     assert(config.opacity == 100);
     assert(config.ttsEngine == "auto");
-    assert(config.mimoSpeed == 1.0f);
 
     TestLog("[PASS] TestConfigManager_DefaultValues");
 }
@@ -103,14 +102,10 @@ void TestConfigManager_SetTtsConfig()
     mgr->SetMimoStyle("温柔轻声");
     assert(mgr->GetConfig().mimoStyle == "温柔轻声");
 
-    mgr->SetMimoSpeed(1.5f);
-    assert(mgr->GetConfig().mimoSpeed == 1.5f);
-
     // 还原
     mgr->SetTtsEngine("auto");
     mgr->SetMimoVoice("mimo_default");
     mgr->SetMimoStyle("");
-    mgr->SetMimoSpeed(1.0f);
 
     TestLog("[PASS] TestConfigManager_SetTtsConfig");
 }
