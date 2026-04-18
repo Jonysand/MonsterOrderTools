@@ -2,6 +2,19 @@
 #include "DanmuProcessor.h"
 #include "WriteLog.h"
 
+namespace {
+    uint64_t HashStringToUint64(const std::string& str) {
+        if (str.empty()) return 0;
+        // FNV-1a hash
+        uint64_t hash = 14695981039346656037ull;
+        for (char c : str) {
+            hash ^= static_cast<uint64_t>(c);
+            hash *= 1099511628211ull;
+        }
+        return hash;
+    }
+}
+
 DEFINE_SINGLETON(DanmuProcessor)
 
 DanmuProcessor::DanmuProcessor()
@@ -152,7 +165,7 @@ DanmuProcessResult DanmuProcessor::ProcessDanmu(const DanmuData& danmu)
 #if TEST_CAPTAIN_REPLY_LOCAL
     {
         CaptainDanmuEvent capEvent;
-        capEvent.uid = std::stoull(danmu.userId.empty() ? "0" : danmu.userId);
+        capEvent.uid = HashStringToUint64(danmu.userId);
         capEvent.guardLevel = 3;  // 模拟舰长
         capEvent.hasMedal = danmu.hasMedal;
         capEvent.username = danmu.userName;
@@ -173,7 +186,7 @@ DanmuProcessResult DanmuProcessor::ProcessDanmu(const DanmuData& danmu)
     if (danmu.guardLevel != 0 || danmu.hasMedal)
     {
         CaptainDanmuEvent capEvent;
-        capEvent.uid = std::stoull(danmu.userId.empty() ? "0" : danmu.userId);
+        capEvent.uid = HashStringToUint64(danmu.userId);
         capEvent.guardLevel = danmu.guardLevel;
         capEvent.hasMedal = danmu.hasMedal;
         capEvent.username = danmu.userName;
