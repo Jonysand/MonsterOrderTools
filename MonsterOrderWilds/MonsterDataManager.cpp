@@ -98,8 +98,7 @@ MonsterMatchResult MonsterDataManager::GetMatchedMonsterName(const std::string& 
 
     for (const auto& cp : compiledPatterns_)
     {
-        std::wsmatch match;
-        if (std::regex_search(winput, match, cp.pattern))
+        if (std::regex_match(winput, cp.pattern))
         {
             result.monsterName = cp.monsterName;
             auto it = monsterData_.find(cp.monsterName);

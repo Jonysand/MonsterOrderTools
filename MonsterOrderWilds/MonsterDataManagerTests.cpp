@@ -1,4 +1,4 @@
-﻿#include "framework.h"
+#include "framework.h"
 #include "MonsterDataManager.h"
 #include "UnitTestLog.h"
 #include <cassert>
@@ -11,7 +11,7 @@ void TestMonsterDataManager_NotLoaded()
 {
     MonsterDataManager* mgr = MonsterDataManager::Inst();
     // 未加载时，匹配返回空结果
-    MonsterMatchResult result = mgr->GetMatchedMonsterName("点怪火龙");
+    MonsterMatchResult result = mgr->GetMatchedMonsterName("火龙");
     assert(result.HasMatch() == false);
     assert(result.monsterName.empty());
 
@@ -59,7 +59,7 @@ void TestMonsterDataManager_MatchByName()
 {
     MonsterDataManager* mgr = MonsterDataManager::Inst();
 
-    MonsterMatchResult result = mgr->GetMatchedMonsterName("点怪火龙");
+    MonsterMatchResult result = mgr->GetMatchedMonsterName("火龙");
     assert(result.HasMatch() == true);
     assert(result.monsterName == "火龙");
 
@@ -70,7 +70,7 @@ void TestMonsterDataManager_MatchByNickname()
 {
     MonsterDataManager* mgr = MonsterDataManager::Inst();
 
-    MonsterMatchResult result = mgr->GetMatchedMonsterName("我要打炎龙");
+    MonsterMatchResult result = mgr->GetMatchedMonsterName("炎龙");
     assert(result.HasMatch() == true);
     assert(result.monsterName == "火龙");
 
@@ -81,7 +81,7 @@ void TestMonsterDataManager_MatchTemperedLevel()
 {
     MonsterDataManager* mgr = MonsterDataManager::Inst();
 
-    MonsterMatchResult result = mgr->GetMatchedMonsterName("点怪冰龙");
+    MonsterMatchResult result = mgr->GetMatchedMonsterName("冰龙");
     assert(result.HasMatch() == true);
     assert(result.monsterName == "冰咒龙");
     assert(result.temperedLevel == 1);
@@ -97,6 +97,16 @@ void TestMonsterDataManager_NoMatch()
     assert(result.HasMatch() == false);
 
     TestLog("[PASS] TestMonsterDataManager_NoMatch");
+}
+
+void TestMonsterDataManager_SubstringNoMatch()
+{
+    MonsterDataManager* mgr = MonsterDataManager::Inst();
+
+    MonsterMatchResult result = mgr->GetMatchedMonsterName("黑轰龙");
+    assert(result.HasMatch() == false);
+
+    TestLog("[PASS] TestMonsterDataManager_SubstringNoMatch");
 }
 
 void TestMonsterDataManager_GetIconUrl()
@@ -138,6 +148,7 @@ void RunAllMonsterDataManagerTests()
     TestMonsterDataManager_MatchByNickname();
     TestMonsterDataManager_MatchTemperedLevel();
     TestMonsterDataManager_NoMatch();
+    TestMonsterDataManager_SubstringNoMatch();
     TestMonsterDataManager_GetIconUrl();
     TestMonsterDataManager_GetAllNames();
     TestMonsterDataManager_CleanupTestFile();
