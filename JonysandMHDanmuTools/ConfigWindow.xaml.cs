@@ -11,9 +11,12 @@ namespace MonsterOrderWindows
     /// </summary>
     public partial class ConfigWindow : Window
     {
+        private bool _isInitializing = true;
+
         public ConfigWindow()
         {
             InitializeComponent();
+            Loaded += (s, e) => _isInitializing = false;
         }
 
         public void FillConfig(MainConfig config)
@@ -65,11 +68,14 @@ namespace MonsterOrderWindows
             // 设置TTS引擎选择
             switch (config.TTS_ENGINE)
             {
-                case "mimo":
+                case "minimax":
                     TTSEngineComboBox.SelectedIndex = 1;
                     break;
-                case "sapi":
+                case "mimo":
                     TTSEngineComboBox.SelectedIndex = 2;
+                    break;
+                case "sapi":
+                    TTSEngineComboBox.SelectedIndex = 3;
                     break;
                 default:
                     TTSEngineComboBox.SelectedIndex = 0; // auto
@@ -332,6 +338,7 @@ namespace MonsterOrderWindows
 
         private void TTSEngineComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
+            if (_isInitializing) return;
             var comboBox = sender as System.Windows.Controls.ComboBox;
             if (comboBox == null || comboBox.SelectedItem == null)
                 return;

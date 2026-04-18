@@ -2,7 +2,7 @@
 ; Inno Setup 6.x
 
 #define MyAppName "MonsterOrderWilds"
-#define MyAppVersion "v20"
+#define MyAppVersion "v21"
 #define MyAppPublisher "JonysandMHDanmuTools"
 #define MyAppExeName "MonsterOrderWilds.exe"
 

@@ -191,12 +191,16 @@ std::string XiaomiTTSProvider::HashtagToStyle(const std::string& input) const {
     std::string result = input;
     std::regex pattern(R"(#([^#]+)#)");
     std::smatch match;
-    std::string::const_iterator searchStart(result.cbegin());
-    while (std::regex_search(searchStart, result.cend(), match, pattern)) {
+    size_t searchPos = 0;
+    while (searchPos < result.length()) {
+        if (!std::regex_search(result.cbegin() + searchPos, result.cend(), match, pattern)) {
+            break;
+        }
+        size_t matchStart = searchPos + match.position();
         std::string tag = match[1].str();
         std::string replacement = "<style>" + tag + "</style>";
-        result.replace(match[0].first, match[0].second, replacement);
-        searchStart = result.cbegin() + (replacement.length() - match[0].length() + (searchStart - result.cbegin()));
+        result.replace(result.begin() + matchStart, result.begin() + matchStart + match[0].length(), replacement);
+        searchPos = matchStart + replacement.length();
     }
     return result;
 }

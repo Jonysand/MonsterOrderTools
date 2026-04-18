@@ -327,7 +327,7 @@ bool TTSManager::Speak(const TString& text)
 
     LOG_INFO(TEXT("TTS Engine type: %d"), (int)reqPtr->engineType);
 
-    std::lock_guard<std::mutex> lock(asyncMutex_);
+    std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
     asyncPendingQueue_.push_back(reqPtr);
     return true;
 }
@@ -357,7 +357,7 @@ void TTSManager::SpeakCheckinTTS(const TString& text, const std::string& usernam
     reqPtr->checkinUsername = username;
 
     {
-        std::lock_guard<std::mutex> lock(asyncMutex_);
+        std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
         asyncPendingQueue_.push_back(reqPtr);
     }
     LOG_DEBUG(TEXT("SpeakCheckinTTS: Request added to queue for: %s"), text.c_str());
@@ -501,7 +501,7 @@ void CALLBACK TTSManager::SapiSpeakCallback(WPARAM wParam, LPARAM lParam)
 
     if (pEvent->eEventId == SPEI_STREAM_ENDED_ID) {
         LOG_DEBUG(TEXT("TTS Async: SAPI SPEI_STREAM_ENDED received"));
-        std::lock_guard<std::mutex> lock(pManager->asyncMutex_);
+        std::lock_guard<std::recursive_mutex> lock(pManager->asyncMutex_);
         if (!pManager->asyncPendingQueue_.empty()) {
             auto it = pManager->asyncPendingQueue_.begin();
             if ((*it)->engineType == TTSEngineType::SAPI && (*it)->state == AsyncTTSState::Playing) {
@@ -563,7 +563,7 @@ void TTSManager::SpeakWithMimoAsync(const TString& text, std::function<void(bool
     // 需要加锁保护asyncPendingQueue_
     size_t queueSize;
     {
-        std::lock_guard<std::mutex> lock(asyncMutex_);
+        std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
         asyncPendingQueue_.push_back(reqPtr);
         queueSize = asyncPendingQueue_.size();
     }
@@ -573,7 +573,7 @@ void TTSManager::SpeakWithMimoAsync(const TString& text, std::function<void(bool
 void TTSManager::ProcessAsyncTTS()
 {
     // 处理所有当前活跃的请求（需要加锁保护asyncPendingQueue_）
-    std::lock_guard<std::mutex> lock(asyncMutex_);
+    std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
 
     // 处理活跃请求：遍历当前活跃的请求
     int processed = 0;
@@ -741,7 +741,7 @@ void TTSManager::ProcessPendingRequestInternal(std::list<std::shared_ptr<AsyncTT
     }
     ttsProvider->RequestTTS(ttsReq, [this, reqPtr](const TTSResponse& response) {
         // 回调在HTTP线程中执行，需要线程安全地修改状态
-        std::lock_guard<std::mutex> lock(asyncMutex_);
+        std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
         // reqPtr 是 shared_ptr，只要lambda还持有它，请求就不会被释放
         // 即使请求已从队列中移除，只要回调还在执行，shared_ptr就有效
         if (response.success && !response.audioData.empty()) {
@@ -910,7 +910,7 @@ void TTSManager::HandleRequestFailureInternal(AsyncTTSRequest& req)
 void TTSManager::CleanupCompletedRequests()
 {
     // 清理Completed和Failed状态的请求
-    std::lock_guard<std::mutex> lock(asyncMutex_);
+    std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
     while (!asyncPendingQueue_.empty()) {
         auto& front = asyncPendingQueue_.front();
         if (front->state == AsyncTTSState::Completed || front->state == AsyncTTSState::Failed) {

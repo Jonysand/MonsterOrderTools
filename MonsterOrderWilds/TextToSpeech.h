@@ -146,7 +146,7 @@ private:
 	std::chrono::steady_clock::time_point LastTickTime;
 	ISpVoice* pVoice{ NULL };
 	std::mutex sapiMutex_;
-	std::mutex asyncMutex_;  // 保护异步TTS请求状态
+	std::recursive_mutex asyncMutex_;  // 保护异步TTS请求状态（使用递归锁以支持嵌套调用）
 	std::mutex queueMutex_;  // 保护 NormalMsgQueue, GiftMsgQueue, HistoryLogMsgQueue 等队列
 
 	// TTS提供者
