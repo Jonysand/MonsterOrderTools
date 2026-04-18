@@ -116,7 +116,8 @@ private:
 	// SAPI播放完成回调
 	static void CALLBACK SapiSpeakCallback(WPARAM wParam, LPARAM lParam);
 	// 处理失败/超时（内部版，不获取锁，由ProcessAsyncTTS在持有锁时调用）
-	void HandleRequestFailureInternal(AsyncTTSRequest& req);
+	// 返回值：true = 请求真正失败（不再重试），false = 正在重试
+	bool HandleRequestFailureInternal(AsyncTTSRequest& req);
 	// 清理已完成/失败的请求
 	void CleanupCompletedRequests();
 

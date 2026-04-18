@@ -760,9 +760,8 @@ void TTSManager::ProcessPendingRequestInternal(std::list<std::shared_ptr<AsyncTT
             }
         } else {
             reqPtr->errorMessage = response.errorMsg;
-            reqPtr->state = AsyncTTSState::Failed;
             LOG_ERROR(TEXT("TTS Async: API request failed: %s"), utf8_to_wstring(response.errorMsg).c_str());
-            if (reqPtr->callback) {
+            if (HandleRequestFailureInternal(*reqPtr) && reqPtr->callback) {
                 reqPtr->callback(false, response.errorMsg);
             }
         }
@@ -882,16 +881,17 @@ void TTSManager::ProcessPlayingStateInternal(AsyncTTSRequest& req)
     }
 }
 
-void TTSManager::HandleRequestFailureInternal(AsyncTTSRequest& req)
+bool TTSManager::HandleRequestFailureInternal(AsyncTTSRequest& req)
 {
     // 注意：此函数在ProcessAsyncTTS持有asyncMutex_时被调用，不要再获取锁
+    // 返回值：true = 请求真正失败（不再重试），false = 正在重试
 
     // 重试逻辑
     if (req.retryCount < MAX_RETRY_COUNT) {
         req.retryCount++;
         req.state = AsyncTTSState::Pending;  // 重置为Pending，重新请求
         LOG_WARNING(TEXT("TTS Async: Retrying request (%d/%d)"), req.retryCount, MAX_RETRY_COUNT);
-        return;
+        return false;
     }
 
     // 重试次数用尽，标记失败
@@ -909,6 +909,7 @@ void TTSManager::HandleRequestFailureInternal(AsyncTTSRequest& req)
     // 不在这里降级到SAPI，因为可能有其他请求正在播放
     // audioPlayer是单例，调用Stop()会打断其他请求的播放
     // 让失败的请求直接失败，不尝试SAPI降级播放
+    return true;
 }
 
 void TTSManager::CleanupCompletedRequests()
