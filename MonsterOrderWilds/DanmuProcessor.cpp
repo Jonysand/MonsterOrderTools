@@ -187,7 +187,7 @@ DanmuProcessResult DanmuProcessor::ProcessDanmu(const DanmuData& danmu)
         node.userName = danmu.userName;
         node.monsterName = monsterName;
         node.timeStamp = danmu.timestamp;
-        node.priority = danmu.guardLevel > 0;
+        node.priority = false;
         node.guardLevel = danmu.guardLevel;
         node.temperedLevel = temperedLevel;
 
