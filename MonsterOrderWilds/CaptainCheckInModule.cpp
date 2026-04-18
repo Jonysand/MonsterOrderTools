@@ -294,15 +294,13 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
             std::wstring contentCopy = Utf8ToWstring(repeatedAnswer);
             RECORD_HISTORY(contentCopy.c_str());
 
-            if (!ConfigManager::Inst()->GetConfig().enableVoice || event.guardLevel == 0) {
+            if (!ConfigManager::Inst()->GetConfig().enableVoice) {
                 std::wstring usernameW = Utf8ToWstring(event.username);
                 std::wstring answerW = Utf8ToWstring(repeatedAnswer);
                 if (g_aiReplyCallback) {
                     g_aiReplyCallback(usernameW.c_str(), answerW.c_str(), g_aiReplyUserData);
                 }
-            }
-
-            if (ConfigManager::Inst()->GetConfig().enableVoice) {
+            } else {
                 PlayCheckinTTS(repeatedAnswer, event.username);
             }
 
@@ -352,15 +350,13 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
                 std::wstring contentCopy = Utf8ToWstring(fixedAnswer);
                 RECORD_HISTORY(contentCopy.c_str());
 
-                if (!ConfigManager::Inst()->GetConfig().enableVoice || event.guardLevel == 0) {
+                if (!ConfigManager::Inst()->GetConfig().enableVoice) {
                     std::wstring usernameW = Utf8ToWstring(event.username);
                     std::wstring answerW = Utf8ToWstring(fixedAnswer);
                     if (g_aiReplyCallback) {
                         g_aiReplyCallback(usernameW.c_str(), answerW.c_str(), g_aiReplyUserData);
                     }
-                }
-
-                if (ConfigManager::Inst()->GetConfig().enableVoice) {
+                } else {
                     PlayCheckinTTS(fixedAnswer, event.username);
                 }
             }

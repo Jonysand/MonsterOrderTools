@@ -50,6 +50,53 @@ DanmuProcessResult DanmuProcessor::ProcessDanmu(const DanmuData& danmu)
     LOGW_DEBUG(L"[DanmuProcessor] ProcessDanmu: user=%s, msg=%s, hasMedal=%d, guardLevel=%d",
         wuserName.c_str(), wmessage.c_str(), danmu.hasMedal, danmu.guardLevel);
 
+    // 先通知打卡模块（独立于过滤逻辑，打卡功能不受播报过滤配置影响）
+#if TEST_CAPTAIN_REPLY_LOCAL
+    {
+        CaptainDanmuEvent capEvent;
+        capEvent.uid = HashStringToUint64(danmu.userId);
+        capEvent.guardLevel = 3;  // 模拟舰长
+        capEvent.hasMedal = danmu.hasMedal;
+        capEvent.username = danmu.userName;
+        capEvent.content = danmu.message;
+        capEvent.serverTimestamp = danmu.timestamp;
+
+        std::time_t timeSec = danmu.timestamp;
+        std::tm tmResult = {};
+        if (localtime_s(&tmResult, &timeSec) == 0) {
+            capEvent.sendDate = (tmResult.tm_year + 1900) * 10000 + (tmResult.tm_mon + 1) * 100 + tmResult.tm_mday;
+        } else {
+            capEvent.sendDate = 0;
+        }
+
+        NotifyCaptainDanmu(capEvent);
+    }
+#else
+    if (danmu.guardLevel != 0 || danmu.hasMedal)
+    {
+        CaptainDanmuEvent capEvent;
+        capEvent.uid = HashStringToUint64(danmu.userId);
+        capEvent.guardLevel = danmu.guardLevel;
+        capEvent.hasMedal = danmu.hasMedal;
+        capEvent.username = danmu.userName;
+        capEvent.content = danmu.message;
+        capEvent.serverTimestamp = danmu.timestamp;
+
+        std::time_t timeSec = danmu.timestamp;
+        std::tm tmResult = {};
+        if (localtime_s(&tmResult, &timeSec) == 0) {
+            capEvent.sendDate = (tmResult.tm_year + 1900) * 10000 + (tmResult.tm_mon + 1) * 100 + tmResult.tm_mday;
+        } else {
+            capEvent.sendDate = 0;
+        }
+
+        LOG_DEBUG(TEXT("[DanmuProcessor] Notifying CaptainDanmu: username=%s, guardLevel=%d, hasMedal=%d, content=%s"),
+            capEvent.username.c_str(), capEvent.guardLevel, capEvent.hasMedal, capEvent.content.c_str());
+
+        NotifyCaptainDanmu(capEvent);
+    }
+#endif
+
     if (!PassesFilter(danmu))
     {
         LOGW_DEBUG(L"[DanmuProcessor] PassesFilter failed");
@@ -162,52 +209,6 @@ DanmuProcessResult DanmuProcessor::ProcessDanmu(const DanmuData& danmu)
 
     NotifyDanmuProcessed(result);
 
-#if TEST_CAPTAIN_REPLY_LOCAL
-    {
-        CaptainDanmuEvent capEvent;
-        capEvent.uid = HashStringToUint64(danmu.userId);
-        capEvent.guardLevel = 3;  // 模拟舰长
-        capEvent.hasMedal = danmu.hasMedal;
-        capEvent.username = danmu.userName;
-        capEvent.content = danmu.message;
-        capEvent.serverTimestamp = danmu.timestamp;
-
-        std::time_t timeSec = danmu.timestamp;
-        std::tm tmResult = {};
-        if (localtime_s(&tmResult, &timeSec) == 0) {
-            capEvent.sendDate = (tmResult.tm_year + 1900) * 10000 + (tmResult.tm_mon + 1) * 100 + tmResult.tm_mday;
-        } else {
-            capEvent.sendDate = 0;
-        }
-
-        NotifyCaptainDanmu(capEvent);
-    }
-#else
-    if (danmu.guardLevel != 0 || danmu.hasMedal)
-    {
-        CaptainDanmuEvent capEvent;
-        capEvent.uid = HashStringToUint64(danmu.userId);
-        capEvent.guardLevel = danmu.guardLevel;
-        capEvent.hasMedal = danmu.hasMedal;
-        capEvent.username = danmu.userName;
-        capEvent.content = danmu.message;
-        capEvent.serverTimestamp = danmu.timestamp;
-
-        std::time_t timeSec = danmu.timestamp;
-        std::tm tmResult = {};
-        if (localtime_s(&tmResult, &timeSec) == 0) {
-            capEvent.sendDate = (tmResult.tm_year + 1900) * 10000 + (tmResult.tm_mon + 1) * 100 + tmResult.tm_mday;
-        } else {
-            capEvent.sendDate = 0;
-        }
-
-        LOG_DEBUG(TEXT("[DanmuProcessor] Notifying CaptainDanmu: username=%s, guardLevel=%d, hasMedal=%d, content=%s"),
-            capEvent.username.c_str(), capEvent.guardLevel, capEvent.hasMedal, capEvent.content.c_str());
-
-        NotifyCaptainDanmu(capEvent);
-    }
-#endif
-
     return result;
 }
 
@@ -297,12 +298,6 @@ std::string DanmuProcessor::GenerateSpeakText(const std::string& userName, const
 bool DanmuProcessor::PassesFilter(const DanmuData& danmu) const
 {
     if (onlyMedalOrder_ && !danmu.hasMedal)
-        return false;
-
-    if (onlySpeekGuardLevel_ > 0 && danmu.guardLevel != onlySpeekGuardLevel_)
-        return false;
-
-    if (onlySpeekPaidGift_ && !danmu.isPaidGift)
         return false;
 
     return true;

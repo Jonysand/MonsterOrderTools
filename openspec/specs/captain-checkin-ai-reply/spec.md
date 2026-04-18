@@ -2,6 +2,49 @@
 
 ## 修复记录
 
+### 2026-04-18: 修复非舰长打卡和点怪过滤问题
+
+**修复的问题**：
+
+1. **非舰长+粉丝牌用户无法触发打卡** (`DanmuProcessor.cpp`)
+   - 问题：`PassesFilter` 中包含 `onlySpeekGuardLevel` 和 `onlySpeekPaidGift` 过滤，当配置"播报至少等级=舰长"时，非舰长用户被过滤掉，导致 `CaptainDanmuEvent` 通知无法发出
+   - 修复：将 `NotifyCaptainDanmu` 调用提前到 `PassesFilter` 之前，使打卡功能独立于播报过滤配置
+   - 触发条件 `guardLevel != 0 || hasMedal` 保持不变
+
+2. **非舰长打卡出现两次气泡** (`CaptainCheckInModule.cpp`)
+   - 问题：条件 `!enableVoice || guardLevel == 0` 中，`guardLevel == 0` 对非舰长恒为 true，导致 `enableVoice=true` 时既直接显示气泡，又调用 `PlayCheckinTTS`（TTS 回调再次显示）
+   - 修复：移除 `guardLevel == 0` 条件，改为 `if (!enableVoice) { 直接显示 } else { TTS回调显示 }`
+   - 非舰长打卡行为：enableVoice=false 立即显示气泡，enableVoice=true TTS 播放时显示气泡（与舰长一致）
+
+3. **点怪被错误过滤** (`DanmuProcessor.cpp`)
+   - 问题：`onlySpeekGuardLevel` 和 `onlySpeekPaidGift` 是"播报过滤"配置，却错误地放在 `PassesFilter` 中影响点怪逻辑
+   - 修复：从 `PassesFilter` 中移除这两个过滤条件，只保留 `onlyMedalOrder`（仅粉丝牌可点怪）
+   - 播报过滤保留在 `ShouldSpeak` 中，只影响语音播报，不影响点怪
+
+**行为变更**：
+
+| 场景 | enableVoice=false | enableVoice=true |
+|------|------------------|-----------------|
+| 非舰长+有粉丝牌+首次打卡 | 立即显示气泡 | TTS 播放时显示气泡 |
+| 非舰长+有粉丝牌+重复打卡 | 立即显示气泡 | TTS 播放时显示气泡 |
+| 舰长+首次打卡 | 立即显示气泡 | TTS 播放时显示气泡 |
+| 舰长+重复打卡 | 立即显示气泡 | TTS 播放时显示气泡 |
+
+**配置影响说明**：
+
+| 配置项 | 影响范围 | 说明 |
+|--------|---------|------|
+| `onlyMedalOrder` | 点怪 | 仅粉丝牌可点怪 |
+| `onlySpeekWearingMedal` | 播报 | 仅播报佩戴粉丝牌的弹幕 |
+| `onlySpeekGuardLevel` | 播报 | 仅播报指定舰长等级的弹幕 |
+| `onlySpeekPaidGift` | 播报 | 仅播报付费礼物弹幕 |
+
+**相关文件修改**：
+- `MonsterOrderWilds/DanmuProcessor.cpp` - `NotifyCaptainDanmu` 提前到 `PassesFilter` 之前；`PassesFilter` 移除 `onlySpeekGuardLevel` 和 `onlySpeekPaidGift`
+- `MonsterOrderWilds/CaptainCheckInModule.cpp` - 非舰长打卡移除 `guardLevel == 0` 条件
+
+---
+
 ### 2026-04-18: 修复气泡显示依赖语音播报的问题
 
 **修复的问题**：
