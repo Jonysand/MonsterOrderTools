@@ -327,7 +327,7 @@ std::wstring AudioPlayer::WriteToTempFile(const std::vector<uint8_t>& audioData,
 void AudioPlayer::SetVolume(int volume)
 {
     if (volume < 0) volume = 0;
-    if (volume > 100) volume = 100;
+    if (volume > 200) volume = 200;
     volume_ = volume;
     LOG_DEBUG(TEXT("AudioPlayer: Volume set to %d"), volume_);
 }

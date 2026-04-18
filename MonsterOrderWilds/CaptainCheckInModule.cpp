@@ -294,7 +294,7 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
             std::wstring contentCopy = Utf8ToWstring(repeatedAnswer);
             RECORD_HISTORY(contentCopy.c_str());
 
-            if (!ConfigManager::Inst()->GetConfig().enableVoice) {
+            if (!ConfigManager::Inst()->GetConfig().enableVoice || event.guardLevel == 0) {
                 std::wstring usernameW = Utf8ToWstring(event.username);
                 std::wstring answerW = Utf8ToWstring(repeatedAnswer);
                 if (g_aiReplyCallback) {
@@ -334,7 +334,7 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
 
                         RECORD_HISTORY(contentCopy.c_str());
 
-                        if (!ConfigManager::Inst()->GetConfig().enableVoice) {
+                        if (!ConfigManager::Inst()->GetConfig().enableVoice || event.guardLevel == 0) {
                             std::wstring usernameW = Utf8ToWstring(event.username);
                             std::wstring answerW = Utf8ToWstring(result.answerContent);
                             if (g_aiReplyCallback) {
@@ -352,7 +352,7 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
                 std::wstring contentCopy = Utf8ToWstring(fixedAnswer);
                 RECORD_HISTORY(contentCopy.c_str());
 
-                if (!ConfigManager::Inst()->GetConfig().enableVoice) {
+                if (!ConfigManager::Inst()->GetConfig().enableVoice || event.guardLevel == 0) {
                     std::wstring usernameW = Utf8ToWstring(event.username);
                     std::wstring answerW = Utf8ToWstring(fixedAnswer);
                     if (g_aiReplyCallback) {

@@ -85,7 +85,7 @@ std::string MiniMaxTTSProvider::BuildRequestBody(const TTSRequest& request) cons
     j["voice_setting"] = {
         {"voice_id", config.minimaxVoiceId.empty() ? "female-tianmei" : config.minimaxVoiceId},
         {"speed", config.minimaxSpeed},
-        {"vol", config.speechVolume / 200.0f},
+        {"vol", config.speechVolume / 100.0f},
         {"pitch", 0},
         {"emotion", "happy"},
         {"text_normalization", true}

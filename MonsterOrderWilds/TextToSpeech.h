@@ -159,7 +159,7 @@ private:
 	std::atomic<int> activeRequestCount_{ 0 };   // 当前正在处理的请求数量
 	static constexpr int MAX_CONCURRENT_TTS = 64;      // API并发请求数
 	static constexpr int MAX_ASYNC_QUEUE_SIZE = 0;      // 队列大小限制（0=不限制）
-	static constexpr int MAX_RETRY_COUNT = 0;           // 最大重试次数
+	static constexpr int MAX_RETRY_COUNT = 3;           // 最大重试次数
 	static constexpr int API_TIMEOUT_SECONDS = 5;       // API请求超时（秒）
 	static constexpr int PLAYBACK_TIMEOUT_SECONDS = 0; // 播放超时（秒），0表示不超时
 

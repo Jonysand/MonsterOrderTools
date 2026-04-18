@@ -46,5 +46,5 @@ private:
     std::string lastError;
     mutable bool playing;
     mutable Lock lock;
-    int volume_ = 100; // 播放音量 (0-100)
+    int volume_ = 100; // 播放音量 (0-200)
 };
