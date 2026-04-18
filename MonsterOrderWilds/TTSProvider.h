@@ -25,6 +25,7 @@ public:
     TTSResponse ParseResponse(const std::string& responseBody, int httpStatusCode) const;
 private:
     std::vector<uint8_t> Base64ToBytes(const std::string& base64) const;
+    std::string HashtagToStyle(const std::string& input) const;
     std::string apiKey_;
     std::string lastError_;
     bool available_;

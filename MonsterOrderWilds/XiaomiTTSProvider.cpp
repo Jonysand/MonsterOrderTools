@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <condition_variable>
 #include <mutex>
+#include <regex>
 
 #pragma comment(lib, "winhttp.lib")
 
@@ -79,8 +80,9 @@ void XiaomiTTSProvider::RequestTTS(const TTSRequest& request, TTSCallback callba
 
 std::string XiaomiTTSProvider::BuildRequestBody(const TTSRequest& request) const {
     const auto& config = ConfigManager::Inst()->GetConfig();
+    std::string processedText = HashtagToStyle(request.text);
     std::string styleTag = config.mimoStyle.empty() ? "" : "<style>" + config.mimoStyle + "</style>";
-    std::string fullText = styleTag + request.text;
+    std::string fullText = styleTag + processedText;
 
     nlohmann::json j;
     j["model"] = "mimo-v2-tts";
@@ -183,4 +185,18 @@ std::vector<uint8_t> XiaomiTTSProvider::Base64ToBytes(const std::string& base64)
     }
     
     return decoded;
+}
+
+std::string XiaomiTTSProvider::HashtagToStyle(const std::string& input) const {
+    std::string result = input;
+    std::regex pattern(R"(#([^#]+)#)");
+    std::smatch match;
+    std::string::const_iterator searchStart(result.cbegin());
+    while (std::regex_search(searchStart, result.cend(), match, pattern)) {
+        std::string tag = match[1].str();
+        std::string replacement = "<style>" + tag + "</style>";
+        result.replace(match[0].first, match[0].second, replacement);
+        searchStart = result.cbegin() + (replacement.length() - match[0].length() + (searchStart - result.cbegin()));
+    }
+    return result;
 }

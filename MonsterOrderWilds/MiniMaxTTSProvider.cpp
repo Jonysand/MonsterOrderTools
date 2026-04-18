@@ -87,11 +87,12 @@ std::string MiniMaxTTSProvider::BuildRequestBody(const TTSRequest& request) cons
         {"speed", config.minimaxSpeed},
         {"vol", 1},
         {"pitch", 0},
-        {"emotion", "happy"}
+        {"emotion", "happy"},
+        {"text_normalization", true}
     };
     j["audio_setting"] = {
-        {"sample_rate", 32000},
-        {"bitrate", 128000},
+        {"sample_rate", 22050},
+        {"bitrate", 64000},
         {"format", "mp3"},
         {"channel", 1}
     };
