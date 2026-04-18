@@ -23,9 +23,9 @@ public:
     std::string BuildRequestBody(const TTSRequest& request) const;
     std::string BuildRequestHeaders(const std::string& apiKey) const;
     TTSResponse ParseResponse(const std::string& responseBody, int httpStatusCode) const;
+    std::string HashtagToStyle(const std::string& input) const;
 private:
     std::vector<uint8_t> Base64ToBytes(const std::string& base64) const;
-    std::string HashtagToStyle(const std::string& input) const;
     std::string apiKey_;
     std::string lastError_;
     bool available_;
@@ -41,9 +41,9 @@ public:
     std::string BuildRequestBody(const TTSRequest& request) const;
     std::string BuildRequestHeaders(const std::string& apiKey) const;
     TTSResponse ParseResponse(const std::string& responseBody) const;
+    std::vector<uint8_t> HexToBytes(const std::string& hex) const;
 private:
     std::vector<uint8_t> Base64ToBytes(const std::string& base64) const;
-    std::vector<uint8_t> HexToBytes(const std::string& hex) const;
     std::string apiKey_;
     std::string lastError_;
     bool available_;

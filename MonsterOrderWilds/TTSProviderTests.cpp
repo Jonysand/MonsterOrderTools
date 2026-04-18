@@ -63,11 +63,43 @@ void TestXiaomiTTSProvider_BuildRequest()
 {
     XiaomiTTSProvider xiaomi("test_api_key");
     assert(xiaomi.GetProviderName() == "xiaomi");
-    assert(xiaomi.IsAvailable() == false);
+    assert(xiaomi.IsAvailable() == true);
 
     // Note: BuildRequestBody now reads from ConfigManager, not TTSRequest
     // This test is disabled until we have ConfigManager mocking
     std::cout << "[SKIP] TestXiaomiTTSProvider_BuildRequest - reads from ConfigManager" << std::endl;
+}
+
+void TestXiaomiTTSProvider_HashtagToStyle_MoveTagToFront()
+{
+    XiaomiTTSProvider xiaomi("test_key");
+    
+    // 测试标签在文本中间的情况：标签应该被移到最前面
+    std::string input1 = "阿斗说：#高兴#你好";
+    std::string result1 = xiaomi.HashtagToStyle(input1);
+    assert(result1 == "<style>高兴</style>阿斗说：你好");
+    
+    // 测试标签已经在最前面的情况：保持不变
+    std::string input2 = "#高兴#阿斗说：你好";
+    std::string result2 = xiaomi.HashtagToStyle(input2);
+    assert(result2 == "<style>高兴</style>阿斗说：你好");
+    
+    // 测试没有标签的情况：保持不变
+    std::string input3 = "阿斗说：你好";
+    std::string result3 = xiaomi.HashtagToStyle(input3);
+    assert(result3 == "阿斗说：你好");
+    
+    // 测试多个标签的情况：只移动第一个标签
+    std::string input4 = "你好#高兴#世界#悲伤#结束";
+    std::string result4 = xiaomi.HashtagToStyle(input4);
+    assert(result4 == "<style>高兴</style>你好世界<style>悲伤</style>结束");
+    
+    // 测试空字符串
+    std::string input5 = "";
+    std::string result5 = xiaomi.HashtagToStyle(input5);
+    assert(result5 == "");
+    
+    std::cout << "[PASS] TestXiaomiTTSProvider_HashtagToStyle_MoveTagToFront" << std::endl;
 }
 
 void TestXiaomiTTSProvider_BuildRequestHeaders()
@@ -84,11 +116,14 @@ void TestXiaomiTTSProvider_BuildRequestHeaders()
 void TestXiaomiTTSProvider_ParseResponse_Success()
 {
     XiaomiTTSProvider xiaomi("test_key");
-    std::string responseBody = "{\"data\":{\"audio\":\"4849\"}}";
+    // MiMo API 响应格式: choices[0].message.audio.data
+    std::string responseBody = "{\"choices\":[{\"message\":{\"audio\":{\"data\":\"SEk=\"}}}]}";
     
     auto resp = xiaomi.ParseResponse(responseBody, 200);
     assert(resp.success == true);
     assert(resp.audioData.size() == 2);
+    assert(resp.audioData[0] == 0x48);  // 'H'
+    assert(resp.audioData[1] == 0x49);  // 'I'
     
     std::cout << "[PASS] TestXiaomiTTSProvider_ParseResponse_Success" << std::endl;
 }
@@ -109,7 +144,7 @@ void TestMiniMaxTTSProvider_BuildRequest()
 {
     MiniMaxTTSProvider minimax("test_api_key");
     assert(minimax.GetProviderName() == "minimax");
-    assert(minimax.IsAvailable() == false);
+    assert(minimax.IsAvailable() == true);
 
     // Note: BuildRequestBody now reads from ConfigManager, not TTSRequest
     // This test is disabled until we have ConfigManager mocking
@@ -251,6 +286,7 @@ void RunTTSProviderTests()
     // TestSapiTTSProvider_IsAvailable();  // Requires TTSManager, disabled
     // TestSapiTTSProvider_RequestTTS_Callback();  // Requires TTSManager, disabled
     TestXiaomiTTSProvider_BuildRequest();
+    TestXiaomiTTSProvider_HashtagToStyle_MoveTagToFront();
     TestXiaomiTTSProvider_BuildRequestHeaders();
     TestXiaomiTTSProvider_ParseResponse_Success();
     TestXiaomiTTSProvider_ParseResponse_Error();

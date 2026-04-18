@@ -191,6 +191,15 @@ std::string XiaomiTTSProvider::HashtagToStyle(const std::string& input) const {
     std::string result = input;
     std::regex pattern(R"(#([^#]+)#)");
     std::smatch match;
+    
+    // Step 1: 将第一个标签移到最前面，避免API忽略标签前的文本
+    if (std::regex_search(result, match, pattern)) {
+        std::string tag = match[0].str(); // 完整的 #标签# 文本
+        result.erase(match.position(), match[0].length());
+        result = tag + result;
+    }
+    
+    // Step 2: 替换所有 #标签# 为 <style>标签</style>
     size_t searchPos = 0;
     while (searchPos < result.length()) {
         if (!std::regex_search(result.cbegin() + searchPos, result.cend(), match, pattern)) {
