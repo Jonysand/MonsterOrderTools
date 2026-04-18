@@ -90,7 +90,7 @@ private:
     static JiebaContext* CreateJiebaContextSafe(const std::string& jiebaDict, const std::string& hmmModel, const std::string& userDict, const std::string& idfPath, const std::string& stopWords);
 
     std::map<uint64_t, UserProfile> profiles_;
-    std::vector<std::wregex> triggerWordPatterns_;
+    std::vector<std::wstring> triggerWords_;
     std::string triggerWordsStr_;
     mutable std::mutex profilesLock_;
     bool inited_ = false;

@@ -139,6 +139,27 @@ void TestIsCheckinMessage_WithSpaces()
     std::cout << "[PASS] TestIsCheckinMessage_WithSpaces" << std::endl;
 }
 
+void TestIsCheckinMessage_ExactMatch()
+{
+    CaptainCheckInModule::Inst()->SetTriggerWords("打卡,签到");
+    // Only exact match should trigger
+    assert(CaptainCheckInModule::Inst()->IsCheckinMessage("打卡") == true);
+    assert(CaptainCheckInModule::Inst()->IsCheckinMessage("签到") == true);
+    // Partial match should NOT trigger
+    assert(CaptainCheckInModule::Inst()->IsCheckinMessage("我来打卡了") == false);
+    assert(CaptainCheckInModule::Inst()->IsCheckinMessage("打卡签到") == false);
+    assert(CaptainCheckInModule::Inst()->IsCheckinMessage("今天来打卡") == false);
+    std::cout << "[PASS] TestIsCheckinMessage_ExactMatch" << std::endl;
+}
+
+void TestIsCheckinMessage_CaseInsensitive()
+{
+    CaptainCheckInModule::Inst()->SetTriggerWords("打卡");
+    assert(CaptainCheckInModule::Inst()->IsCheckinMessage("打卡") == true);
+    assert(CaptainCheckInModule::Inst()->IsCheckinMessage("DaKa") == false);  // Not exact match
+    std::cout << "[PASS] TestIsCheckinMessage_CaseInsensitive" << std::endl;
+}
+
 void TestSetTriggerWords_UpdatesCorrectly()
 {
     CaptainCheckInModule::Inst()->SetTriggerWords("打卡,签到");
@@ -220,6 +241,8 @@ void RunCaptainCheckInModuleTests()
     TestIsCheckinMessage_EmptyTriggerWords();
     TestIsCheckinMessage_SingleWord();
     TestIsCheckinMessage_WithSpaces();
+    TestIsCheckinMessage_ExactMatch();
+    TestIsCheckinMessage_CaseInsensitive();
     TestSetTriggerWords_UpdatesCorrectly();
     TestCalculateContinuousDays_ProfileManagerIntegration();
     TestCheckinUpsertBehavior();

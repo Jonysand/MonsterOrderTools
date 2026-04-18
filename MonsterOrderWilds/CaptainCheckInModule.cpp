@@ -98,7 +98,7 @@ void CaptainCheckInModule::Destroy() {
     profiles_.clear();
 
     jiebaContext_.reset();
-    triggerWordPatterns_.clear();
+    triggerWords_.clear();
     inited_ = false;
     enabled_ = true;
 
@@ -117,14 +117,6 @@ bool CaptainCheckInModule::Init() {
 
     auto& config = ConfigManager::Inst()->GetConfig();
     triggerWordsStr_ = config.checkinTriggerWords;
-
-    std::wstringstream ss(std::wstring(config.checkinTriggerWords.begin(), config.checkinTriggerWords.end()));
-    std::wstring word;
-    while (std::getline(ss, word, L',')) {
-        if (!word.empty()) {
-            triggerWordPatterns_.push_back(std::wregex(word, std::wregex::icase));
-        }
-    }
 
     aiProviderJson_ = GetAI_PROVIDER();
 
@@ -163,13 +155,21 @@ bool CaptainCheckInModule::Init() {
 
 void CaptainCheckInModule::SetTriggerWords(const std::string& words) {
     triggerWordsStr_ = words;
-    triggerWordPatterns_.clear();
+    triggerWords_.clear();
 
     std::wstringstream ss(std::wstring(words.begin(), words.end()));
     std::wstring word;
     while (std::getline(ss, word, L',')) {
+        // Trim leading and trailing spaces
+        size_t start = word.find_first_not_of(L" \t\r\n");
+        if (start != std::wstring::npos) {
+            size_t end = word.find_last_not_of(L" \t\r\n");
+            word = word.substr(start, end - start + 1);
+        } else {
+            word.clear();
+        }
         if (!word.empty()) {
-            triggerWordPatterns_.push_back(std::wregex(word, std::wregex::icase));
+            triggerWords_.push_back(word);
         }
     }
     LOG_INFO(TEXT("CaptainCheckInModule trigger words updated: %s"), words.c_str());
@@ -189,14 +189,14 @@ bool CaptainCheckInModule::IsCheckinMessage(const std::string& content) const {
 
     try {
         std::wstring wcontent(content.begin(), content.end());
-        for (const auto& pattern : triggerWordPatterns_) {
-            if (std::regex_search(wcontent, pattern)) {
+        for (const auto& word : triggerWords_) {
+            if (_wcsicmp(wcontent.c_str(), word.c_str()) == 0) {
                 return true;
             }
         }
     }
     catch (const std::exception& e) {
-        LOG_ERROR(TEXT("IsCheckinMessage regex error: %s"), e.what());
+        LOG_ERROR(TEXT("IsCheckinMessage error: %s"), e.what());
     }
     return false;
 }
