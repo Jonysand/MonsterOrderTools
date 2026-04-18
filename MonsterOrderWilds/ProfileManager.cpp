@@ -469,13 +469,17 @@ namespace {
 }
 
 bool ProfileManager::GetLastCheckinRecordFromDb(uint64_t uid, int32_t& outLastDate, int32_t& outContinuousDays) {
-    if (!storage_) {
+    {
+        std::lock_guard<std::mutex> lock(profilesLock_);
         auto it = profiles_.find(uid);
         if (it != profiles_.end()) {
             outLastDate = it->second.lastCheckinDate;
             outContinuousDays = it->second.continuousDays;
             return outLastDate != 0;
         }
+    }
+
+    if (!storage_) {
         return false;
     }
 
@@ -494,6 +498,22 @@ bool ProfileManager::GetLastCheckinRecordFromDb(uint64_t uid, int32_t& outLastDa
         outLastDate = sqlite3_column_int(stmt, 0);
         outContinuousDays = sqlite3_column_int(stmt, 1);
         sqlite3_finalize(stmt);
+
+        {
+            std::lock_guard<std::mutex> lock(profilesLock_);
+            auto it = profiles_.find(uid);
+            if (it != profiles_.end()) {
+                it->second.lastCheckinDate = outLastDate;
+                it->second.continuousDays = outContinuousDays;
+            } else {
+                UserProfileData newProfile;
+                newProfile.uid = uid;
+                newProfile.lastCheckinDate = outLastDate;
+                newProfile.continuousDays = outContinuousDays;
+                profiles_[uid] = newProfile;
+            }
+        }
+
         return outLastDate != 0;
     }
 
