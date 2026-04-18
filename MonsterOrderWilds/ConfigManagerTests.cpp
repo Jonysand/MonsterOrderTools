@@ -16,7 +16,7 @@ void TestConfigManager_DefaultValues()
     assert(config.enableVoice == false);
     assert(config.speechRate == 0);
     assert(config.speechPitch == 0);
-    assert(config.speechVolume == 50);
+    assert(config.speechVolume == 100);
     assert(config.opacity == 100);
     assert(config.ttsEngine == "auto");
 
@@ -82,7 +82,7 @@ void TestConfigManager_SetNumericValues()
     // 还原
     mgr->SetSpeechRate(0);
     mgr->SetSpeechPitch(0);
-    mgr->SetSpeechVolume(0);
+    mgr->SetSpeechVolume(100);
     mgr->SetOpacity(100);
     mgr->SetOnlySpeekGuardLevel(0);
 
@@ -136,7 +136,7 @@ void TestConfigManager_SaveAndLoad()
 
     // 修改值
     mgr->SetIdCode("changed");
-    mgr->SetSpeechVolume(50);
+    mgr->SetSpeechVolume(100);
 
     // 重新加载
     bool loaded = mgr->LoadConfig();
@@ -146,7 +146,7 @@ void TestConfigManager_SaveAndLoad()
 
     // 还原
     mgr->SetIdCode("");
-    mgr->SetSpeechVolume(0);
+    mgr->SetSpeechVolume(100);
     mgr->SaveConfig(true);
 
     TestLog("[PASS] TestConfigManager_SaveAndLoad");

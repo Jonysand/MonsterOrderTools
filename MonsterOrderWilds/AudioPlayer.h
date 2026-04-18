@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "framework.h"
 #include <vector>
 
@@ -34,6 +34,9 @@ public:
     // 清理临时文件
     void CleanupTempFile();
 
+    // 设置播放音量 (0-100)
+    void SetVolume(int volume);
+
 private:
     std::wstring WriteToTempFile(const std::vector<uint8_t>& audioData, const std::string& format);
     bool ExecuteMCICommand(const std::wstring& command, bool ignoreError = false);
@@ -43,4 +46,5 @@ private:
     std::string lastError;
     mutable bool playing;
     mutable Lock lock;
+    int volume_ = 100; // 播放音量 (0-100)
 };

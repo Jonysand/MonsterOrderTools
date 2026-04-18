@@ -58,7 +58,7 @@ namespace MonsterOrderWindows
             set { _speechPitch = value; OnPropertyChanged(); }
         }
 
-        private int _speechVolume = 50;
+        private int _speechVolume = 100;
         public int SpeechVolume
         {
             get => _speechVolume;

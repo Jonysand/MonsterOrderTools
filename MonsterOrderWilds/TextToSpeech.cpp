@@ -338,6 +338,8 @@ bool TTSManager::PlayAudioData(const std::vector<uint8_t>& audioData, const std:
         LOG_ERROR(TEXT("PlayAudioData: audioPlayer is NULL"));
         return false;
     }
+    int speechVolume = ConfigManager::Inst()->GetConfig().speechVolume;
+    audioPlayer->SetVolume(speechVolume);
     bool success = audioPlayer->Play(audioData, format);
     if (!success) {
         LOG_ERROR(TEXT("PlayAudioData: AudioPlayer::Play failed"));
@@ -393,7 +395,7 @@ bool TTSManager::SpeakWithSapi(const TString& text)
     LOG_DEBUG(TEXT("SpeakWithSapi: rate=%d, volume=%d, pitch=%d"), speechRate, speechVolume, pitch);
 
     pVoice->SetRate(speechRate);
-    pVoice->SetVolume(speechVolume);
+    pVoice->SetVolume(speechVolume / 2);
     std::wstring pitchStr = (pitch >= 0 ? L"+" : L"") + std::to_wstring(pitch) + L"st";
 
     // Escape '<' and '&' in text to prevent SSML/XML parsing issues
@@ -465,7 +467,7 @@ bool TTSManager::SpeakWithSapiSync(const TString& text)
     LOG_DEBUG(TEXT("SpeakWithSapiSync: rate=%d, volume=%d, pitch=%d"), speechRate, speechVolume, pitch);
 
     pVoice->SetRate(speechRate);
-    pVoice->SetVolume(speechVolume);
+    pVoice->SetVolume(speechVolume / 2);
     std::wstring pitchStr = (pitch >= 0 ? L"+" : L"") + std::to_wstring(pitch) + L"st";
 
     std::wstring safeText;
@@ -669,7 +671,7 @@ void TTSManager::ProcessPendingRequestInternal(std::list<std::shared_ptr<AsyncTT
             int speechVolume = ConfigManager::Inst()->GetConfig().speechVolume;
             int pitch = ConfigManager::Inst()->GetConfig().speechPitch;
             pVoice->SetRate(speechRate);
-            pVoice->SetVolume(speechVolume);
+            pVoice->SetVolume(speechVolume / 2);
             std::wstring pitchStr = (pitch >= 0 ? L"+" : L"") + std::to_wstring(pitch) + L"st";
 
             std::wstring safeText;
@@ -822,6 +824,8 @@ void TTSManager::ProcessPlayingStateInternal(AsyncTTSRequest& req)
 
     // 播放音频（非阻塞模式）
     if (!req.audioData.empty() && !audioPlayer->IsPlaying() && !req.playbackStarted) {
+        int speechVolume = ConfigManager::Inst()->GetConfig().speechVolume;
+        audioPlayer->SetVolume(speechVolume);
         bool playSuccess = audioPlayer->Play(req.audioData, req.responseFormat);
         if (!playSuccess) {
             LOG_ERROR(TEXT("TTS Async: Audio playback failed"));

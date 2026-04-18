@@ -171,6 +171,12 @@ bool AudioPlayer::PlayFile(const std::wstring& filePath)
     playing = true;
     lock.unlock();
 
+    // 设置音量 (配置范围 0-200, MCI 音量范围 0-1000)
+    int mciVolume = volume_ * 5;
+    std::wstring volumeCmd = L"setaudio mimo_audio_alias volume to " + std::to_wstring(mciVolume);
+    ExecuteMCICommand(volumeCmd, true);
+    LOG_DEBUG(TEXT("AudioPlayer: Set volume to %d (MCI: %d)"), volume_, mciVolume);
+
     LOG_INFO(TEXT("AudioPlayer: Started playing audio"));
     return true;
 }
@@ -316,6 +322,14 @@ std::wstring AudioPlayer::WriteToTempFile(const std::vector<uint8_t>& audioData,
     CloseHandle(hFile);
     LOG_INFO(TEXT("AudioPlayer: Temp file saved to: %s"), filePath.c_str());
     return filePath;
+}
+
+void AudioPlayer::SetVolume(int volume)
+{
+    if (volume < 0) volume = 0;
+    if (volume > 100) volume = 100;
+    volume_ = volume;
+    LOG_DEBUG(TEXT("AudioPlayer: Volume set to %d"), volume_);
 }
 
 void AudioPlayer::CleanupTempFile()

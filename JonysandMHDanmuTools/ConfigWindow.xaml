@@ -222,6 +222,33 @@
                                     <ComboBoxItem Content="Windows SAPI" Tag="sapi" />
                                 </ComboBox>
                             </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="8,8,0,0"
+                                VerticalAlignment="Center">
+                                <Label
+                                    Content="语音音量"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe UI Variable"
+                                    FontSize="14"
+                                    Foreground="#222"
+                                    Margin="0,0,8,0" />
+                                <Slider
+                                    Name="VoiceVolumeSlider"
+                                    Minimum="0"
+                                    Maximum="200"
+                                    TickFrequency="1"
+                                    IsSnapToTickEnabled="True"
+                                    Width="120"
+                                    VerticalAlignment="Center"
+                                    Margin="0,0,8,0"
+                                    ValueChanged="VoiceVolumeSlider_ValueChanged" />
+                                <TextBlock
+                                    Text="{Binding ElementName=VoiceVolumeSlider, Path=Value, StringFormat=F0}"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe UI Variable"
+                                    FontSize="14"
+                                    Foreground="#222"
+                                    Width="30" />
+                            </StackPanel>
                             <Border Name="MiniMaxConfigPanel" Margin="8,8,0,0" Visibility="Visible">
                                 <StackPanel>
                                     <Label Content="MiniMax 设置" FontWeight="SemiBold" Foreground="#0078D4" Margin="0,4,0,4" />
@@ -404,31 +431,6 @@
                                             ValueChanged="VoicePitchSlider_ValueChanged" />
                                         <TextBlock
                                             Text="{Binding ElementName=VoicePitchSlider, Path=Value, StringFormat=F0}"
-                                            VerticalAlignment="Center"
-                                            FontSize="14"
-                                            Foreground="#222"
-                                            Width="30" />
-                                    </StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4"
-                                        VerticalAlignment="Center">
-                                        <Label
-                                            Content="语音音量"
-                                            VerticalAlignment="Center"
-                                            FontSize="14"
-                                            Foreground="#222"
-                                            Margin="0,0,8,0" />
-                                        <Slider
-                                            Name="VoiceVolumeSlider"
-                                            Minimum="0"
-                                            Maximum="100"
-                                            TickFrequency="1"
-                                            IsSnapToTickEnabled="True"
-                                            Width="120"
-                                            VerticalAlignment="Center"
-                                            Margin="0,0,8,0"
-                                            ValueChanged="VoiceVolumeSlider_ValueChanged" />
-                                        <TextBlock
-                                            Text="{Binding ElementName=VoiceVolumeSlider, Path=Value, StringFormat=F0}"
                                             VerticalAlignment="Center"
                                             FontSize="14"
                                             Foreground="#222"
