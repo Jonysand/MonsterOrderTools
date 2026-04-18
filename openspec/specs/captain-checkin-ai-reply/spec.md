@@ -8,11 +8,11 @@
 
 1. **舰长点怪被默认优先排序** (`DanmuProcessor.cpp`)
    - 问题：`node.priority = danmu.guardLevel > 0;` 把舰长身份错误地映射为优先标志，导致所有舰长点怪都自动排到非舰长前面
-   - 修复：改为 `node.priority = false;`，优先权应由用户明确说"优先"关键词才能获得
-   - 排序行为：舰长点怪现在按时间顺序排列，只有明确说"优先"/"插队"等关键词才会插队
+   - 修复：改为 `node.priority = HasPriorityKeyword(wnormalizedMsg) && danmu.guardLevel > 0;`，只有舰长明确说"优先"/"插队"等关键词才会被标记为优先
+   - 排序行为：舰长点怪按时间顺序排列，只有明确说"优先"/"插队"等关键词才会插队
 
 **相关文件修改**：
-- `MonsterOrderWilds/DanmuProcessor.cpp:190` - 入队时 priority 默认设为 false
+- `MonsterOrderWilds/DanmuProcessor.cpp:190` - 入队时检测"优先"关键词来设置 priority
 
 ---
 
