@@ -2,6 +2,35 @@
 
 ## 修复记录
 
+### 2026-04-18: 修复气泡显示依赖语音播报的问题
+
+**修复的问题**：
+
+1. **气泡显示被错误绑定到 TTS 播放流程** (`CaptainCheckInModule.cpp`)
+   - 问题：重复打卡和舰长首次打卡的气泡显示仅在 `enableVoice=true` 时生效，因为代码通过 `PlayCheckinTTS` 间接触发 `g_checkinTTSPlayCallback` 来显示气泡
+   - 修复：
+     - 当 `enableVoice=false` 时，直接调用 `g_aiReplyCallback` 显示气泡
+     - 当 `enableVoice=true` 时，保持原有行为：TTS 播放时通过 `g_checkinTTSPlayCallback` 同步显示气泡
+   - 非舰长首次打卡原本总是直接调用 `g_aiReplyCallback`，现在也改为仅在 `enableVoice=false` 时直接显示，开启语音时改为通过 TTS 回调同步显示
+
+2. **移除 TextToSpeech.cpp 中多余的 g_checkinTTSPlayCallback 调用**
+   - 问题：非舰长首次打卡在开启语音时，既直接调用了 `g_aiReplyCallback`，又通过 TTS 回调调用了 `g_checkinTTSPlayCallback`，导致气泡重复显示
+   - 修复：保留 `g_checkinTTSPlayCallback` 机制，但从 `CaptainCheckInModule` 层面控制，仅在需要时调用
+
+**行为变更**：
+
+| 场景 | enableVoice=false | enableVoice=true |
+|------|------------------|-----------------|
+| 重复打卡 | 立即显示气泡 | TTS 播放时显示气泡 |
+| 舰长首次打卡 | 立即显示气泡 | TTS 播放时显示气泡 |
+| 非舰长首次打卡 | 立即显示气泡 | TTS 播放时显示气泡 |
+
+**相关文件修改**：
+- `MonsterOrderWilds/CaptainCheckInModule.cpp` - 添加 enableVoice 分支逻辑
+- `MonsterOrderWilds/TextToSpeech.cpp` - 恢复 g_checkinTTSPlayCallback 调用，保持与语音同步
+
+---
+
 ### 2026-04-16: 非舰长+有粉丝牌打卡功能
 
 **新增功能**：
@@ -160,14 +189,18 @@
 - `"{username}打卡成功！"`
 - `"{username}连续第{continuousDays}天打卡！"`
 
-### FR-6: 非舰长打卡行为
+### FR-6: 打卡行为与气泡显示时机
 
-| 场景 | 气泡显示 | TTS 播报 | 数据库记录 |
-|------|---------|---------|-----------|
-| 非舰长+有粉丝牌+首次打卡 | ✅ | ✅（受 enableVoice 控制） | ✅ |
-| 非舰长+有粉丝牌+重复打卡 | ✅ | ✅（受 enableVoice 控制） | ✅ |
-| 舰长+首次打卡 | ✅ | ✅ | ✅ |
-| 舰长+重复打卡 | ✅ | ✅ | ✅ |
+| 场景 | 气泡显示 | 气泡显示时机 | TTS 播报 | 数据库记录 |
+|------|---------|------------|---------|-----------|
+| 非舰长+有粉丝牌+首次打卡 | ✅ | enableVoice=false: 立即<br>enableVoice=true: TTS播放时 | ✅（受 enableVoice 控制） | ✅ |
+| 非舰长+有粉丝牌+重复打卡 | ✅ | enableVoice=false: 立即<br>enableVoice=true: TTS播放时 | ✅（受 enableVoice 控制） | ✅ |
+| 舰长+首次打卡 | ✅ | enableVoice=false: 立即<br>enableVoice=true: TTS播放时 | ✅ | ✅ |
+| 舰长+重复打卡 | ✅ | enableVoice=false: 立即<br>enableVoice=true: TTS播放时 | ✅ | ✅ |
+
+**说明**：
+- 当 `enableVoice=true` 时，气泡通过 `g_checkinTTSPlayCallback` 在 TTS 播放开始时同步显示，确保语音和气泡同时出现
+- 当 `enableVoice=false` 时，气泡通过 `g_aiReplyCallback` 在生成回复后立即显示
 
 ## 配置字段
 
