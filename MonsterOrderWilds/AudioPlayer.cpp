@@ -301,13 +301,24 @@ std::wstring AudioPlayer::WriteToTempFile(const std::vector<uint8_t>& audioData,
         }
     }
 
-    std::wstring extension = L"." + utf8_to_wstring(format);
+    std::wstring extension;
+    if (!format.empty()) {
+        std::string fmt = format;
+        size_t queryPos = fmt.find('?');
+        if (queryPos != std::string::npos) {
+            fmt = fmt.substr(0, queryPos);
+        }
+        extension = L"." + utf8_to_wstring(fmt);
+    } else {
+        extension = L".mp3";
+    }
     std::wstring filePath = tempDir + L"\\mimo_tts_" + std::to_wstring(GetTickCount64()) + extension;
 
     HANDLE hFile = CreateFileW(filePath.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hFile == INVALID_HANDLE_VALUE) {
+        DWORD err = ::GetLastError();
         lastError = "Failed to create temp file";
-        LOG_ERROR(TEXT("AudioPlayer: %s"), utf8_to_wstring(lastError).c_str());
+        LOG_ERROR(TEXT("AudioPlayer: %s, path: %s, error code: %d"), utf8_to_wstring(lastError).c_str(), filePath.c_str(), err);
         return L"";
     }
 

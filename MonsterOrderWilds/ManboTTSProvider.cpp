@@ -110,7 +110,7 @@ void ManboTTSProvider::DownloadAudio(const std::string& audioUrl, TTSCallback ca
         "",
         "",
         useHttps,
-        [this, callback](bool success, const std::string& resp, DWORD error) {
+        [this, callback, audioUrl](bool success, const std::string& resp, DWORD error) {
             if (!success || error != 0) {
                 lastError_ = "Audio download failed";
                 available_ = false;
@@ -122,10 +122,27 @@ void ManboTTSProvider::DownloadAudio(const std::string& audioUrl, TTSCallback ca
                 } catch (...) {}
                 return;
             }
-            
+
             TTSResponse response;
             response.success = true;
             response.audioData.assign(resp.begin(), resp.end());
+
+            size_t dotPos = audioUrl.rfind('.');
+            size_t queryPos = audioUrl.find('?');
+            if (dotPos != std::string::npos && dotPos < audioUrl.size() - 1) {
+                std::string ext;
+                if (queryPos == std::string::npos || queryPos > dotPos) {
+                    ext = audioUrl.substr(dotPos + 1);
+                } else {
+                    ext = audioUrl.substr(dotPos + 1, queryPos - dotPos - 1);
+                }
+                std::transform(ext.begin(), ext.end(), ext.begin(),
+                    [](unsigned char c) { return std::tolower(c); });
+                if (!ext.empty() && ext.find('/') == std::string::npos) {
+                    response.format = ext;
+                }
+            }
+
             try {
                 callback(response);
             } catch (...) {}

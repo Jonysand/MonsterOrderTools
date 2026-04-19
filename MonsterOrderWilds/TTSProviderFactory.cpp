@@ -21,17 +21,21 @@ std::unique_ptr<ITTSProvider> TTSProviderFactory::Create(
         return std::make_unique<XiaomiTTSProvider>(mimoApiKey);
     }
 
-    // AUTO mode: minimax -> xiaomi -> sapi
-    if (!minimaxApiKey.empty()) {
-        LOG_INFO(TEXT("TTS engine: Auto -> MiniMax"));
+    if (ttsEngine == "minimax") {
+        if (minimaxApiKey.empty()) {
+            LOG_WARNING(TEXT("MiniMax TTS API key is empty, falling back to SAPI"));
+            return std::make_unique<SapiTTSProvider>();
+        }
+        LOG_INFO(TEXT("TTS engine set to MiniMax (explicit)"));
         return std::make_unique<MiniMaxTTSProvider>(minimaxApiKey);
     }
 
-    if (!mimoApiKey.empty()) {
-        LOG_INFO(TEXT("TTS engine: Auto -> MiMo"));
-        return std::make_unique<XiaomiTTSProvider>(mimoApiKey);
+    if (ttsEngine == "manbo") {
+        LOG_INFO(TEXT("TTS engine set to Manbo (explicit)"));
+        return std::make_unique<ManboTTSProvider>();
     }
 
-    LOG_INFO(TEXT("TTS engine: Auto -> SAPI (no API keys available)"));
-    return std::make_unique<SapiTTSProvider>();
+    // AUTO mode: manbo -> minimax -> mimo -> sapi
+    LOG_INFO(TEXT("TTS engine: Auto -> Manbo"));
+    return std::make_unique<ManboTTSProvider>();
 }

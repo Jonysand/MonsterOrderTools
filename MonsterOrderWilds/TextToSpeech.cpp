@@ -792,6 +792,9 @@ void TTSManager::ProcessPendingRequestInternal(std::list<std::shared_ptr<AsyncTT
         if (response.success && !response.audioData.empty()) {
             reqPtr->audioData = response.audioData;
             reqPtr->state = AsyncTTSState::Playing;
+            if (!response.format.empty()) {
+                reqPtr->responseFormat = response.format;
+            }
             LOG_INFO(TEXT("TTS Async: API request succeeded, starting playback"));
 
             if (reqPtr->isCheckinTTS && !reqPtr->checkinUsername.empty()) {
