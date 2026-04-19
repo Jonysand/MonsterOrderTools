@@ -369,8 +369,15 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
 void CaptainCheckInModule::ExtractKeywords(UserProfile& profile, const std::string& content) {
     if (!jiebaContext_) return;
 
+    // 当使用 MiMo TTS 引擎时，#标签# 会被转换为 <style>标签</style>，不应学习为观众习惯词
+    std::string processedContent = content;
+    if (TTSManager::Inst()->GetActiveEngineType() == TTSEngineType::MiMo) {
+        std::regex tagPattern(R"(#[^#]+#)");
+        processedContent = std::regex_replace(processedContent, tagPattern, "");
+    }
+
     std::vector<std::string> words;
-    jiebaContext_->jieba_.Cut(content, words, true);
+    jiebaContext_->jieba_.Cut(processedContent, words, true);
 
     for (const auto& word : words) {
         if (word.length() < MIN_WORD_LENGTH) continue;
