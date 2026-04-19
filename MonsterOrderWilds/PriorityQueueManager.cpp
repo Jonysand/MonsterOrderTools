@@ -8,8 +8,20 @@
 
 DEFINE_SINGLETON(PriorityQueueManager)
 
+namespace
+{
+    std::string GetConfigDirectory()
+    {
+        wchar_t exePath[MAX_PATH];
+        GetModuleFileNameW(nullptr, exePath, MAX_PATH);
+        std::filesystem::path exeFullPath(exePath);
+        std::filesystem::path exeDir = exeFullPath.parent_path();
+        return (exeDir / "MonsterOrderWilds_configs").string();
+    }
+}
+
 PriorityQueueManager::PriorityQueueManager()
-    : saveDir_("MonsterOrderWilds_configs")
+    : saveDir_(GetConfigDirectory())
     , saveFileName_("OrderList.list")
     , lastSaveTime_(std::chrono::steady_clock::now())
 {

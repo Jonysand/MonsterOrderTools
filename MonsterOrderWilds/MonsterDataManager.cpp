@@ -7,6 +7,18 @@
 
 DEFINE_SINGLETON(MonsterDataManager)
 
+namespace
+{
+    std::string GetConfigDirectory()
+    {
+        wchar_t exePath[MAX_PATH];
+        GetModuleFileNameW(nullptr, exePath, MAX_PATH);
+        std::filesystem::path exeFullPath(exePath);
+        std::filesystem::path exeDir = exeFullPath.parent_path();
+        return (exeDir / "MonsterOrderWilds_configs").string();
+    }
+}
+
 bool MonsterDataManager::LoadJsonData(const std::string& configPath)
 {
     try
@@ -14,7 +26,7 @@ bool MonsterDataManager::LoadJsonData(const std::string& configPath)
         std::string path = configPath;
         if (path.empty())
         {
-            path = "MonsterOrderWilds_configs/monster_list.json";
+            path = GetConfigDirectory() + "/monster_list.json";
         }
 
         if (!std::filesystem::exists(path))
