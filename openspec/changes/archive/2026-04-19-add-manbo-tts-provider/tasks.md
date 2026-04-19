@@ -1,6 +1,6 @@
 # Manbo TTS Provider Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 实现 Manbo TTS Provider，支持通过 HTTP GET 调用 Manbo API 获取音频 URL 并下载 WAV 音频数据，集成到现有 TTS 引擎选择和工厂模式中。
 
@@ -18,7 +18,7 @@
 
 **精确执行序列：**
 
-- [ ] **Step 1: 在 TTSProvider.h 中声明 ManboTTSProvider 类** (2-5 min)
+- [x] **Step 1: 在 TTSProvider.h 中声明 ManboTTSProvider 类** (2-5 min)
 
   【工具序列】read → edit
   1. 用 read 工具读取 `MonsterOrderWilds/TTSProvider.h`
@@ -42,7 +42,7 @@ private:
 };
 ```
 
-- [ ] **Step 2: 创建 ManboTTSProvider.cpp 实现文件** (5-10 min)
+- [x] **Step 2: 创建 ManboTTSProvider.cpp 实现文件** (5-10 min)
 
   【工具序列】write
   1. 用 write 工具创建 `MonsterOrderWilds/ManboTTSProvider.cpp`：
@@ -200,7 +200,7 @@ void ManboTTSProvider::RequestTTS(const TTSRequest& request, TTSCallback callbac
 }
 ```
 
-- [ ] **Step 3: 验证编译** (2-5 min)
+- [x] **Step 3: 验证编译** (2-5 min)
 
   【工具序列】bash
   执行编译命令验证新增文件无编译错误：
@@ -216,7 +216,7 @@ void ManboTTSProvider::RequestTTS(const TTSRequest& request, TTSCallback callbac
 
 **精确执行序列：**
 
-- [ ] **Step 1: 修改 TTSProviderFactory::Create 方法** (2-5 min)
+- [x] **Step 1: 修改 TTSProviderFactory::Create 方法** (2-5 min)
 
   【工具序列】read → edit
   1. 用 read 工具读取 `MonsterOrderWilds/TTSProviderFactory.cpp`
@@ -281,7 +281,7 @@ std::unique_ptr<ITTSProvider> TTSProviderFactory::Create(
     return std::make_unique<ManboTTSProvider>();
 ```
 
-- [ ] **Step 2: 编译验证** (2-5 min)
+- [x] **Step 2: 编译验证** (2-5 min)
 
   【工具序列】bash
   执行编译命令验证修改：
@@ -297,7 +297,7 @@ std::unique_ptr<ITTSProvider> TTSProviderFactory::Create(
 
 **精确执行序列：**
 
-- [ ] **Step 1: 在 GetActiveEngineType 中添加 manbo 识别** (2-5 min)
+- [x] **Step 1: 在 GetActiveEngineType 中添加 manbo 识别** (2-5 min)
 
   【工具序列】read → edit
   1. 用 read 工具读取 `MonsterOrderWilds/TextToSpeech.cpp` 的 GetActiveEngineType 方法
@@ -317,7 +317,7 @@ std::unique_ptr<ITTSProvider> TTSProviderFactory::Create(
 
   同时需要确认 `TTSEngineType` 枚举中是否已有 `Manbo` 值。读取 `TextToSpeech.h` 检查枚举定义。如果没有，在 MiniMax 和 MiMo 之间添加 Manbo。
 
-- [ ] **Step 2: 编译验证** (2-5 min)
+- [x] **Step 2: 编译验证** (2-5 min)
 
   【工具序列】bash
   执行编译命令验证修改：
@@ -334,7 +334,7 @@ std::unique_ptr<ITTSProvider> TTSProviderFactory::Create(
 
 **精确执行序列：**
 
-- [ ] **Step 1: 在 XAML 中添加 Manbo 引擎选项** (2-5 min)
+- [x] **Step 1: 在 XAML 中添加 Manbo 引擎选项** (2-5 min)
 
   【工具序列】read → edit
   1. 用 read 工具读取 `JonysandMHDanmuTools/ConfigWindow.xaml` 的 TTSEngineComboBox 部分
@@ -344,7 +344,7 @@ std::unique_ptr<ITTSProvider> TTSProviderFactory::Create(
 <ComboBoxItem Content="Manbo" Tag="manbo" />
 ```
 
-- [ ] **Step 2: 在 ConfigWindow.xaml.cs 的 FillConfig 中添加 manbo 选项处理** (2-5 min)
+- [x] **Step 2: 在 ConfigWindow.xaml.cs 的 FillConfig 中添加 manbo 选项处理** (2-5 min)
 
   【工具序列】read → edit
   1. 用 read 工具读取 `JonysandMHDanmuTools/ConfigWindow.xaml.cs` 的 FillConfig 方法
@@ -373,7 +373,7 @@ switch (config.TTS_ENGINE)
 
   注意：由于添加了 Manbo 选项，原有索引需要调整（mimo 从 2 变为 3，sapi 从 3 变为 4）。
 
-- [ ] **Step 3: 编译验证** (2-5 min)
+- [x] **Step 3: 编译验证** (2-5 min)
 
   【工具序列】bash
   执行编译命令验证修改：
@@ -390,7 +390,7 @@ switch (config.TTS_ENGINE)
 
 **精确执行序列：**
 
-- [ ] **Step 1: 在 vcxproj 中添加 ManboTTSProvider.cpp** (2-5 min)
+- [x] **Step 1: 在 vcxproj 中添加 ManboTTSProvider.cpp** (2-5 min)
 
   【工具序列】read → edit
   1. 用 read 工具读取 `MonsterOrderWilds/MonsterOrderWilds.vcxproj`
@@ -400,7 +400,7 @@ switch (config.TTS_ENGINE)
     <ClCompile Include="ManboTTSProvider.cpp" />
 ```
 
-- [ ] **Step 2: 在 vcxproj.filters 中添加 ManboTTSProvider.cpp 的 Filter** (2-5 min)
+- [x] **Step 2: 在 vcxproj.filters 中添加 ManboTTSProvider.cpp 的 Filter** (2-5 min)
 
   【工具序列】read → edit
   1. 用 read 工具读取 `MonsterOrderWilds/MonsterOrderWilds.vcxproj.filters`
@@ -412,7 +412,7 @@ switch (config.TTS_ENGINE)
     </ClCompile>
 ```
 
-- [ ] **Step 3: 编译验证** (2-5 min)
+- [x] **Step 3: 编译验证** (2-5 min)
 
   【工具序列】bash
   执行编译命令验证项目文件修改：
@@ -428,7 +428,7 @@ switch (config.TTS_ENGINE)
 
 **精确执行序列：**
 
-- [ ] **Step 1: 添加 ManboTTSProvider 单元测试** (5-10 min)
+- [x] **Step 1: 添加 ManboTTSProvider 单元测试** (5-10 min)
 
   【工具序列】read → edit
   1. 用 read 工具读取 `MonsterOrderWilds/TTSProviderTests.cpp`
@@ -520,7 +520,7 @@ void TestTTSProviderFactory_Create_Auto_ManboFallback()
 
   同时需要在 RunTTSProviderTests() 函数中添加对新测试函数的调用。
 
-- [ ] **Step 2: 运行单元测试** (2-5 min)
+- [x] **Step 2: 运行单元测试** (2-5 min)
 
   【工具序列】bash
   执行单元测试项目构建和运行：
@@ -538,7 +538,7 @@ void TestTTSProviderFactory_Create_Auto_ManboFallback()
 
 **精确执行序列：**
 
-- [ ] **Step 1: 在 TextToSpeech.h 中声明降级方法** (2-5 min)
+- [x] **Step 1: 在 TextToSpeech.h 中声明降级方法** (2-5 min)
 
   【工具序列】read → edit
   1. 用 read 工具读取 `MonsterOrderWilds/TextToSpeech.h`
@@ -548,7 +548,7 @@ void TestTTSProviderFactory_Create_Auto_ManboFallback()
     bool TrySwitchToNextProvider();  // 在当前Provider失败时尝试切换到下一个Provider
 ```
 
-- [ ] **Step 2: 实现 TrySwitchToNextProvider 方法** (5-10 min)
+- [x] **Step 2: 实现 TrySwitchToNextProvider 方法** (5-10 min)
 
   【工具序列】read → edit
   1. 用 read 工具读取 `MonsterOrderWilds/TextToSpeech.cpp`
@@ -588,7 +588,7 @@ bool TTSManager::TrySwitchToNextProvider()
 }
 ```
 
-- [ ] **Step 3: 修改 HandleRequestFailureInternal 添加降级逻辑** (2-5 min)
+- [x] **Step 3: 修改 HandleRequestFailureInternal 添加降级逻辑** (2-5 min)
 
   【工具序列】read → edit
   1. 用 read 工具读取 `MonsterOrderWilds/TextToSpeech.cpp` 的 HandleRequestFailureInternal 方法
@@ -605,7 +605,7 @@ bool TTSManager::TrySwitchToNextProvider()
     }
 ```
 
-- [ ] **Step 4: 编译验证** (2-5 min)
+- [x] **Step 4: 编译验证** (2-5 min)
 
   【工具序列】bash
   执行编译命令验证修改：
@@ -626,7 +626,7 @@ bool TTSManager::TrySwitchToNextProvider()
 
 **精确执行序列：**
 
-- [ ] **Step 1: 在 TextToSpeech.h/cpp 中添加 GetCurrentProviderName** (2-5 min)
+- [x] **Step 1: 在 TextToSpeech.h/cpp 中添加 GetCurrentProviderName** (2-5 min)
 
   【工具序列】read → edit
   1. 在 TextToSpeech.h 中添加声明：
@@ -644,7 +644,7 @@ std::string TTSManager::GetCurrentProviderName() const
 }
 ```
 
-- [ ] **Step 2: 添加 DataBridge 导出函数** (2-5 min)
+- [x] **Step 2: 添加 DataBridge 导出函数** (2-5 min)
 
   【工具序列】read → edit
   1. 在 DataBridgeExports.cpp 中添加：
@@ -671,14 +671,14 @@ __declspec(dllexport) void __stdcall TTSManager_GetCurrentProviderName(char* out
 }
 ```
 
-- [ ] **Step 3: 在 NativeImports.cs 中添加 P/Invoke** (2-5 min)
+- [x] **Step 3: 在 NativeImports.cs 中添加 P/Invoke** (2-5 min)
 
   【工具序列】read → edit
   添加：
   `[DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]`
   `public static extern void TTSManager_GetCurrentProviderName(System.Text.StringBuilder outBuffer, int bufferSize);`
 
-- [ ] **Step 4: 在 ConfigWindow.xaml 中添加 Label** (2-5 min)
+- [x] **Step 4: 在 ConfigWindow.xaml 中添加 Label** (2-5 min)
 
   【工具序列】read → edit
   在 TTSEngineComboBox 之后添加：
@@ -695,7 +695,7 @@ __declspec(dllexport) void __stdcall TTSManager_GetCurrentProviderName(char* out
     FontWeight="SemiBold" />
 ```
 
-- [ ] **Step 5: 在 ConfigWindow.xaml.cs 中实现更新逻辑** (5-10 min)
+- [x] **Step 5: 在 ConfigWindow.xaml.cs 中实现更新逻辑** (5-10 min)
 
   【工具序列】read → edit
   1. 添加 DispatcherTimer 轮询（2秒间隔）
@@ -734,7 +734,7 @@ private void UpdateCurrentTTSEngineLabel()
   3. 在 TTSEngineComboBox_SelectionChanged 中调用 UpdateCurrentTTSEngineLabel()
   4. 在 FillConfig 中调用 UpdateCurrentTTSEngineLabel()
 
-- [ ] **Step 6: 编译验证** (2-5 min)
+- [x] **Step 6: 编译验证** (2-5 min)
 
   【工具序列】bash
   执行编译命令验证修改：
