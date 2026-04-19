@@ -431,6 +431,9 @@ TTSEngineType TTSManager::GetActiveEngineType() const
     if (config.ttsEngine == "minimax") {
         return TTSEngineType::MiniMax;
     }
+    if (config.ttsEngine == "manbo") {
+        return TTSEngineType::Manbo;
+    }
     if (config.ttsEngine == "mimo") {
         return TTSEngineType::MiMo;
     }
@@ -524,6 +527,46 @@ void TTSManager::RefreshTTSProvider()
     LOG_INFO(TEXT("TTS provider refreshed successfully"));
 }
 
+std::string TTSManager::GetCurrentProviderName() const
+{
+    std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
+    if (ttsProvider) {
+        return ttsProvider->GetProviderName();
+    }
+    return "none";
+}
+
+bool TTSManager::TrySwitchToNextProvider()
+{
+    if (!ttsProvider) return false;
+
+    std::string currentName = ttsProvider->GetProviderName();
+    std::string nextEngine;
+
+    // 降级链：manbo -> minimax -> mimo -> sapi
+    if (currentName == "manbo") {
+        if (!GetMINIMAX_API_KEY().empty()) nextEngine = "minimax";
+        else if (!GetMIMO_API_KEY().empty()) nextEngine = "mimo";
+        else nextEngine = "sapi";
+    } else if (currentName == "minimax") {
+        if (!GetMIMO_API_KEY().empty()) nextEngine = "mimo";
+        else nextEngine = "sapi";
+    } else if (currentName == "xiaomi") {
+        nextEngine = "sapi";
+    } else {
+        return false; // 已经是SAPI或未知Provider，无法降级
+    }
+
+    LOG_WARNING(TEXT("TTS: Downgrading from %hs to %hs"), currentName.c_str(), nextEngine.c_str());
+    ttsProvider = TTSProviderFactory::Create(GetMIMO_API_KEY(), GetMINIMAX_API_KEY(), nextEngine);
+
+    if (ttsProvider) {
+        LOG_INFO(TEXT("TTS: Successfully switched to %hs"), ttsProvider->GetProviderName().c_str());
+        return true;
+    }
+
+    return false;
+}
 
 void TTSManager::SpeakWithMimoAsync(const TString& text, std::function<void(bool success, const std::string& errorMsg)> callback)
 {
@@ -894,7 +937,15 @@ bool TTSManager::HandleRequestFailureInternal(AsyncTTSRequest& req)
         return false;
     }
 
-    // 重试次数用尽，标记失败
+    // 重试次数用尽，尝试降级到下一个Provider
+    if (TrySwitchToNextProvider()) {
+        req.retryCount = 0;  // 重置重试次数，使用新Provider重试
+        req.state = AsyncTTSState::Pending;
+        LOG_WARNING(TEXT("TTS Async: Provider switched, retrying with new provider"));
+        return false;
+    }
+
+    // 重试次数用尽且无法降级，标记失败
     req.state = AsyncTTSState::Failed;
     LOG_ERROR(TEXT("TTS Async: Request failed after %d retries"), req.retryCount);
 

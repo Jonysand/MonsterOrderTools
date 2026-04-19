@@ -169,6 +169,9 @@
       <Filter>Core</Filter>
     </ClCompile>
 
+    <ClCompile Include="ManboTTSProvider.cpp">
+      <Filter>DataProcessing</Filter>
+    </ClCompile>
     <ClCompile Include="MiniMaxTTSProvider.cpp">
       <Filter>DataProcessing</Filter>
     </ClCompile>

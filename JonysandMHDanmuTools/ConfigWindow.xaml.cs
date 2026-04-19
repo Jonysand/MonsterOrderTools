@@ -12,11 +12,33 @@ namespace MonsterOrderWindows
     public partial class ConfigWindow : Window
     {
         private bool _isInitializing = true;
+        private System.Windows.Threading.DispatcherTimer _ttsEngineUpdateTimer;
 
         public ConfigWindow()
         {
             InitializeComponent();
-            Loaded += (s, e) => _isInitializing = false;
+            Loaded += (s, e) =>
+            {
+                _isInitializing = false;
+                StartTTSEngineUpdateTimer();
+            };
+            Closed += (s, e) =>
+            {
+                _ttsEngineUpdateTimer?.Stop();
+            };
+        }
+
+        private void StartTTSEngineUpdateTimer()
+        {
+            _ttsEngineUpdateTimer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(2)
+            };
+            _ttsEngineUpdateTimer.Tick += (s, e) =>
+            {
+                UpdateCurrentTTSEngineLabel();
+            };
+            _ttsEngineUpdateTimer.Start();
         }
 
         public void FillConfig(MainConfig config)
@@ -65,22 +87,28 @@ namespace MonsterOrderWindows
 
             // 小米MiMo TTS配置
 
-            // 设置TTS引擎选择
+            // 设置TTS引擎选择（顺序：自动/Manbo/MiniMax/小米MiMo/Windows SAPI）
             switch (config.TTS_ENGINE)
             {
-                case "minimax":
+                case "manbo":
                     TTSEngineComboBox.SelectedIndex = 1;
                     break;
-                case "mimo":
+                case "minimax":
                     TTSEngineComboBox.SelectedIndex = 2;
                     break;
-                case "sapi":
+                case "mimo":
                     TTSEngineComboBox.SelectedIndex = 3;
+                    break;
+                case "sapi":
+                    TTSEngineComboBox.SelectedIndex = 4;
                     break;
                 default:
                     TTSEngineComboBox.SelectedIndex = 0; // auto
                     break;
             }
+
+            // 更新当前实际TTS引擎显示
+            UpdateCurrentTTSEngineLabel();
 
             // 设置语音角色（使用Tag属性）
             for (int i = 0; i < MimoVoiceComboBox.Items.Count; i++)
@@ -355,6 +383,37 @@ namespace MonsterOrderWindows
                 return;
             string engine = selectedItem.Tag?.ToString() ?? "auto";
             GlobalEventListener.Invoke("ConfigChanged", $"TTS_ENGINE:{engine}");
+
+            // 更新当前实际TTS引擎显示
+            UpdateCurrentTTSEngineLabel();
+        }
+
+        private void UpdateCurrentTTSEngineLabel()
+        {
+            try
+            {
+                var sb = new System.Text.StringBuilder(64);
+                NativeImports.TTSManager_GetCurrentProviderName(sb, 64);
+                string providerName = sb.ToString();
+
+                string displayName = providerName switch
+                {
+                    "manbo" => "Manbo",
+                    "minimax" => "MiniMax",
+                    "xiaomi" => "小米MiMo",
+                    "sapi" => "Windows SAPI",
+                    _ => providerName
+                };
+
+                if (CurrentTTSEngineLabel != null)
+                {
+                    CurrentTTSEngineLabel.Content = $"当前引擎: {displayName}";
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"UpdateCurrentTTSEngineLabel failed: {ex.Message}");
+            }
         }
 
         private void MimoVoiceComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)

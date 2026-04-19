@@ -222,37 +222,97 @@ void TestMiniMaxTTSProvider_ParseResponse_Error()
     std::cout << "[PASS] TestMiniMaxTTSProvider_ParseResponse_Error" << std::endl;
 }
 
-void TestTTSProviderFactory_Create_Auto_MiniMaxFirst()
+void TestManboTTSProvider_BuildRequestUrl()
+{
+    ManboTTSProvider manbo;
+    TTSRequest req;
+    req.text = "你好世界";
+    
+    std::string url = manbo.BuildRequestUrl(req);
+    assert(url.find("/api/speech/AiChat/") != std::string::npos);
+    assert(url.find("module=audio") != std::string::npos);
+    assert(url.find("voice=") != std::string::npos);
+    
+    std::cout << "[PASS] TestManboTTSProvider_BuildRequestUrl" << std::endl;
+}
+
+void TestManboTTSProvider_ParseApiResponse_Success()
+{
+    ManboTTSProvider manbo;
+    std::string responseBody = "{\"code\":200,\"message\":\"生成音频成功\",\"data\":{\"audio_url\":\"https://example.com/audio.wav\"}}";
+    
+    auto resp = manbo.ParseApiResponse(responseBody);
+    assert(resp.success == true);
+    assert(resp.errorMsg == "https://example.com/audio.wav");
+    
+    std::cout << "[PASS] TestManboTTSProvider_ParseApiResponse_Success" << std::endl;
+}
+
+void TestManboTTSProvider_ParseApiResponse_Error()
+{
+    ManboTTSProvider manbo;
+    std::string responseBody = "{\"code\":500,\"message\":\"服务器错误\"}";
+    
+    auto resp = manbo.ParseApiResponse(responseBody);
+    assert(resp.success == false);
+    assert(resp.errorMsg == "服务器错误");
+    
+    std::cout << "[PASS] TestManboTTSProvider_ParseApiResponse_Error" << std::endl;
+}
+
+void TestManboTTSProvider_ParseApiResponse_InvalidJson()
+{
+    ManboTTSProvider manbo;
+    std::string responseBody = "not json at all";
+    
+    auto resp = manbo.ParseApiResponse(responseBody);
+    assert(resp.success == false);
+    assert(!resp.errorMsg.empty());
+    
+    std::cout << "[PASS] TestManboTTSProvider_ParseApiResponse_InvalidJson" << std::endl;
+}
+
+void TestManboTTSProvider_IsAvailable()
+{
+    ManboTTSProvider manbo;
+    assert(manbo.GetProviderName() == "manbo");
+    assert(manbo.IsAvailable() == true);
+    assert(manbo.GetLastError().empty());
+    
+    std::cout << "[PASS] TestManboTTSProvider_IsAvailable" << std::endl;
+}
+
+void TestTTSProviderFactory_Create_ManboExplicit()
+{
+    auto provider = TTSProviderFactory::Create(
+        "mimo_key",
+        "minimax_key",
+        "manbo");
+    assert(provider != nullptr);
+    assert(provider->GetProviderName() == "manbo");
+    std::cout << "[PASS] TestTTSProviderFactory_Create_ManboExplicit" << std::endl;
+}
+
+void TestTTSProviderFactory_Create_Auto_ManboFirst()
 {
     auto provider = TTSProviderFactory::Create(
         "mimo_key",
         "minimax_key",
         "auto");
     assert(provider != nullptr);
-    assert(provider->GetProviderName() == "minimax");
-    std::cout << "[PASS] TestTTSProviderFactory_Create_Auto_MiniMaxFirst" << std::endl;
+    assert(provider->GetProviderName() == "manbo");
+    std::cout << "[PASS] TestTTSProviderFactory_Create_Auto_ManboFirst" << std::endl;
 }
 
-void TestTTSProviderFactory_Create_Auto_MiMoFallback()
-{
-    auto provider = TTSProviderFactory::Create(
-        "mimo_key",
-        "",
-        "auto");
-    assert(provider != nullptr);
-    assert(provider->GetProviderName() == "xiaomi");
-    std::cout << "[PASS] TestTTSProviderFactory_Create_Auto_MiMoFallback" << std::endl;
-}
-
-void TestTTSProviderFactory_Create_Auto_SapiFallback()
+void TestTTSProviderFactory_Create_Auto_ManboFallback()
 {
     auto provider = TTSProviderFactory::Create(
         "",
         "",
         "auto");
     assert(provider != nullptr);
-    assert(provider->GetProviderName() == "sapi");
-    std::cout << "[PASS] TestTTSProviderFactory_Create_Auto_SapiFallback" << std::endl;
+    assert(provider->GetProviderName() == "manbo");
+    std::cout << "[PASS] TestTTSProviderFactory_Create_Auto_ManboFallback" << std::endl;
 }
 
 void TestTTSProviderFactory_Create_MiMoExplicit()
@@ -296,10 +356,15 @@ void RunTTSProviderTests()
     TestMiniMaxTTSProvider_HexToBytes();
     TestMiniMaxTTSProvider_ParseResponse_WithHexAudio();
     TestMiniMaxTTSProvider_ParseResponse_Error();
+    TestManboTTSProvider_BuildRequestUrl();
+    TestManboTTSProvider_ParseApiResponse_Success();
+    TestManboTTSProvider_ParseApiResponse_Error();
+    TestManboTTSProvider_ParseApiResponse_InvalidJson();
+    TestManboTTSProvider_IsAvailable();
     // TestTTSProviderFactory_Create_Sapi();  // Requires SapiTTSProvider, disabled
-    TestTTSProviderFactory_Create_Auto_MiniMaxFirst();
-    TestTTSProviderFactory_Create_Auto_MiMoFallback();
-    TestTTSProviderFactory_Create_Auto_SapiFallback();
+    TestTTSProviderFactory_Create_Auto_ManboFirst();
+    TestTTSProviderFactory_Create_Auto_ManboFallback();
+    TestTTSProviderFactory_Create_ManboExplicit();
     TestTTSProviderFactory_Create_MiMoExplicit();
     TestTTSProviderFactory_Create_SapiExplicit();
     std::cout << "========== TTSProvider Tests: ALL PASS ==========" << std::endl;

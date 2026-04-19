@@ -291,6 +291,7 @@ xcopy /y /q "$(ProjectDir)dict\*" "$(OutDir)dict\"</Command>
     <ClCompile Include="TTSProviderFactory.cpp" />
     <ClCompile Include="SapiTTSProvider.cpp" />
     <ClCompile Include="XiaomiTTSProvider.cpp" />
+    <ClCompile Include="ManboTTSProvider.cpp" />
     <ClCompile Include="MiniMaxTTSProvider.cpp" />
     <ClCompile Include="UnitTestMain.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)'!='UnitTest'">true</ExcludedFromBuild>

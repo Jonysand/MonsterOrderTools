@@ -93,6 +93,9 @@ namespace MonsterOrderWindows
         [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Unicode)]
         public static extern void DataBridge_SetCheckinTTSPlayCallback(OnCheckinTTSPlayCallback callback, IntPtr userData);
 
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
+        public static extern void TTSManager_GetCurrentProviderName(System.Text.StringBuilder outBuffer, int bufferSize);
+
         [UnmanagedFunctionPointer(CallingConvention.StdCall, CharSet = CharSet.Unicode)]
         public delegate void DanmuProcessedCallback(string userName, string monsterName, IntPtr userData);
 

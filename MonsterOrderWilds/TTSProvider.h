@@ -48,3 +48,19 @@ private:
     std::string lastError_;
     bool available_;
 };
+
+class ManboTTSProvider : public ITTSProvider {
+public:
+    ManboTTSProvider();
+    std::string GetProviderName() const override;
+    bool IsAvailable() const override { return available_; }
+    void ResetAvailable() { available_ = true; }
+    std::string GetLastError() const override;
+    void RequestTTS(const TTSRequest& request, TTSCallback callback) override;
+    std::string BuildRequestUrl(const TTSRequest& request) const;
+    TTSResponse ParseApiResponse(const std::string& responseBody) const;
+private:
+    void DownloadAudio(const std::string& audioUrl, TTSCallback callback);
+    std::string lastError_;
+    bool available_;
+};

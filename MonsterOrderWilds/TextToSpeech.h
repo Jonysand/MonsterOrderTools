@@ -25,6 +25,7 @@ enum class TTSEngineType
 {
 	Auto,
 	MiniMax,
+	Manbo,
 	MiMo,
 	SAPI
 };
@@ -97,6 +98,8 @@ public:
 	bool SpeakWithSapiSync(const TString& text);
 	// 重新创建TTSProvider（用于运行时切换引擎）
 	void RefreshTTSProvider();
+	// 获取当前实际使用的TTS Provider名称
+	std::string GetCurrentProviderName() const;
 
 public:
 	bool Speak(const TString& text);
@@ -133,6 +136,7 @@ private:
 	void TriggerFallback();
 	void TryRecovery();
 	bool ShouldTryRecovery() const;
+	bool TrySwitchToNextProvider();  // 在当前Provider失败时尝试切换到下一个Provider
 
 	// 一般弹幕播报队列
 	std::list<TString> NormalMsgQueue;
@@ -147,7 +151,7 @@ private:
 	std::chrono::steady_clock::time_point LastTickTime;
 	ISpVoice* pVoice{ NULL };
 	std::mutex sapiMutex_;
-	std::recursive_mutex asyncMutex_;  // 保护异步TTS请求状态（使用递归锁以支持嵌套调用）
+	mutable std::recursive_mutex asyncMutex_;  // 保护异步TTS请求状态（使用递归锁以支持嵌套调用）
 	std::mutex queueMutex_;  // 保护 NormalMsgQueue, GiftMsgQueue, HistoryLogMsgQueue 等队列
 
 	// TTS提供者

@@ -217,10 +217,20 @@
                                     SelectedIndex="0"
                                     SelectionChanged="TTSEngineComboBox_SelectionChanged">
                                     <ComboBoxItem Content="自动" Tag="auto" />
+                                    <ComboBoxItem Content="Manbo" Tag="manbo" />
                                     <ComboBoxItem Content="MiniMax" Tag="minimax" />
                                     <ComboBoxItem Content="小米MiMo" Tag="mimo" />
                                     <ComboBoxItem Content="Windows SAPI" Tag="sapi" />
                                 </ComboBox>
+                                <Label
+                                    Name="CurrentTTSEngineLabel"
+                                    Content="当前引擎: 加载中..."
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe UI Variable"
+                                    FontSize="12"
+                                    Foreground="#0078D4"
+                                    Margin="8,0,0,0"
+                                    FontWeight="SemiBold" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="8,8,0,0"
                                 VerticalAlignment="Center">

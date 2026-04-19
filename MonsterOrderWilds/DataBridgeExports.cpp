@@ -515,3 +515,23 @@ __declspec(dllexport) void __stdcall DataBridge_SetCheckinTTSPlayCallback(OnChec
     g_checkinTTSPlayCallback = callback;
     g_checkinTTSPlayUserData = userData;
 }
+
+extern "C" __declspec(dllexport) void __stdcall TTSManager_GetCurrentProviderName(char* outBuffer, int bufferSize)
+{
+    try
+    {
+        std::string name = TTSManager::Inst()->GetCurrentProviderName();
+        if (outBuffer && bufferSize > 0)
+        {
+            strncpy_s(outBuffer, bufferSize, name.c_str(), _TRUNCATE);
+        }
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR(TEXT("TTSManager_GetCurrentProviderName failed: %s"), e.what());
+        if (outBuffer && bufferSize > 0)
+        {
+            outBuffer[0] = '\0';
+        }
+    }
+}
