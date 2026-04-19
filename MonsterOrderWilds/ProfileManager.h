@@ -45,6 +45,9 @@ public:
     std::string SerializeToJson(const UserProfileData& profile);
     bool DeserializeFromJson(const std::string& json, UserProfileData& outProfile);
 
+    void GetAllProfilesSortedByCheckinDays(std::vector<UserProfileData>& outProfiles);
+    bool ExportCheckinRecordsToFile(const std::string& filePath);
+
 private:
     std::string GetDbPath() const;
     std::string KeywordsToJson(const std::vector<KeywordRecord>& keywords) const;

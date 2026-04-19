@@ -57,6 +57,8 @@ extern "C" {
 
 __declspec(dllexport) void __stdcall DataBridge_SetCheckinTTSPlayCallback(OnCheckinTTSPlayCallback callback, void* userData);
 
+    __declspec(dllexport) bool __stdcall ProfileManager_ExportCheckinRecords(const char* filePath);
+
 #ifdef __cplusplus
 }
 #endif

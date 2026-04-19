@@ -513,5 +513,42 @@ namespace MonsterOrderWindows
         {
             GlobalEventListener.Invoke("ConfigChanged", "CHECKIN_TRIGGER_WORDS:" + CheckinTriggerWordsTextBox.Text);
         }
+
+        private void ExportCheckinRecordsButton_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Filter = "Text files (*.txt)|*.txt",
+                DefaultExt = ".txt",
+                Title = "导出打卡记录"
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                ExportCheckinRecordsButton.IsEnabled = false;
+                ExportCheckinRecordsButton.Content = "导出中...";
+
+                Task.Run(() =>
+                {
+                    bool success = NativeImports.ProfileManager_ExportCheckinRecords(dialog.FileName);
+                    Dispatcher.Invoke(() =>
+                    {
+                        ExportCheckinRecordsButton.IsEnabled = true;
+                        ExportCheckinRecordsButton.Content = "导出打卡记录";
+
+                        if (success)
+                        {
+                            System.Windows.MessageBox.Show("导出成功！", "导出打卡记录",
+                                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+                        }
+                        else
+                        {
+                            System.Windows.MessageBox.Show("导出失败！", "导出打卡记录",
+                                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+                        }
+                    });
+                });
+            }
+        }
     }
 }

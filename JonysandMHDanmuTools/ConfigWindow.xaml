@@ -620,6 +620,11 @@
                                        FontFamily="Segoe UI Variable"
                                        FontSize="12"
                                        Margin="0,5,0,0" />
+                            <Button
+                                Name="ExportCheckinRecordsButton"
+                                Content="导出打卡记录"
+                                Margin="0,16,0,0"
+                                Click="ExportCheckinRecordsButton_Click" />
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

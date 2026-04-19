@@ -535,3 +535,16 @@ extern "C" __declspec(dllexport) void __stdcall TTSManager_GetCurrentProviderNam
         }
     }
 }
+
+__declspec(dllexport) bool __stdcall ProfileManager_ExportCheckinRecords(const char* filePath)
+{
+    try
+    {
+        return ProfileManager::Inst()->ExportCheckinRecordsToFile(filePath);
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR(TEXT("ProfileManager_ExportCheckinRecords failed: %s"), e.what());
+        return false;
+    }
+}

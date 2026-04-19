@@ -4,6 +4,7 @@
 #include <mutex>
 #include <chrono>
 #include <sstream>
+#include <fstream>
 #include <iomanip>
 #include <sys/stat.h>
 
@@ -654,4 +655,97 @@ bool ProfileManager::DeserializeFromJson(const std::string& json, UserProfileDat
         LOG_ERROR(TEXT("ProfileManager: Failed to parse JSON: %hs"), e.what());
         return false;
     }
+}
+
+void ProfileManager::GetAllProfilesSortedByCheckinDays(std::vector<UserProfileData>& outProfiles) {
+    std::lock_guard<std::mutex> lock(profilesLock_);
+    outProfiles.clear();
+
+    if (!storage_) {
+        return;
+    }
+
+    sqlite3* db = (sqlite3*)storage_;
+    sqlite3_stmt* stmt = nullptr;
+    const char* sql = "SELECT uid, username, last_checkin_date, continuous_days, last_danmu_timestamp, created_at, updated_at, keywords_json, danmu_history_json FROM user_profiles";
+
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        LOG_ERROR(TEXT("ProfileManager: Failed to prepare select all profiles: %hs"), sqlite3_errmsg(db));
+        return;
+    }
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        UserProfileData profile;
+        profile.uid = (const char*)sqlite3_column_text(stmt, 0);
+        profile.username = (const char*)sqlite3_column_text(stmt, 1);
+        profile.lastCheckinDate = sqlite3_column_int(stmt, 2);
+        profile.continuousDays = sqlite3_column_int(stmt, 3);
+        profile.lastDanmuTimestamp = sqlite3_column_int64(stmt, 4);
+        profile.createdAt = sqlite3_column_int64(stmt, 5);
+        profile.updatedAt = sqlite3_column_int64(stmt, 6);
+
+        const char* keywordsJson = (const char*)sqlite3_column_text(stmt, 7);
+        if (keywordsJson) {
+            profile.keywords = JsonToKeywords(keywordsJson);
+        }
+
+        const char* danmuHistoryJson = (const char*)sqlite3_column_text(stmt, 8);
+        if (danmuHistoryJson) {
+            profile.danmuHistory = JsonToDanmuHistory(danmuHistoryJson);
+        }
+
+        outProfiles.push_back(profile);
+    }
+
+    sqlite3_finalize(stmt);
+
+    std::sort(outProfiles.begin(), outProfiles.end(),
+        [](const UserProfileData& a, const UserProfileData& b) {
+            return a.continuousDays > b.continuousDays;
+        });
+}
+
+bool ProfileManager::ExportCheckinRecordsToFile(const std::string& filePath) {
+    std::vector<UserProfileData> profiles;
+    GetAllProfilesSortedByCheckinDays(profiles);
+
+    std::ofstream ofs(filePath, std::ios::out | std::ios::binary);
+    if (!ofs) {
+        LOG_ERROR(TEXT("ProfileManager: Failed to open file for export: %hs"), filePath.c_str());
+        return false;
+    }
+
+    // Write UTF-8 BOM
+    unsigned char bom[] = { 0xEF, 0xBB, 0xBF };
+    ofs.write(reinterpret_cast<char*>(bom), 3);
+
+    // Write header
+    ofs << "用户名\t连续打卡天数\t最后打卡时间\n";
+
+    for (const auto& profile : profiles) {
+        std::string username = profile.username;
+        // Replace tabs in username with spaces to avoid format issues
+        for (char& c : username) {
+            if (c == '\t') c = ' ';
+        }
+
+        // Format lastCheckinDate (YYYYMMDD) to readable format (YYYY-MM-DD)
+        std::string lastCheckinStr = "无记录";
+        if (profile.lastCheckinDate > 0) {
+            int year = profile.lastCheckinDate / 10000;
+            int month = (profile.lastCheckinDate % 10000) / 100;
+            int day = profile.lastCheckinDate % 100;
+            char buf[32];
+            snprintf(buf, sizeof(buf), "%04d-%02d-%02d", year, month, day);
+            lastCheckinStr = buf;
+        }
+
+        ofs << username << "\t"
+            << profile.continuousDays << "天\t"
+            << lastCheckinStr << "\n";
+    }
+
+    ofs.close();
+    LOG_INFO(TEXT("ProfileManager: Exported %d checkin records to %hs"), profiles.size(), filePath.c_str());
+    return true;
 }
