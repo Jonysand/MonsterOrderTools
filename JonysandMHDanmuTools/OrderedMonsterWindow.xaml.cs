@@ -285,6 +285,7 @@ namespace MonsterOrderWindows
                 {
                     _orderCollection.Add(item);
                 }
+                PriorityQueue.GetInst().SaveList();
             });
         }
 

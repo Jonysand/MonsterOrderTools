@@ -103,6 +103,15 @@ namespace MonsterOrderWindows
 
         public void Stop()
         {
+            try
+            {
+                NativeImports.DataBridge_Shutdown();
+            }
+            catch (Exception e)
+            {
+                SendCommand("Log:DataBridge_Shutdown failed: " + e.Message);
+            }
+
             if (_OrderedMonsterWindow != null)
             {
                 _OrderedMonsterWindow.Dispatcher.InvokeAsync(new Action(delegate
