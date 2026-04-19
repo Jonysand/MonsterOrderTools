@@ -242,8 +242,8 @@ bool CaptainCheckInModule::ShouldSkipDuplicateContent(UserProfile& profile, cons
 void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
     if (!enabled_) return;
 
-    LOG_DEBUG(TEXT("[CaptainCheckInModule] PushDanmuEvent: username=%s, uid=%llu, guardLevel=%d, hasMedal=%d, content=%s"),
-        event.username.c_str(), event.uid, event.guardLevel, event.hasMedal, event.content.c_str());
+    LOG_DEBUG(TEXT("[CaptainCheckInModule] PushDanmuEvent: username=%s, uid=%hs, guardLevel=%d, hasMedal=%d, content=%s"),
+        event.username.c_str(), event.uid.c_str(), event.guardLevel, event.hasMedal, event.content.c_str());
 
     bool shouldCheckin = IsCheckinMessage(event.content);
 
@@ -287,7 +287,7 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
 #endif
 
         if (shouldCheckin && profile.lastCheckinDate == event.sendDate) {
-            LOG_DEBUG(TEXT("[CaptainCheckInModule] Repeated checkin detected for uid=%llu, date=%d"), event.uid, event.sendDate);
+            LOG_DEBUG(TEXT("[CaptainCheckInModule] Repeated checkin detected for uid=%hs, date=%d"), event.uid.c_str(), event.sendDate);
             int32_t continuousDays = ProfileManager::Inst()->CalculateContinuousDays(event.uid, event.sendDate);
             std::string repeatedAnswer = event.username + "今日已打卡，连续" + std::to_string(continuousDays) + "天";
 
@@ -309,7 +309,7 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
         }
 
         if (shouldCheckin) {
-            LOG_DEBUG(TEXT("[CaptainCheckInModule] Processing checkin for uid=%llu, guardLevel=%d, date=%d"), event.uid, event.guardLevel, event.sendDate);
+            LOG_DEBUG(TEXT("[CaptainCheckInModule] Processing checkin for uid=%hs, guardLevel=%d, date=%d"), event.uid.c_str(), event.guardLevel, event.sendDate);
             int32_t checkinDate = event.sendDate;
             int32_t continuousDays = ProfileManager::Inst()->CalculateContinuousDays(event.uid, checkinDate);
 
@@ -408,7 +408,7 @@ bool CaptainCheckInModule::IsStopWord(const std::string& word) const {
     return STOP_WORDS.find(word) != STOP_WORDS.end();
 }
 
-void CaptainCheckInModule::LoadProfileFromDb(uint64_t uid) {
+void CaptainCheckInModule::LoadProfileFromDb(const std::string& uid) {
     UserProfileData dbProfile;
     if (ProfileManager::Inst()->LoadProfile(uid, dbProfile)) {
         auto it = profiles_.find(uid);
@@ -463,7 +463,7 @@ void CaptainCheckInModule::SaveProfileAsync(const UserProfile& profile) {
     }).detach();
 }
 
-void CaptainCheckInModule::LoadProfileAsync(uint64_t uid, std::function<void(UserProfile)> callback) {
+void CaptainCheckInModule::LoadProfileAsync(const std::string& uid, std::function<void(UserProfile)> callback) {
     std::thread([this, uid, callback]() {
         UserProfileData dbProfile;
         if (ProfileManager::Inst()->LoadProfile(uid, dbProfile)) {
@@ -620,7 +620,7 @@ std::string CaptainCheckInModule::GenerateAIAnswer(const CheckinEvent& event, co
     return GetFallbackAnswer(event);
 }
 
-const UserProfile* CaptainCheckInModule::GetUserProfile(uint64_t uid) const {
+const UserProfile* CaptainCheckInModule::GetUserProfile(const std::string& uid) const {
     lock_guard<std::mutex> lock(profilesLock_);
     auto it = profiles_.find(uid);
     if (it != profiles_.end()) {
@@ -629,7 +629,7 @@ const UserProfile* CaptainCheckInModule::GetUserProfile(uint64_t uid) const {
     return nullptr;
 }
 
-std::vector<std::string> CaptainCheckInModule::GetUserTopKeywords(uint64_t uid) const {
+std::vector<std::string> CaptainCheckInModule::GetUserTopKeywords(const std::string& uid) const {
     std::vector<std::string> result;
     auto profile = GetUserProfile(uid);
     if (!profile) return result;
@@ -641,7 +641,7 @@ std::vector<std::string> CaptainCheckInModule::GetUserTopKeywords(uint64_t uid) 
     return result;
 }
 
-int32_t CaptainCheckInModule::CalculateContinuousDays(uint64_t uid, int32_t checkinDate) {
+int32_t CaptainCheckInModule::CalculateContinuousDays(const std::string& uid, int32_t checkinDate) {
     return ProfileManager::Inst()->CalculateContinuousDays(uid, checkinDate);
 }
 

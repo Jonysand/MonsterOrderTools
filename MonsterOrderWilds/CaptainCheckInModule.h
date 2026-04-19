@@ -15,7 +15,7 @@
 #include <iomanip>
 
 struct CaptainDanmuEvent {
-    uint64_t uid = 0;
+    std::string uid;
     int32_t guardLevel = 0;
     bool hasMedal = false;
     std::string username;
@@ -25,7 +25,7 @@ struct CaptainDanmuEvent {
 };
 
 struct CheckinEvent {
-    uint64_t uid = 0;
+    std::string uid;
     std::string username;
     int32_t continuousDays = 0;
     int32_t checkinDate = 0;
@@ -40,7 +40,7 @@ struct AnswerResult {
 };
 
 struct UserProfile {
-    uint64_t uid = 0;
+    std::string uid;
     std::string username;
     std::vector<KeywordRecord> keywords;
     std::vector<std::pair<int64_t, std::string>> danmuHistory;
@@ -62,8 +62,8 @@ public:
     void PushDanmuEvent(const CaptainDanmuEvent& event);
     void GenerateCheckinAnswerAsync(const CheckinEvent& event, AnswerCallback callback);
     AnswerResult GenerateCheckinAnswerSync(const CheckinEvent& event, UserProfile* profile = nullptr);
-    const UserProfile* GetUserProfile(uint64_t uid) const;
-    std::vector<std::string> GetUserTopKeywords(uint64_t uid) const;
+    const UserProfile* GetUserProfile(const std::string& uid) const;
+    std::vector<std::string> GetUserTopKeywords(const std::string& uid) const;
     void SetTriggerWords(const std::string& words);
     void SetEnabled(bool enabled);
     bool IsEnabled() const;
@@ -71,14 +71,14 @@ public:
     std::string GetFallbackAnswer(const CheckinEvent& event);
 
 private:
-    int32_t CalculateContinuousDays(uint64_t uid, int32_t checkinDate);
+    int32_t CalculateContinuousDays(const std::string& uid, int32_t checkinDate);
     std::string BuildPrompt(const CheckinEvent& event, const UserProfile* profile);
     std::string GenerateAIAnswer(const CheckinEvent& event, const UserProfile* profile);
     void ExtractKeywords(UserProfile& profile, const std::string& content);
-    void LoadProfileFromDb(uint64_t uid);
+    void LoadProfileFromDb(const std::string& uid);
     void SaveProfileToDb(const UserProfile& profile);
     void SaveProfileAsync(const UserProfile& profile);
-    void LoadProfileAsync(uint64_t uid, std::function<void(UserProfile)> callback);
+    void LoadProfileAsync(const std::string& uid, std::function<void(UserProfile)> callback);
 
     bool ShouldLearn(const UserProfile& profile, const CaptainDanmuEvent& event);
     bool IsStopWord(const std::string& word) const;
@@ -89,7 +89,7 @@ private:
     class JiebaContext;
     static JiebaContext* CreateJiebaContextSafe(const std::string& jiebaDict, const std::string& hmmModel, const std::string& userDict, const std::string& idfPath, const std::string& stopWords);
 
-    std::map<uint64_t, UserProfile> profiles_;
+    std::map<std::string, UserProfile> profiles_;
     std::vector<std::wstring> triggerWords_;
     std::string triggerWordsStr_;
     mutable std::mutex profilesLock_;

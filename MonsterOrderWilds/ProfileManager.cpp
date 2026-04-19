@@ -23,7 +23,7 @@ namespace {
     constexpr int32_t CHECKIN_RETRY_MAX = 3;
     constexpr int32_t CHECKIN_RETRY_DELAY_MS = 500;
 
-    bool InsertCheckinRecordWithRetry(sqlite3* db, uint64_t uid, int32_t checkinDate, int64_t timestamp, const std::string& username) {
+    bool InsertCheckinRecordWithRetry(sqlite3* db, const std::string& uid, int32_t checkinDate, int64_t timestamp, const std::string& username) {
         sqlite3_stmt* stmt = nullptr;
         const char* sql = "INSERT INTO checkin_records (uid, checkin_date, created_at, username) VALUES (?, ?, ?, ?) ON CONFLICT(uid, checkin_date) DO UPDATE SET created_at = excluded.created_at, username = excluded.username WHERE checkin_records.created_at != excluded.created_at";
 
@@ -41,7 +41,7 @@ namespace {
                 continue;
             }
 
-            sqlite3_bind_int64(stmt, 1, (sqlite3_int64)uid);
+            sqlite3_bind_text(stmt, 1, uid.c_str(), -1, SQLITE_TRANSIENT);
             sqlite3_bind_int(stmt, 2, checkinDate);
             sqlite3_bind_int64(stmt, 3, timestamp);
             sqlite3_bind_text(stmt, 4, username.c_str(), -1, SQLITE_TRANSIENT);
@@ -62,8 +62,8 @@ namespace {
             }
         }
 
-        LOG_ERROR(TEXT("ProfileManager: Insert checkin record failed after %d attempts for uid=%llu, date=%d"),
-            CHECKIN_RETRY_MAX, uid, checkinDate);
+        LOG_ERROR(TEXT("ProfileManager: Insert checkin record failed after %d attempts for uid=%hs, date=%d"),
+            CHECKIN_RETRY_MAX, uid.c_str(), checkinDate);
         return false;
     }
 }
@@ -96,7 +96,7 @@ bool ProfileManager::Init() {
 
     const char* createUserProfilesSql = 
         "CREATE TABLE IF NOT EXISTS user_profiles ("
-        "uid INTEGER PRIMARY KEY,"
+        "uid TEXT PRIMARY KEY,"
         "username TEXT NOT NULL,"
         "last_checkin_date INTEGER DEFAULT 0,"
         "continuous_days INTEGER DEFAULT 0,"
@@ -119,7 +119,7 @@ bool ProfileManager::Init() {
     const char* createCheckinRecordsSql = 
         "CREATE TABLE IF NOT EXISTS checkin_records ("
         "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-        "uid INTEGER NOT NULL,"
+        "uid TEXT NOT NULL,"
         "checkin_date INTEGER NOT NULL,"
         "created_at INTEGER NOT NULL,"
         "username TEXT,"
@@ -140,23 +140,22 @@ bool ProfileManager::Init() {
     return true;
 }
 
-bool ProfileManager::LoadProfileFromDb(uint64_t uid, UserProfileData& outProfile) {
+bool ProfileManager::LoadProfileFromDb(const std::string& uid, UserProfileData& outProfile) {
     if (!storage_) return false;
 
     sqlite3* db = (sqlite3*)storage_;
-    char sql[256];
-    snprintf(sql, sizeof(sql),
-        "SELECT uid, username, last_checkin_date, continuous_days, last_danmu_timestamp, created_at, updated_at, keywords_json, danmu_history_json FROM user_profiles WHERE uid = %llu",
-        (unsigned long long)uid);
-
     sqlite3_stmt* stmt = nullptr;
+    const char* sql = "SELECT uid, username, last_checkin_date, continuous_days, last_danmu_timestamp, created_at, updated_at, keywords_json, danmu_history_json FROM user_profiles WHERE uid = ?";
+    
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
         LOG_ERROR(TEXT("ProfileManager: Failed to prepare select statement: %hs"), sqlite3_errmsg(db));
         return false;
     }
+    
+    sqlite3_bind_text(stmt, 1, uid.c_str(), -1, SQLITE_TRANSIENT);
 
     if (sqlite3_step(stmt) == SQLITE_ROW) {
-        outProfile.uid = sqlite3_column_int64(stmt, 0);
+        outProfile.uid = (const char*)sqlite3_column_text(stmt, 0);
         outProfile.username = (const char*)sqlite3_column_text(stmt, 1);
         outProfile.lastCheckinDate = sqlite3_column_int(stmt, 2);
         outProfile.continuousDays = sqlite3_column_int(stmt, 3);
@@ -194,7 +193,7 @@ void ProfileManager::SaveProfileToDb(const UserProfileData& profile) {
         return;
     }
     
-    sqlite3_bind_int64(stmt, 1, profile.uid);
+    sqlite3_bind_text(stmt, 1, profile.uid.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 2, profile.username.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_int(stmt, 3, profile.lastCheckinDate);
     sqlite3_bind_int(stmt, 4, profile.continuousDays);
@@ -298,10 +297,10 @@ void ProfileManager::SaveProfile(const UserProfileData& profile) {
     std::lock_guard<std::mutex> lock(profilesLock_);
     profiles_[profile.uid] = profile;
     SaveProfileToDb(profile);
-    LOG_INFO(TEXT("ProfileManager: Saved profile for uid=%llu"), profile.uid);
+    LOG_INFO(TEXT("ProfileManager: Saved profile for uid=%hs"), profile.uid.c_str());
 }
 
-bool ProfileManager::LoadProfile(uint64_t uid, UserProfileData& outProfile) {
+bool ProfileManager::LoadProfile(const std::string& uid, UserProfileData& outProfile) {
     std::lock_guard<std::mutex> lock(profilesLock_);
 
     auto it = profiles_.find(uid);
@@ -318,23 +317,23 @@ bool ProfileManager::LoadProfile(uint64_t uid, UserProfileData& outProfile) {
     return false;
 }
 
-void ProfileManager::DeleteProfile(uint64_t uid) {
+void ProfileManager::DeleteProfile(const std::string& uid) {
     std::lock_guard<std::mutex> lock(profilesLock_);
     profiles_.erase(uid);
     if (storage_) {
         sqlite3* db = (sqlite3*)storage_;
-        char sql[256];
-        snprintf(sql, sizeof(sql), "DELETE FROM user_profiles WHERE uid = %llu", uid);
-        char* errMsg = nullptr;
-        sqlite3_exec(db, sql, nullptr, nullptr, &errMsg);
-        if (errMsg) {
-            sqlite3_free(errMsg);
+        sqlite3_stmt* stmt = nullptr;
+        const char* sql = "DELETE FROM user_profiles WHERE uid = ?";
+        if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
+            sqlite3_bind_text(stmt, 1, uid.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_step(stmt);
+            sqlite3_finalize(stmt);
         }
     }
-    LOG_INFO(TEXT("ProfileManager: Deleted profile for uid=%llu"), uid);
+    LOG_INFO(TEXT("ProfileManager: Deleted profile for uid=%hs"), uid.c_str());
 }
 
-void ProfileManager::RecordCheckin(uint64_t uid, const std::string& username, int32_t checkinDate) {
+void ProfileManager::RecordCheckin(const std::string& uid, const std::string& username, int32_t checkinDate) {
     std::lock_guard<std::mutex> lock(profilesLock_);
 
     int32_t continuousDays = CalculateContinuousDays(uid, checkinDate);
@@ -360,7 +359,7 @@ void ProfileManager::RecordCheckin(uint64_t uid, const std::string& username, in
         const char* sql = "INSERT INTO checkin_records (uid, checkin_date, created_at, username) VALUES (?, ?, ?, ?) ON CONFLICT(uid, checkin_date) DO UPDATE SET created_at = excluded.created_at, username = excluded.username WHERE checkin_records.created_at != excluded.created_at";
         
         if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
-            sqlite3_bind_int64(stmt, 1, uid);
+            sqlite3_bind_text(stmt, 1, uid.c_str(), -1, SQLITE_TRANSIENT);
             sqlite3_bind_int(stmt, 2, checkinDate);
             sqlite3_bind_int64(stmt, 3, GetCurrentTimestamp());
             sqlite3_bind_text(stmt, 4, username.c_str(), -1, SQLITE_TRANSIENT);
@@ -381,10 +380,10 @@ void ProfileManager::RecordCheckin(uint64_t uid, const std::string& username, in
         }
     }
 
-    LOG_INFO(TEXT("ProfileManager: Recorded checkin for uid=%llu, days=%d"), uid, continuousDays);
+    LOG_INFO(TEXT("ProfileManager: Recorded checkin for uid=%hs, days=%d"), uid.c_str(), continuousDays);
 }
 
-void ProfileManager::RecordCheckinAsync(uint64_t uid, const std::string& username, int32_t checkinDate, int32_t continuousDays) {
+void ProfileManager::RecordCheckinAsync(const std::string& uid, const std::string& username, int32_t checkinDate, int32_t continuousDays) {
     auto* self = this;
     std::thread([self, uid, username, checkinDate, continuousDays]() {
         UserProfileData profile;
@@ -408,8 +407,8 @@ void ProfileManager::RecordCheckinAsync(uint64_t uid, const std::string& usernam
             sqlite3* db = (sqlite3*)self->storage_;
 
             if (!InsertCheckinRecordWithRetry(db, uid, checkinDate, timestamp, username)) {
-                LOG_ERROR(TEXT("ProfileManager: Checkin record INSERT failed for uid=%llu, username=%hs, date=%d, days=%d"),
-                    uid, username.c_str(), checkinDate, continuousDays);
+                LOG_ERROR(TEXT("ProfileManager: Checkin record INSERT failed for uid=%hs, username=%hs, date=%d, days=%d"),
+                    uid.c_str(), username.c_str(), checkinDate, continuousDays);
                 dbSuccess = false;
             }
 
@@ -435,16 +434,16 @@ void ProfileManager::RecordCheckinAsync(uint64_t uid, const std::string& usernam
                 }
             }
         } else {
-            LOG_ERROR(TEXT("ProfileManager: storage_ is null, cannot save checkin record for uid=%llu"), uid);
+            LOG_ERROR(TEXT("ProfileManager: storage_ is null, cannot save checkin record for uid=%hs"), uid.c_str());
             dbSuccess = false;
         }
 
         if (dbSuccess) {
-            LOG_INFO(TEXT("ProfileManager: Recorded checkin async for uid=%llu, username=%hs, days=%d, date=%d"),
-                uid, username.c_str(), continuousDays, checkinDate);
+            LOG_INFO(TEXT("ProfileManager: Recorded checkin async for uid=%hs, username=%hs, days=%d, date=%d"),
+                uid.c_str(), username.c_str(), continuousDays, checkinDate);
         } else {
-            LOG_ERROR(TEXT("ProfileManager: Failed to record checkin for uid=%llu, username=%hs, days=%d, date=%d"),
-                uid, username.c_str(), continuousDays, checkinDate);
+            LOG_ERROR(TEXT("ProfileManager: Failed to record checkin for uid=%hs, username=%hs, days=%d, date=%d"),
+                uid.c_str(), username.c_str(), continuousDays, checkinDate);
         }
     }).detach();
 }
@@ -468,7 +467,7 @@ namespace {
     }
 }
 
-bool ProfileManager::GetLastCheckinRecordFromDb(uint64_t uid, int32_t& outLastDate, int32_t& outContinuousDays) {
+bool ProfileManager::GetLastCheckinRecordFromDb(const std::string& uid, int32_t& outLastDate, int32_t& outContinuousDays) {
     {
         std::lock_guard<std::mutex> lock(profilesLock_);
         auto it = profiles_.find(uid);
@@ -484,15 +483,14 @@ bool ProfileManager::GetLastCheckinRecordFromDb(uint64_t uid, int32_t& outLastDa
     }
 
     sqlite3* db = (sqlite3*)storage_;
-    char sql[256];
-    snprintf(sql, sizeof(sql),
-        "SELECT last_checkin_date, continuous_days FROM user_profiles WHERE uid = %llu",
-        (unsigned long long)uid);
-
     sqlite3_stmt* stmt = nullptr;
+    const char* sql = "SELECT last_checkin_date, continuous_days FROM user_profiles WHERE uid = ?";
+    
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
         return false;
     }
+    
+    sqlite3_bind_text(stmt, 1, uid.c_str(), -1, SQLITE_TRANSIENT);
 
     if (sqlite3_step(stmt) == SQLITE_ROW) {
         outLastDate = sqlite3_column_int(stmt, 0);
@@ -521,7 +519,7 @@ bool ProfileManager::GetLastCheckinRecordFromDb(uint64_t uid, int32_t& outLastDa
     return false;
 }
 
-int32_t ProfileManager::CalculateContinuousDays(uint64_t uid, int32_t checkinDate) {
+int32_t ProfileManager::CalculateContinuousDays(const std::string& uid, int32_t checkinDate) {
     int32_t lastDate = 0;
     int32_t lastContinuousDays = 0;
 
@@ -572,7 +570,7 @@ int32_t ProfileManager::CalculateContinuousDays(uint64_t uid, int32_t checkinDat
     return 1;
 }
 
-void ProfileManager::AddKeyword(uint64_t uid, const std::string& keyword) {
+void ProfileManager::AddKeyword(const std::string& uid, const std::string& keyword) {
     std::lock_guard<std::mutex> lock(profilesLock_);
 
     auto it = profiles_.find(uid);
@@ -601,7 +599,7 @@ void ProfileManager::AddKeyword(uint64_t uid, const std::string& keyword) {
     SaveProfileToDb(profile);
 }
 
-void ProfileManager::AddDanmuHistory(uint64_t uid, int64_t timestamp, const std::string& content) {
+void ProfileManager::AddDanmuHistory(const std::string& uid, int64_t timestamp, const std::string& content) {
     std::lock_guard<std::mutex> lock(profilesLock_);
 
     auto it = profiles_.find(uid);
@@ -619,7 +617,7 @@ void ProfileManager::AddDanmuHistory(uint64_t uid, int64_t timestamp, const std:
 std::string ProfileManager::SerializeToJson(const UserProfileData& profile) {
     std::ostringstream oss;
     oss << "{";
-    oss << "\"uid\":" << profile.uid << ",";
+    oss << "\"uid\":\"" << profile.uid << "\",";
     oss << "\"username\":\"" << profile.username << "\",";
     oss << "\"lastCheckinDate\":" << profile.lastCheckinDate << ",";
     oss << "\"continuousDays\":" << profile.continuousDays << ",";
@@ -636,7 +634,7 @@ bool ProfileManager::DeserializeFromJson(const std::string& json, UserProfileDat
 
     try {
         auto j = nlohmann::json::parse(json);
-        outProfile.uid = j.value("uid", 0);
+        outProfile.uid = j.value("uid", "");
         outProfile.username = j.value("username", "");
         outProfile.lastCheckinDate = j.value("lastCheckinDate", 0);
         outProfile.continuousDays = j.value("continuousDays", 0);

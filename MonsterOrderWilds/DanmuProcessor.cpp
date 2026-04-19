@@ -54,7 +54,7 @@ DanmuProcessResult DanmuProcessor::ProcessDanmu(const DanmuData& danmu)
 #if TEST_CAPTAIN_REPLY_LOCAL
     {
         CaptainDanmuEvent capEvent;
-        capEvent.uid = HashStringToUint64(danmu.userId);
+        capEvent.uid = danmu.userId;
         capEvent.guardLevel = 3;  // 模拟舰长
         capEvent.hasMedal = danmu.hasMedal;
         capEvent.username = danmu.userName;
@@ -75,7 +75,7 @@ DanmuProcessResult DanmuProcessor::ProcessDanmu(const DanmuData& danmu)
     if (danmu.guardLevel != 0 || danmu.hasMedal)
     {
         CaptainDanmuEvent capEvent;
-        capEvent.uid = HashStringToUint64(danmu.userId);
+        capEvent.uid = danmu.userId;
         capEvent.guardLevel = danmu.guardLevel;
         capEvent.hasMedal = danmu.hasMedal;
         capEvent.username = danmu.userName;

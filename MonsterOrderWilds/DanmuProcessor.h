@@ -106,7 +106,7 @@ public:
 
     // 舰长弹幕事件（用于 CaptainCheckInModule 学习）
     struct CaptainDanmuEvent {
-        uint64_t uid = 0;
+        std::string uid;
         int32_t guardLevel = 0;
         bool hasMedal = false;
         std::string username;

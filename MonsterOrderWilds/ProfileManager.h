@@ -14,7 +14,7 @@ struct KeywordRecord {
 };
 
 struct UserProfileData {
-    uint64_t uid = 0;
+    std::string uid;
     std::string username;
     int32_t lastCheckinDate = 0;
     int32_t continuousDays = 0;
@@ -32,15 +32,15 @@ public:
     bool Init();
 
     void SaveProfile(const UserProfileData& profile);
-    bool LoadProfile(uint64_t uid, UserProfileData& outProfile);
-    void DeleteProfile(uint64_t uid);
+    bool LoadProfile(const std::string& uid, UserProfileData& outProfile);
+    void DeleteProfile(const std::string& uid);
 
-    void RecordCheckin(uint64_t uid, const std::string& username, int32_t checkinDate);
-    void RecordCheckinAsync(uint64_t uid, const std::string& username, int32_t checkinDate, int32_t continuousDays);
-    int32_t CalculateContinuousDays(uint64_t uid, int32_t checkinDate);
+    void RecordCheckin(const std::string& uid, const std::string& username, int32_t checkinDate);
+    void RecordCheckinAsync(const std::string& uid, const std::string& username, int32_t checkinDate, int32_t continuousDays);
+    int32_t CalculateContinuousDays(const std::string& uid, int32_t checkinDate);
 
-    void AddKeyword(uint64_t uid, const std::string& keyword);
-    void AddDanmuHistory(uint64_t uid, int64_t timestamp, const std::string& content);
+    void AddKeyword(const std::string& uid, const std::string& keyword);
+    void AddDanmuHistory(const std::string& uid, int64_t timestamp, const std::string& content);
 
     std::string SerializeToJson(const UserProfileData& profile);
     bool DeserializeFromJson(const std::string& json, UserProfileData& outProfile);
@@ -51,12 +51,12 @@ private:
     std::vector<KeywordRecord> JsonToKeywords(const std::string& json) const;
     std::string DanmuHistoryToJson(const std::vector<std::pair<int64_t, std::string>>& history) const;
     std::vector<std::pair<int64_t, std::string>> JsonToDanmuHistory(const std::string& json) const;
-    bool LoadProfileFromDb(uint64_t uid, UserProfileData& outProfile);
+    bool LoadProfileFromDb(const std::string& uid, UserProfileData& outProfile);
     void SaveProfileToDb(const UserProfileData& profile);
-    bool GetLastCheckinRecordFromDb(uint64_t uid, int32_t& outLastDate, int32_t& outContinuousDays);
+    bool GetLastCheckinRecordFromDb(const std::string& uid, int32_t& outLastDate, int32_t& outContinuousDays);
 
     std::string dbPath_;
     void* storage_ = nullptr;
-    std::map<uint64_t, UserProfileData> profiles_;
+    std::map<std::string, UserProfileData> profiles_;
     std::mutex profilesLock_;
 };
