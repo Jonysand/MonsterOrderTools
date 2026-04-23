@@ -289,7 +289,8 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
         if (shouldCheckin && profile.lastCheckinDate == event.sendDate) {
             LOG_DEBUG(TEXT("[CaptainCheckInModule] Repeated checkin detected for uid=%hs, date=%d"), event.uid.c_str(), event.sendDate);
             int32_t continuousDays = ProfileManager::Inst()->CalculateContinuousDays(event.uid, event.sendDate);
-            std::string repeatedAnswer = event.username + "今日已打卡，连续" + std::to_string(continuousDays) + "天";
+            int32_t cumulativeDays = profile.cumulativeDays > 0 ? profile.cumulativeDays : continuousDays;
+            std::string repeatedAnswer = event.username + "今日已打卡，连续" + std::to_string(continuousDays) + "天，累计" + std::to_string(cumulativeDays) + "天";
 
             std::wstring contentCopy = Utf8ToWstring(repeatedAnswer);
             RECORD_HISTORY(contentCopy.c_str());
@@ -315,6 +316,12 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
 
             profile.lastCheckinDate = checkinDate;
             profile.continuousDays = continuousDays;
+            
+            if (profile.cumulativeDays > 0) {
+                profile.cumulativeDays += 1;
+            } else {
+                profile.cumulativeDays = 1;
+            }
 
             ProfileManager::Inst()->RecordCheckinAsync(event.uid, event.username, checkinDate, continuousDays);
 
@@ -322,6 +329,7 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
             checkinEvt.uid = event.uid;
             checkinEvt.username = event.username;
             checkinEvt.continuousDays = continuousDays;
+            checkinEvt.cumulativeDays = profile.cumulativeDays;
             checkinEvt.checkinDate = checkinDate;
             checkinEvt.lastCheckinDate = profile.lastCheckinDate;
 
@@ -418,6 +426,7 @@ void CaptainCheckInModule::LoadProfileFromDb(const std::string& uid) {
             profile.username = dbProfile.username;
             profile.lastCheckinDate = dbProfile.lastCheckinDate;
             profile.continuousDays = dbProfile.continuousDays;
+            profile.cumulativeDays = dbProfile.cumulativeDays;
             profile.lastDanmuTimestamp = dbProfile.lastDanmuTimestamp;
             profile.createdAt = dbProfile.createdAt;
             profile.keywords = dbProfile.keywords;
@@ -427,6 +436,7 @@ void CaptainCheckInModule::LoadProfileFromDb(const std::string& uid) {
             it->second.username = dbProfile.username;
             it->second.lastCheckinDate = dbProfile.lastCheckinDate;
             it->second.continuousDays = dbProfile.continuousDays;
+            it->second.cumulativeDays = dbProfile.cumulativeDays;
             it->second.lastDanmuTimestamp = dbProfile.lastDanmuTimestamp;
             it->second.keywords = dbProfile.keywords;
             it->second.danmuHistory = dbProfile.danmuHistory;
@@ -440,6 +450,7 @@ void CaptainCheckInModule::SaveProfileToDb(const UserProfile& profile) {
     dbProfile.username = profile.username;
     dbProfile.lastCheckinDate = profile.lastCheckinDate;
     dbProfile.continuousDays = profile.continuousDays;
+    dbProfile.cumulativeDays = profile.cumulativeDays;
     dbProfile.lastDanmuTimestamp = profile.lastDanmuTimestamp;
     dbProfile.createdAt = profile.createdAt;
     dbProfile.keywords = profile.keywords;
@@ -455,6 +466,7 @@ void CaptainCheckInModule::SaveProfileAsync(const UserProfile& profile) {
         dbProfile.username = profileCopy.username;
         dbProfile.lastCheckinDate = profileCopy.lastCheckinDate;
         dbProfile.continuousDays = profileCopy.continuousDays;
+        dbProfile.cumulativeDays = profileCopy.cumulativeDays;
         dbProfile.lastDanmuTimestamp = profileCopy.lastDanmuTimestamp;
         dbProfile.createdAt = profileCopy.createdAt;
         dbProfile.keywords = profileCopy.keywords;
@@ -472,6 +484,7 @@ void CaptainCheckInModule::LoadProfileAsync(const std::string& uid, std::functio
             profile.username = dbProfile.username;
             profile.lastCheckinDate = dbProfile.lastCheckinDate;
             profile.continuousDays = dbProfile.continuousDays;
+            profile.cumulativeDays = dbProfile.cumulativeDays;
             profile.lastDanmuTimestamp = dbProfile.lastDanmuTimestamp;
             profile.createdAt = dbProfile.createdAt;
             profile.keywords = dbProfile.keywords;
@@ -590,7 +603,7 @@ std::string CaptainCheckInModule::BuildPrompt(const CheckinEvent& event, const U
     }
 
     std::ostringstream oss;
-    oss << "用户" << event.username << "是一位舰长，连续第" << event.continuousDays << "天打卡" << lastCheckinInfo << "。\n"
+    oss << "用户" << event.username << "是一位舰长，连续第" << event.continuousDays << "天打卡，累计打卡" << event.cumulativeDays << "天" << lastCheckinInfo << "。\n"
         << "他的发言习惯包含：" << keywords << "\n"
         << "最近发言：" << recentMessages << "\n"
         << "请在回复中明确提到用户" << event.username << "的姓名，用轻松友好且有点皮的语气回复他的打卡，控制在20字以内。\n"
@@ -600,11 +613,11 @@ std::string CaptainCheckInModule::BuildPrompt(const CheckinEvent& event, const U
 
 std::string CaptainCheckInModule::GetFallbackAnswer(const CheckinEvent& event) {
     if (event.continuousDays <= 1) {
-        return event.username + "打卡成功！";
+        return event.username + "打卡成功！累计" + std::to_string(event.cumulativeDays) + "天";
     }
     else {
         std::ostringstream oss;
-        oss << event.username << "连续第" << event.continuousDays << "天打卡！";
+        oss << event.username << "连续第" << event.continuousDays << "天打卡！累计" << event.cumulativeDays << "天";
         return oss.str();
     }
 }

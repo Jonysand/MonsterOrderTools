@@ -18,6 +18,7 @@ struct UserProfileData {
     std::string username;
     int32_t lastCheckinDate = 0;
     int32_t continuousDays = 0;
+    int32_t cumulativeDays = 0;
     int64_t lastDanmuTimestamp = 0;
     int64_t createdAt = 0;
     int64_t updatedAt = 0;

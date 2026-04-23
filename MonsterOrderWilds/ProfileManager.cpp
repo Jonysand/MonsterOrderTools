@@ -101,6 +101,7 @@ bool ProfileManager::Init() {
         "username TEXT NOT NULL,"
         "last_checkin_date INTEGER DEFAULT 0,"
         "continuous_days INTEGER DEFAULT 0,"
+        "cumulative_days INTEGER DEFAULT 0,"
         "last_danmu_timestamp INTEGER DEFAULT 0,"
         "created_at INTEGER DEFAULT 0,"
         "updated_at INTEGER DEFAULT 0,"
@@ -137,6 +138,16 @@ bool ProfileManager::Init() {
 
     storage_ = (void*)db;
 
+    const char* alterSql = "ALTER TABLE user_profiles ADD COLUMN cumulative_days INTEGER DEFAULT 0";
+    sqlite3_exec(db, alterSql, nullptr, nullptr, nullptr);
+
+    const char* migrateSql = "UPDATE user_profiles SET cumulative_days = continuous_days WHERE cumulative_days = 0 AND continuous_days > 0";
+    char* migrateErr = nullptr;
+    if (sqlite3_exec(db, migrateSql, nullptr, nullptr, &migrateErr) != SQLITE_OK) {
+        LOG_WARNING(TEXT("ProfileManager: Failed to migrate cumulative_days: %hs"), migrateErr);
+        sqlite3_free(migrateErr);
+    }
+
     LOG_INFO(TEXT("ProfileManager::Init success"));
     return true;
 }
@@ -146,7 +157,7 @@ bool ProfileManager::LoadProfileFromDb(const std::string& uid, UserProfileData& 
 
     sqlite3* db = (sqlite3*)storage_;
     sqlite3_stmt* stmt = nullptr;
-    const char* sql = "SELECT uid, username, last_checkin_date, continuous_days, last_danmu_timestamp, created_at, updated_at, keywords_json, danmu_history_json FROM user_profiles WHERE uid = ?";
+    const char* sql = "SELECT uid, username, last_checkin_date, continuous_days, cumulative_days, last_danmu_timestamp, created_at, updated_at, keywords_json, danmu_history_json FROM user_profiles WHERE uid = ?";
     
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
         LOG_ERROR(TEXT("ProfileManager: Failed to prepare select statement: %hs"), sqlite3_errmsg(db));
@@ -160,16 +171,17 @@ bool ProfileManager::LoadProfileFromDb(const std::string& uid, UserProfileData& 
         outProfile.username = (const char*)sqlite3_column_text(stmt, 1);
         outProfile.lastCheckinDate = sqlite3_column_int(stmt, 2);
         outProfile.continuousDays = sqlite3_column_int(stmt, 3);
-        outProfile.lastDanmuTimestamp = sqlite3_column_int64(stmt, 4);
-        outProfile.createdAt = sqlite3_column_int64(stmt, 5);
-        outProfile.updatedAt = sqlite3_column_int64(stmt, 6);
+        outProfile.cumulativeDays = sqlite3_column_int(stmt, 4);
+        outProfile.lastDanmuTimestamp = sqlite3_column_int64(stmt, 5);
+        outProfile.createdAt = sqlite3_column_int64(stmt, 6);
+        outProfile.updatedAt = sqlite3_column_int64(stmt, 7);
 
-        const char* keywordsJson = (const char*)sqlite3_column_text(stmt, 7);
+        const char* keywordsJson = (const char*)sqlite3_column_text(stmt, 8);
         if (keywordsJson) {
             outProfile.keywords = JsonToKeywords(keywordsJson);
         }
 
-        const char* danmuHistoryJson = (const char*)sqlite3_column_text(stmt, 8);
+        const char* danmuHistoryJson = (const char*)sqlite3_column_text(stmt, 9);
         if (danmuHistoryJson) {
             outProfile.danmuHistory = JsonToDanmuHistory(danmuHistoryJson);
         }
@@ -187,7 +199,7 @@ void ProfileManager::SaveProfileToDb(const UserProfileData& profile) {
 
     sqlite3* db = (sqlite3*)storage_;
     sqlite3_stmt* stmt = nullptr;
-    const char* sql = "INSERT OR REPLACE INTO user_profiles (uid, username, last_checkin_date, continuous_days, last_danmu_timestamp, created_at, updated_at, keywords_json, danmu_history_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    const char* sql = "INSERT OR REPLACE INTO user_profiles (uid, username, last_checkin_date, continuous_days, cumulative_days, last_danmu_timestamp, created_at, updated_at, keywords_json, danmu_history_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
         LOG_ERROR(TEXT("ProfileManager: Failed to prepare insert statement: %hs"), sqlite3_errmsg(db));
@@ -198,11 +210,12 @@ void ProfileManager::SaveProfileToDb(const UserProfileData& profile) {
     sqlite3_bind_text(stmt, 2, profile.username.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_int(stmt, 3, profile.lastCheckinDate);
     sqlite3_bind_int(stmt, 4, profile.continuousDays);
-    sqlite3_bind_int64(stmt, 5, profile.lastDanmuTimestamp);
-    sqlite3_bind_int64(stmt, 6, profile.createdAt);
-    sqlite3_bind_int64(stmt, 7, GetCurrentTimestamp());
-    sqlite3_bind_text(stmt, 8, KeywordsToJson(profile.keywords).c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 9, DanmuHistoryToJson(profile.danmuHistory).c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 5, profile.cumulativeDays);
+    sqlite3_bind_int64(stmt, 6, profile.lastDanmuTimestamp);
+    sqlite3_bind_int64(stmt, 7, profile.createdAt);
+    sqlite3_bind_int64(stmt, 8, GetCurrentTimestamp());
+    sqlite3_bind_text(stmt, 9, KeywordsToJson(profile.keywords).c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 10, DanmuHistoryToJson(profile.danmuHistory).c_str(), -1, SQLITE_TRANSIENT);
     
     if (sqlite3_step(stmt) != SQLITE_DONE) {
         LOG_ERROR(TEXT("ProfileManager: Failed to execute insert: %hs"), sqlite3_errmsg(db));
@@ -349,8 +362,17 @@ void ProfileManager::RecordCheckin(const std::string& uid, const std::string& us
         profile.username = username;
         profile.createdAt = GetCurrentTimestamp();
     }
+    int32_t oldLastCheckinDate = profile.lastCheckinDate;
     profile.lastCheckinDate = checkinDate;
     profile.continuousDays = continuousDays;
+    
+    if (oldLastCheckinDate != checkinDate) {
+        if (profile.cumulativeDays > 0) {
+            profile.cumulativeDays += 1;
+        } else {
+            profile.cumulativeDays = 1;
+        }
+    }
 
     bool dbSuccess = true;
     if (storage_) {
@@ -393,15 +415,24 @@ void ProfileManager::RecordCheckinAsync(const std::string& uid, const std::strin
             std::lock_guard<std::mutex> lock(self->profilesLock_);
             auto it = self->profiles_.find(uid);
             if (it != self->profiles_.end()) {
-                profile = std::move(it->second);
+                profile = it->second;
             } else {
                 profile.uid = uid;
                 profile.username = username;
                 profile.createdAt = timestamp;
             }
         }
+        int32_t oldLastCheckinDate = profile.lastCheckinDate;
         profile.lastCheckinDate = checkinDate;
         profile.continuousDays = continuousDays;
+        
+        if (oldLastCheckinDate != checkinDate) {
+            if (profile.cumulativeDays > 0) {
+                profile.cumulativeDays += 1;
+            } else {
+                profile.cumulativeDays = 1;
+            }
+        }
 
         bool dbSuccess = true;
         if (self->storage_) {
@@ -622,6 +653,7 @@ std::string ProfileManager::SerializeToJson(const UserProfileData& profile) {
     oss << "\"username\":\"" << profile.username << "\",";
     oss << "\"lastCheckinDate\":" << profile.lastCheckinDate << ",";
     oss << "\"continuousDays\":" << profile.continuousDays << ",";
+    oss << "\"cumulativeDays\":" << profile.cumulativeDays << ",";
     oss << "\"lastDanmuTimestamp\":" << profile.lastDanmuTimestamp << ",";
     oss << "\"createdAt\":" << profile.createdAt << ",";
     oss << "\"keywords\":" << KeywordsToJson(profile.keywords) << ",";
@@ -639,6 +671,7 @@ bool ProfileManager::DeserializeFromJson(const std::string& json, UserProfileDat
         outProfile.username = j.value("username", "");
         outProfile.lastCheckinDate = j.value("lastCheckinDate", 0);
         outProfile.continuousDays = j.value("continuousDays", 0);
+        outProfile.cumulativeDays = j.value("cumulativeDays", 0);
         outProfile.lastDanmuTimestamp = j.value("lastDanmuTimestamp", 0);
         outProfile.createdAt = j.value("createdAt", 0);
 
@@ -667,7 +700,7 @@ void ProfileManager::GetAllProfilesSortedByCheckinDays(std::vector<UserProfileDa
 
     sqlite3* db = (sqlite3*)storage_;
     sqlite3_stmt* stmt = nullptr;
-    const char* sql = "SELECT uid, username, last_checkin_date, continuous_days, last_danmu_timestamp, created_at, updated_at, keywords_json, danmu_history_json FROM user_profiles";
+    const char* sql = "SELECT uid, username, last_checkin_date, continuous_days, cumulative_days, last_danmu_timestamp, created_at, updated_at, keywords_json, danmu_history_json FROM user_profiles";
 
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
         LOG_ERROR(TEXT("ProfileManager: Failed to prepare select all profiles: %hs"), sqlite3_errmsg(db));
@@ -680,16 +713,17 @@ void ProfileManager::GetAllProfilesSortedByCheckinDays(std::vector<UserProfileDa
         profile.username = (const char*)sqlite3_column_text(stmt, 1);
         profile.lastCheckinDate = sqlite3_column_int(stmt, 2);
         profile.continuousDays = sqlite3_column_int(stmt, 3);
-        profile.lastDanmuTimestamp = sqlite3_column_int64(stmt, 4);
-        profile.createdAt = sqlite3_column_int64(stmt, 5);
-        profile.updatedAt = sqlite3_column_int64(stmt, 6);
+        profile.cumulativeDays = sqlite3_column_int(stmt, 4);
+        profile.lastDanmuTimestamp = sqlite3_column_int64(stmt, 5);
+        profile.createdAt = sqlite3_column_int64(stmt, 6);
+        profile.updatedAt = sqlite3_column_int64(stmt, 7);
 
-        const char* keywordsJson = (const char*)sqlite3_column_text(stmt, 7);
+        const char* keywordsJson = (const char*)sqlite3_column_text(stmt, 8);
         if (keywordsJson) {
             profile.keywords = JsonToKeywords(keywordsJson);
         }
 
-        const char* danmuHistoryJson = (const char*)sqlite3_column_text(stmt, 8);
+        const char* danmuHistoryJson = (const char*)sqlite3_column_text(stmt, 9);
         if (danmuHistoryJson) {
             profile.danmuHistory = JsonToDanmuHistory(danmuHistoryJson);
         }
@@ -720,7 +754,7 @@ bool ProfileManager::ExportCheckinRecordsToFile(const std::string& filePath) {
     ofs.write(reinterpret_cast<char*>(bom), 3);
 
     // Write header
-    ofs << "用户名\t连续打卡天数\t最后打卡时间\n";
+    ofs << "用户名\t连续打卡天数\t累计打卡天数\t最后打卡时间\n";
 
     for (const auto& profile : profiles) {
         std::string username = profile.username;
@@ -742,6 +776,7 @@ bool ProfileManager::ExportCheckinRecordsToFile(const std::string& filePath) {
 
         ofs << username << "\t"
             << profile.continuousDays << "天\t"
+            << profile.cumulativeDays << "天\t"
             << lastCheckinStr << "\n";
     }
 

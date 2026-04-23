@@ -111,8 +111,36 @@ void TestGetFallbackAnswer_ZeroDays()
     evt.checkinDate = 20260406;
     
     std::string answer = CaptainCheckInModule::Inst()->GetFallbackAnswer(evt);
-    assert(answer == "舰长D打卡成功！");
+    assert(answer == "舰长D打卡成功！累计0天");
     std::cout << "[PASS] TestGetFallbackAnswer_ZeroDays" << std::endl;
+}
+
+void TestGetFallbackAnswer_WithCumulativeDays()
+{
+    CheckinEvent evt;
+    evt.uid = 12345;
+    evt.username = "舰长E";
+    evt.continuousDays = 5;
+    evt.cumulativeDays = 20;
+    evt.checkinDate = 20260406;
+    
+    std::string answer = CaptainCheckInModule::Inst()->GetFallbackAnswer(evt);
+    assert(answer == "舰长E连续第5天打卡！累计20天");
+    std::cout << "[PASS] TestGetFallbackAnswer_WithCumulativeDays" << std::endl;
+}
+
+void TestGetFallbackAnswer_FirstDayWithCumulative()
+{
+    CheckinEvent evt;
+    evt.uid = 12345;
+    evt.username = "舰长F";
+    evt.continuousDays = 1;
+    evt.cumulativeDays = 1;
+    evt.checkinDate = 20260406;
+    
+    std::string answer = CaptainCheckInModule::Inst()->GetFallbackAnswer(evt);
+    assert(answer == "舰长F打卡成功！累计1天");
+    std::cout << "[PASS] TestGetFallbackAnswer_FirstDayWithCumulative" << std::endl;
 }
 
 void TestIsCheckinMessage_EmptyTriggerWords()
@@ -238,6 +266,8 @@ void RunCaptainCheckInModuleTests()
     TestGetFallbackAnswer_ConsecutiveDays();
     TestGetFallbackAnswer_ManyDays();
     TestGetFallbackAnswer_ZeroDays();
+    TestGetFallbackAnswer_WithCumulativeDays();
+    TestGetFallbackAnswer_FirstDayWithCumulative();
     TestIsCheckinMessage_EmptyTriggerWords();
     TestIsCheckinMessage_SingleWord();
     TestIsCheckinMessage_WithSpaces();
