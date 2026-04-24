@@ -520,6 +520,8 @@ void TTSManager::RefreshTTSProvider()
 {
     const auto& config = ConfigManager::Inst()->GetConfig();
     LOG_INFO(TEXT("Refreshing TTS provider, engine: %s"), config.ttsEngine.c_str());
+    
+    std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
     ttsProvider = TTSProviderFactory::Create(
         GetMIMO_API_KEY(),
         GetMINIMAX_API_KEY(),
@@ -538,6 +540,7 @@ std::string TTSManager::GetCurrentProviderName() const
 
 bool TTSManager::TrySwitchToNextProvider()
 {
+    // 注意：调用方必须已持有 asyncMutex_（当前由 ProcessAsyncTTS 在持有锁时调用）
     if (!ttsProvider) return false;
 
     std::string currentName = ttsProvider->GetProviderName();
