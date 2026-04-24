@@ -129,10 +129,12 @@ bool CaptainCheckInModule::Init() {
 
     JiebaContext* rawContext = CreateJiebaContextSafe(jiebaDict, hmmModel, userDict, idfPath, stopWords);
     jiebaContext_.reset(rawContext);
-    
+
     if (!jiebaContext_) {
         LOG_ERROR(TEXT("CaptainCheckInModule::Init: JiebaContext creation failed, keyword extraction disabled"));
     }
+
+    LoadStopWords(stopWords);
 
     inited_ = true;
     LOG_INFO(TEXT("CaptainCheckInModule::Init done"));
@@ -377,12 +379,10 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
 void CaptainCheckInModule::ExtractKeywords(UserProfile& profile, const std::string& content) {
     if (!jiebaContext_) return;
 
-    // 当使用 MiMo TTS 引擎时，#标签# 会被转换为 <style>标签</style>，不应学习为观众习惯词
     std::string processedContent = content;
-    if (TTSManager::Inst()->GetActiveEngineType() == TTSEngineType::MiMo) {
-        std::regex tagPattern(R"(#[^#]+#)");
-        processedContent = std::regex_replace(processedContent, tagPattern, "");
-    }
+    // 移除所有 (风格) 标签，避免学习为观众习惯词
+    std::regex tagPattern(R"((?:\(|（|\[)[^\)\]）]+(?:\)|）|\]))");
+    processedContent = std::regex_replace(processedContent, tagPattern, "");
 
     std::vector<std::string> words;
     jiebaContext_->jieba_.Cut(processedContent, words, true);
@@ -412,7 +412,32 @@ void CaptainCheckInModule::ExtractKeywords(UserProfile& profile, const std::stri
         [](const KeywordRecord& a, const KeywordRecord& b) { return a.frequency > b.frequency; });
 }
 
+void CaptainCheckInModule::LoadStopWords(const std::string& filePath) {
+    std::ifstream file(filePath);
+    if (!file.is_open()) {
+        LOG_ERROR(TEXT("CaptainCheckInModule::LoadStopWords: failed to open %s"), filePath.c_str());
+        return;
+    }
+
+    std::string line;
+    while (std::getline(file, line)) {
+        // Trim whitespace and newlines
+        size_t start = line.find_first_not_of(" \t\r\n");
+        if (start == std::string::npos) continue;
+        size_t end = line.find_last_not_of(" \t\r\n");
+        std::string word = line.substr(start, end - start + 1);
+        if (!word.empty()) {
+            stopWords_.insert(word);
+        }
+    }
+
+    LOG_INFO(TEXT("CaptainCheckInModule::LoadStopWords: loaded %zu words from %s"), stopWords_.size(), filePath.c_str());
+}
+
 bool CaptainCheckInModule::IsStopWord(const std::string& word) const {
+    if (!stopWords_.empty()) {
+        return stopWords_.find(word) != stopWords_.end();
+    }
     return STOP_WORDS.find(word) != STOP_WORDS.end();
 }
 
@@ -606,7 +631,7 @@ std::string CaptainCheckInModule::BuildPrompt(const CheckinEvent& event, const U
     oss << "用户" << event.username << "是一位舰长，连续第" << event.continuousDays << "天打卡，累计打卡" << event.cumulativeDays << "天" << lastCheckinInfo << "。\n"
         << "他的发言习惯包含：" << keywords << "\n"
         << "最近发言：" << recentMessages << "\n"
-        << "请在回复中明确提到用户" << event.username << "的姓名，用轻松友好且有点皮的语气回复他的打卡，控制在20字以内。\n"
+        << "请在回复中明确提到用户" << event.username << "的姓名，用轻松友好且有点皮的语气回复他的打卡，控制在30字以内。\n"
         << "回复内容需要适合TTS语音播报，避免生僻字和复杂句式。";
     return oss.str();
 }

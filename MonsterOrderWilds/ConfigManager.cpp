@@ -113,7 +113,6 @@ bool ConfigManager::LoadConfig()
             if (j.contains("TTS_ENGINE")) config_.ttsEngine = j["TTS_ENGINE"].get<std::string>();
             if (j.contains("MIMO_API_KEY")) config_.mimoApiKey = j["MIMO_API_KEY"].get<std::string>();
             if (j.contains("MIMO_VOICE")) config_.mimoVoice = j["MIMO_VOICE"].get<std::string>();
-            if (j.contains("MIMO_STYLE")) config_.mimoStyle = j["MIMO_STYLE"].get<std::string>();
             if (j.contains("MIMO_AUDIO_FORMAT")) config_.mimoAudioFormat = j["MIMO_AUDIO_FORMAT"].get<std::string>();
 
             // MiniMax TTS 配置
@@ -179,7 +178,6 @@ bool ConfigManager::SaveConfig(bool force)
         j["TTS_ENGINE"] = config_.ttsEngine;
         j["MIMO_API_KEY"] = config_.mimoApiKey;
         j["MIMO_VOICE"] = config_.mimoVoice;
-        j["MIMO_STYLE"] = config_.mimoStyle;
         j["MIMO_AUDIO_FORMAT"] = config_.mimoAudioFormat;
 
         // MiniMax TTS 配置
@@ -359,15 +357,6 @@ void ConfigManager::SetMimoVoice(const std::string& value)
     lock_.lock();
     bool changed = config_.mimoVoice != value;
     if (changed) { config_.mimoVoice = value; dirty_ = true; }
-    lock_.unlock();
-    if (changed) NotifyConfigChanged();
-}
-
-void ConfigManager::SetMimoStyle(const std::string& value)
-{
-    lock_.lock();
-    bool changed = config_.mimoStyle != value;
-    if (changed) { config_.mimoStyle = value; dirty_ = true; }
     lock_.unlock();
     if (changed) NotifyConfigChanged();
 }

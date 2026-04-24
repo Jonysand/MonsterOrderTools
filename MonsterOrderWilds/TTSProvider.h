@@ -23,7 +23,7 @@ public:
     std::string BuildRequestBody(const TTSRequest& request) const;
     std::string BuildRequestHeaders(const std::string& apiKey) const;
     TTSResponse ParseResponse(const std::string& responseBody, int httpStatusCode) const;
-    std::string HashtagToStyle(const std::string& input) const;
+    std::string ProcessStyleTags(const std::string& input) const;
 private:
     std::vector<uint8_t> Base64ToBytes(const std::string& base64) const;
     std::string apiKey_;

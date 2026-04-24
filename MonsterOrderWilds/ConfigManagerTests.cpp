@@ -99,13 +99,11 @@ void TestConfigManager_SetTtsConfig()
     mgr->SetMimoVoice("default_zh");
     assert(mgr->GetConfig().mimoVoice == "default_zh");
 
-    mgr->SetMimoStyle("温柔轻声");
-    assert(mgr->GetConfig().mimoStyle == "温柔轻声");
+
 
     // 还原
     mgr->SetTtsEngine("auto");
     mgr->SetMimoVoice("mimo_default");
-    mgr->SetMimoStyle("");
 
     TestLog("[PASS] TestConfigManager_SetTtsConfig");
 }

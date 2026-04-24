@@ -33,7 +33,7 @@ void TestProfileManager_Init()
 
 void TestProfileManager_RecordCheckin()
 {
-    uint64_t testUid = 555666777;
+    std::string testUid = "555666777";
     int32_t checkinDate = 20260405;
 
     ProfileManager::Inst()->RecordCheckin(testUid, "TestUser", checkinDate);
@@ -48,7 +48,7 @@ void TestProfileManager_RecordCheckin()
 
 void TestProfileManager_CalculateContinuousDays()
 {
-    uint64_t testUid = 111222333;
+    std::string testUid = "111222333";
     int32_t today = 20260405;
 
     ProfileManager::Inst()->RecordCheckin(testUid, "ConsecutiveTest", today);
@@ -60,7 +60,7 @@ void TestProfileManager_CalculateContinuousDays()
 
 void TestProfileManager_CumulativeDays()
 {
-    uint64_t testUid = 555666778;
+    std::string testUid = "555666778";
     int32_t checkinDate = 20260405;
 
     ProfileManager::Inst()->RecordCheckin(testUid, "CumulativeTestUser", checkinDate);
@@ -83,7 +83,7 @@ void TestProfileManager_CumulativeDays()
 
 void TestProfileManager_DuplicateCheckinProtection()
 {
-    uint64_t testUid = 555666779;
+    std::string testUid = "555666779";
     int32_t checkinDate = 20260410;
 
     ProfileManager::Inst()->RecordCheckin(testUid, "DupTestUser", checkinDate);

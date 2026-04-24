@@ -63,9 +63,13 @@ int RunTests()
     TestLog("  MonsterOrderWilds Unit Tests");
     TestLog("========================================");
     TestLog("");
-    
+
     TestLog("Running ConfigManager tests...");
     RunAllConfigManagerTests();
+    TestLog("");
+
+    TestLog("Running ConfigManager Registry tests...");
+    RunAllConfigManagerRegistryTests();
     TestLog("");
 
     TestLog("Running ConfigManager Registry tests...");

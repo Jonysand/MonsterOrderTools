@@ -24,7 +24,6 @@ struct ConfigData
     std::string ttsEngine = "auto";
     std::string mimoApiKey = "";
     std::string mimoVoice = "mimo_default";
-    std::string mimoStyle = "";
     std::string mimoAudioFormat = "mp3";
 
     // MiniMax TTS 配置
@@ -76,7 +75,6 @@ public:
     void SetTtsEngine(const std::string& value);
     void SetMimoApiKey(const std::string& value);
     void SetMimoVoice(const std::string& value);
-    void SetMimoStyle(const std::string& value);
     void SetMimoAudioFormat(const std::string& value);
     void SetWindowPosition(double x, double y);
     void SetTtsCacheDaysToKeep(int value);

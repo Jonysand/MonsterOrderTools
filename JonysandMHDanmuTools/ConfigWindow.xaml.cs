@@ -121,17 +121,6 @@ namespace MonsterOrderWindows
                 }
             }
 
-            // 设置语音风格（使用Tag属性）
-            for (int i = 0; i < MimoStyleComboBox.Items.Count; i++)
-            {
-                var item = MimoStyleComboBox.Items[i] as System.Windows.Controls.ComboBoxItem;
-                if (item != null && item.Tag?.ToString() == config.MIMO_STYLE)
-                {
-                    MimoStyleComboBox.SelectedIndex = i;
-                    break;
-                }
-            }
-
             // 设置 MiniMax 音色（使用Tag属性）
             for (int i = 0; i < MiniMaxVoiceComboBox.Items.Count; i++)
             {
@@ -427,19 +416,6 @@ namespace MonsterOrderWindows
                 return;
             string voice = selectedItem.Tag?.ToString() ?? "mimo_default";
             GlobalEventListener.Invoke("ConfigChanged", $"MIMO_VOICE:{voice}");
-        }
-
-        private void MimoStyleComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
-        {
-            if (_isInitializing) return;
-            var comboBox = sender as System.Windows.Controls.ComboBox;
-            if (comboBox == null || comboBox.SelectedItem == null)
-                return;
-            var selectedItem = comboBox.SelectedItem as System.Windows.Controls.ComboBoxItem;
-            if (selectedItem == null)
-                return;
-            string style = selectedItem.Tag?.ToString() ?? "";
-            GlobalEventListener.Invoke("ConfigChanged", $"MIMO_STYLE:{style}");
         }
 
         private void MiniMaxVoiceComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)

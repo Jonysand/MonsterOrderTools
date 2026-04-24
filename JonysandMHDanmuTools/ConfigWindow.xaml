@@ -365,26 +365,7 @@
                                             <ComboBoxItem Content="英文语音" Tag="default_en" />
                                         </ComboBox>
                                     </StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                        <Label
-                                            Content="语音风格"
-                                            VerticalAlignment="Center"
-                                            FontSize="14"
-                                            Foreground="#222"
-                                            Margin="0,0,8,0" />
-                                        <ComboBox
-                                            Name="MimoStyleComboBox"
-                                            Width="150"
-                                            FontSize="14"
-                                            SelectionChanged="MimoStyleComboBox_SelectionChanged">
-                                            <ComboBoxItem Content="默认" Tag="" />
-                                            <ComboBoxItem Content="温柔轻声" Tag="温柔轻声" />
-                                            <ComboBoxItem Content="激昂慷慨" Tag="激昂慷慨" />
-                                            <ComboBoxItem Content="新闻播报" Tag="新闻播报" />
-                                            <ComboBoxItem Content="欢乐活泼" Tag="欢乐活泼" />
-                                            <ComboBoxItem Content="沉稳严肃" Tag="沉稳严肃" />
-                                        </ComboBox>
-                                    </StackPanel>
+
                                 </StackPanel>
                             </Border>
                             <Border Name="SapiConfigPanel" Margin="8,8,0,0">

@@ -13,6 +13,7 @@
 #include <ctime>
 #include <sstream>
 #include <iomanip>
+#include <unordered_set>
 
 struct CaptainDanmuEvent {
     std::string uid;
@@ -84,6 +85,7 @@ private:
 
     bool ShouldLearn(const UserProfile& profile, const CaptainDanmuEvent& event);
     bool IsStopWord(const std::string& word) const;
+    void LoadStopWords(const std::string& filePath);
     bool ShouldSkipDuplicateContent(UserProfile& profile, const std::string& content);
     int64_t GetCurrentTimestamp() const;
     std::string GetModuleDictPath() const;
@@ -104,4 +106,13 @@ private:
 
     class JiebaContext;
     std::unique_ptr<JiebaContext> jiebaContext_;
+    std::unordered_set<std::string> stopWords_;
+
+#ifdef RUN_UNIT_TESTS
+    friend void TestLoadStopWords_Success();
+    friend void TestLoadStopWords_FileNotFound();
+    friend void TestIsStopWord_LoadedDict();
+    friend void TestIsStopWord_HardcodedFallback();
+    friend void TestIsStopWord_NotStopWord();
+#endif
 };

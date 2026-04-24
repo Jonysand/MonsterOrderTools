@@ -31,7 +31,6 @@ namespace MonsterOrderBridge
             TtsEngine = gcnew System::String(config.ttsEngine.c_str());
             MimoApiKey = gcnew System::String(config.mimoApiKey.c_str());
             MimoVoice = gcnew System::String(config.mimoVoice.c_str());
-            MimoStyle = gcnew System::String(config.mimoStyle.c_str());
             MimoAudioFormat = gcnew System::String(config.mimoAudioFormat.c_str());
             TopPosX = config.topPosX;
             TopPosY = config.topPosY;
@@ -58,7 +57,6 @@ namespace MonsterOrderBridge
             data.ttsEngine = msclr::interop::marshal_as<std::string>(TtsEngine);
             data.mimoApiKey = msclr::interop::marshal_as<std::string>(MimoApiKey);
             data.mimoVoice = msclr::interop::marshal_as<std::string>(MimoVoice);
-            data.mimoStyle = msclr::interop::marshal_as<std::string>(MimoStyle);
             data.mimoAudioFormat = msclr::interop::marshal_as<std::string>(MimoAudioFormat);
             data.topPosX = TopPosX;
             data.topPosY = TopPosY;

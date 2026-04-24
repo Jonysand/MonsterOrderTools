@@ -18,7 +18,7 @@ void SapiTTSProvider::RequestTTS(const TTSRequest& request, TTSCallback callback
     if (TTSManager::Inst()->SpeakWithSapi(wtext)) {
         TTSResponse response;
         response.success = true;
-        response.audioData = {};
+        response.audioData = {1};  // SAPI直接播报，无需音频数据，填充标志位避免被误判为失败
         callback(response);
     }
     else {

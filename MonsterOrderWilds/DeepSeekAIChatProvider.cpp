@@ -40,9 +40,13 @@ std::string DeepSeekAIChatProvider::GetLastError() const { return lastError_; }
 
 bool DeepSeekAIChatProvider::CallAPI(const std::string& prompt, std::string& outResponse) {
     nlohmann::json reqBody;
-    reqBody["model"] = "deepseek-chat";
+    reqBody["model"] = "deepseek-v4-pro";
     reqBody["messages"] = nlohmann::json::array();
+    reqBody["messages"].push_back({{"role", "system"}, {"content", "你是一个友好的伙伴"}});
     reqBody["messages"].push_back({{"role", "user"}, {"content", prompt}});
+    reqBody["thinking"] = {{"type", "enabled"}};
+    reqBody["reasoning_effort"] = "high";
+    reqBody["stream"] = false;
     std::string body = reqBody.dump();
 
     std::string headersStr =
@@ -111,9 +115,13 @@ bool DeepSeekAIChatProvider::CallAPI(const std::string& prompt, std::string& out
 
 void DeepSeekAIChatProvider::CallAPIAsync(const std::string& prompt, std::function<void(bool, const std::string&)> callback) {
     nlohmann::json reqBody;
-    reqBody["model"] = "deepseek-chat";
+    reqBody["model"] = "deepseek-v4-pro";
     reqBody["messages"] = nlohmann::json::array();
+    reqBody["messages"].push_back({{"role", "system"}, {"content", "你是一个友好的伙伴"}});
     reqBody["messages"].push_back({{"role", "user"}, {"content", prompt}});
+    reqBody["thinking"] = {{"type", "enabled"}};
+    reqBody["reasoning_effort"] = "high";
+    reqBody["stream"] = false;
     std::string body = reqBody.dump();
 
     std::string headersStr =
