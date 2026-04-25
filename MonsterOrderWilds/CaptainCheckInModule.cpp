@@ -637,14 +637,9 @@ std::string CaptainCheckInModule::BuildPrompt(const CheckinEvent& event, const U
 }
 
 std::string CaptainCheckInModule::GetFallbackAnswer(const CheckinEvent& event) {
-    if (event.continuousDays <= 1) {
-        return event.username + "打卡成功！累计" + std::to_string(event.cumulativeDays) + "天";
-    }
-    else {
-        std::ostringstream oss;
-        oss << event.username << "连续第" << event.continuousDays << "天打卡！累计" << event.cumulativeDays << "天";
-        return oss.str();
-    }
+    std::ostringstream oss;
+    oss << event.username << "连续第" << event.continuousDays << "天打卡！累计" << event.cumulativeDays << "天";
+    return oss.str();
 }
 
 std::string CaptainCheckInModule::GenerateAIAnswer(const CheckinEvent& event, const UserProfile* profile) {

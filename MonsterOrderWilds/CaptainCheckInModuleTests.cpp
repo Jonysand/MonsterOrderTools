@@ -76,7 +76,7 @@ void TestGetFallbackAnswer_FirstDay()
     evt.checkinDate = 20260406;
     
     std::string answer = CaptainCheckInModule::Inst()->GetFallbackAnswer(evt);
-    assert(answer == "舰长A打卡成功！");
+    assert(answer == "舰长A连续第1天打卡！累计0天");
     TestLog("[PASS] TestGetFallbackAnswer_FirstDay");
 }
 
@@ -89,7 +89,7 @@ void TestGetFallbackAnswer_ConsecutiveDays()
     evt.checkinDate = 20260406;
     
     std::string answer = CaptainCheckInModule::Inst()->GetFallbackAnswer(evt);
-    assert(answer == "舰长B连续第7天打卡！");
+    assert(answer == "舰长B连续第7天打卡！累计0天");
     TestLog("[PASS] TestGetFallbackAnswer_ConsecutiveDays");
 }
 
@@ -102,7 +102,7 @@ void TestGetFallbackAnswer_ManyDays()
     evt.checkinDate = 20260406;
     
     std::string answer = CaptainCheckInModule::Inst()->GetFallbackAnswer(evt);
-    assert(answer == "舰长C连续第100天打卡！");
+    assert(answer == "舰长C连续第100天打卡！累计0天");
     TestLog("[PASS] TestGetFallbackAnswer_ManyDays");
 }
 
@@ -115,7 +115,7 @@ void TestGetFallbackAnswer_ZeroDays()
     evt.checkinDate = 20260406;
     
     std::string answer = CaptainCheckInModule::Inst()->GetFallbackAnswer(evt);
-    assert(answer == "舰长D打卡成功！累计0天");
+    assert(answer == "舰长D连续第0天打卡！累计0天");
     TestLog("[PASS] TestGetFallbackAnswer_ZeroDays");
 }
 
@@ -143,7 +143,7 @@ void TestGetFallbackAnswer_FirstDayWithCumulative()
     evt.checkinDate = 20260406;
     
     std::string answer = CaptainCheckInModule::Inst()->GetFallbackAnswer(evt);
-    assert(answer == "舰长F打卡成功！累计1天");
+    assert(answer == "舰长F连续第1天打卡！累计1天");
     TestLog("[PASS] TestGetFallbackAnswer_FirstDayWithCumulative");
 }
 
