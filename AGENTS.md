@@ -30,11 +30,11 @@
 - 如需打包，修改 `installer/` 目录下的打包配置或 `wixproj` 文件
 
 ## 文件编码规则
-- **所有源代码文件统一使用 UTF-8 with BOM 编码**
-- C# 文件 (.cs): UTF-8 with BOM
-- XAML 文件 (.xaml): UTF-8 with BOM
-- C++ 文件 (.cpp/.h): UTF-8 with BOM
-- XML 文件 (.vcxproj/.csproj): UTF-8 无 BOM
+- **所有源代码文件统一使用 UTF-8 编码（无 BOM）**
+- C# 文件 (.cs): UTF-8
+- XAML 文件 (.xaml): UTF-8
+- C++ 文件 (.cpp/.h): UTF-8
+- XML 文件 (.vcxproj/.csproj): UTF-8
 - JSON/YAML 配置文件: UTF-8
 
 ## C++ 项目规则
