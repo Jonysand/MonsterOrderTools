@@ -459,6 +459,75 @@ namespace MonsterOrderWindows
             _bubbles.Clear();
             BubbleCanvas.Children.Clear();
         }
+
+        // 文字滚动动画控制
+        private void OnScrollTextLoaded(object sender, RoutedEventArgs e)
+        {
+            var canvas = sender as Canvas;
+            if (canvas == null) return;
+
+            // 在布局完成后测量宽度
+            canvas.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (canvas.Children.Count == 0) return;
+                var textBlock = canvas.Children[0] as TextBlock;
+                if (textBlock == null) return;
+
+                // 使用 FormattedText 精确计算文本渲染宽度
+                var formattedText = new FormattedText(
+                    textBlock.Text,
+                    System.Globalization.CultureInfo.CurrentCulture,
+                    FlowDirection.LeftToRight,
+                    new Typeface(textBlock.FontFamily, textBlock.FontStyle, textBlock.FontWeight, textBlock.FontStretch),
+                    textBlock.FontSize,
+                    textBlock.Foreground);
+                double textWidth = formattedText.WidthIncludingTrailingWhitespace;
+                double canvasWidth = canvas.ActualWidth > 0 ? canvas.ActualWidth : canvas.Width;
+
+                if (textWidth > canvasWidth && canvasWidth > 0)
+                {
+                    // 增加20像素余量确保完全显示
+                    double offset = textWidth - canvasWidth + 20;
+
+                    var animation = new DoubleAnimation
+                    {
+                        From = 0,
+                        To = -offset,
+                        Duration = TimeSpan.FromSeconds(Math.Max(2.0, offset / 25.0)),
+                        AutoReverse = true,
+                        RepeatBehavior = RepeatBehavior.Forever,
+                        EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
+                    };
+
+                    var storyboard = new Storyboard();
+                    storyboard.Children.Add(animation);
+                    Storyboard.SetTarget(animation, textBlock);
+                    Storyboard.SetTargetProperty(animation, new PropertyPath(Canvas.LeftProperty));
+
+                    // 存储 Storyboard 以便暂停/恢复
+                    canvas.Tag = storyboard;
+                    storyboard.Begin();
+                }
+            }), DispatcherPriority.Background);
+        }
+
+        private void OnScrollTextMouseEnter(object sender, MouseEventArgs e)
+        {
+            var canvas = sender as Canvas;
+            if (canvas?.Tag is Storyboard storyboard)
+            {
+                storyboard.Pause();
+            }
+        }
+
+        private void OnScrollTextMouseLeave(object sender, MouseEventArgs e)
+        {
+            var canvas = sender as Canvas;
+            if (canvas?.Tag is Storyboard storyboard)
+            {
+                storyboard.Resume();
+            }
+        }
     }
 
     public class MonsterOrderInfo
