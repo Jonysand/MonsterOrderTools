@@ -107,6 +107,14 @@ def prepare_files():
     shutil.copy2(RELEASE_DLL, FILES_DIR / "MonsterOrderWildsGUI.dll")
     print("[OK] Copied MonsterOrderWildsGUI.dll")
 
+    # 复制图标资源包
+    icon_zip = CONFIGS_DIR / "monster_icons.zip"
+    if icon_zip.exists():
+        shutil.copy2(icon_zip, FILES_DIR / "monster_icons.zip")
+        print("[OK] Copied monster_icons.zip")
+    else:
+        print("[Warning] monster_icons.zip not found!")
+
     # 复制配置文件
     for config_file in [
         "credentials.dat",

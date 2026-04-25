@@ -10,6 +10,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
 using System.Windows.Interop;
 using System.Runtime.InteropServices;
 using System.Windows.Threading;
@@ -254,9 +255,13 @@ namespace MonsterOrderWindows
 
         public async void RefreshOrder()
         {
+            ToolsMain.SendCommand("Log:RefreshOrder called");
             // 后台排序 + 数据准备，然后在UI线程更新列表
-            var sortedItems = await Task.Run(() =>
+            List<MonsterOrderInfo> sortedItems = null;
+            try
             {
+                sortedItems = await Task.Run(() =>
+                {
                 PriorityQueue.GetInst().SortQueue();
 
                 // 同步到PriorityQueueProxy
@@ -270,9 +275,19 @@ namespace MonsterOrderWindows
                     tempData.MonsterName = node.MonsterName;
                     tempData.GuardLevel = node.GuardLevel;
                     tempData.TemperedLevel = node.TemperedLevel;
-                    string iconUrl = MonsterData.GetInst().GetMatchedMonsterIconUrl(tempData.MonsterName);
-                    if (!string.IsNullOrEmpty(iconUrl))
-                        tempData.MonsterIcon = new Uri(iconUrl, UriKind.RelativeOrAbsolute);
+                    string iconPath = MonsterData.GetInst().GetMatchedMonsterIconUrl(tempData.MonsterName);
+                    if (!string.IsNullOrEmpty(iconPath))
+                    {
+                        tempData.MonsterIcon = MonsterIconLoader.LoadIcon(iconPath);
+                        if (tempData.MonsterIcon == null)
+                        {
+                            ToolsMain.SendCommand("Log:Failed to load icon for " + tempData.MonsterName + " path=" + iconPath);
+                        }
+                    }
+                    else
+                    {
+                        ToolsMain.SendCommand("Log:Empty icon path for monster=" + tempData.MonsterName);
+                    }
                     items.Add(tempData);
                 }
                 return items;
@@ -287,6 +302,11 @@ namespace MonsterOrderWindows
                 }
                 PriorityQueue.GetInst().SaveList();
             });
+            }
+            catch (Exception ex)
+            {
+                ToolsMain.SendCommand("Log:RefreshOrder exception: " + ex.Message);
+            }
         }
 
         // 拖拽排序 -------------------------------------
@@ -445,7 +465,7 @@ namespace MonsterOrderWindows
     {
         public string AudienceName { set; get; }
         public string MonsterName { set; get; }
-        public Uri MonsterIcon { set; get; }
+        public BitmapImage MonsterIcon { set; get; }
         public int GuardLevel { set; get; }
 
         // 历战等级：0 非历战，1 历战，2 历战王

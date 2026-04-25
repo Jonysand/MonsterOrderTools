@@ -8,6 +8,25 @@
 
 ## [Unreleased]
 
+## [v22] - 2026-04-25
+
+### Added
+- **怪物图标本地化**: 将173个怪物的图标从网络URL迁移到本地zip资源包
+  - 新增 `MonsterIconLoader` 组件：从 `monster_icons.zip` 流读取图标，支持内存缓存
+  - 建立75个em编号到zip路径的完整映射表
+  - 补全59个原无URL怪物的图标路径
+  - 修正11个怪物的错误图标映射（大痹贼龙→Great_Girros、凶爪龙→Ebony_Odogaron等）
+  - 新增12个历战/历战王怪物的特殊图标（Tempered/Arch-Tempered）
+- **安装包集成图标资源**: 修改 `installer/build.py` 和 `MonsterOrderWilds.iss`，安装时自动复制 `monster_icons.zip`
+
+### Changed
+- **图标加载方式**: `OrderedMonsterWindow` 图标从 `Uri` 网络加载改为 `BitmapImage` zip流加载
+- **图标路径格式**: `monster_list.json` 中所有图标地址改为zip内相对路径（如 `MHWilds/MHWilds-Rathalos_Icon.png`）
+
+### Fixed
+- **C++日志格式**: 修复 `MonsterOrderWilds.cpp` 中 `%s` 期望宽字符导致UTF-8日志乱码的问题（改为 `%hs`）
+- **Zip流读取**: 修复 `ZipArchiveEntry` 流不可seek导致 `BitmapImage.Freeze()` 失败的问题（先复制到 `MemoryStream`）
+
 ## [v21] - 2026-04-24
 
 ### Fixed

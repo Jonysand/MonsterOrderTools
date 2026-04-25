@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.IO;
@@ -27,7 +27,14 @@ namespace MonsterOrderWindows
         {
             try
             {
-                return NativeImports.DataBridge_Initialize();
+                bool result = NativeImports.DataBridge_Initialize();
+                if (result)
+                {
+                    string configDir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+                    configDir = Path.Combine(configDir, "MonsterOrderWilds_configs");
+                    MonsterIconLoader.Initialize(configDir);
+                }
+                return result;
             }
             catch (Exception e)
             {
