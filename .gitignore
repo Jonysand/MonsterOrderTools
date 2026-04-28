@@ -117,6 +117,9 @@ CustomizedVoice/
 # Batch scripts
 StartServe.bat
 
+# NUL
+nul
+
 # Dot files and directories (hidden files)
 .*
 !.gitignore
