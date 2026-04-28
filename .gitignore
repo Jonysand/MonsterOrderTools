@@ -114,6 +114,9 @@ __pycache__/
 # Customized voice files
 CustomizedVoice/
 
+# Batch scripts
+StartServe.bat
+
 # Dot files and directories (hidden files)
 .*
 !.gitignore
