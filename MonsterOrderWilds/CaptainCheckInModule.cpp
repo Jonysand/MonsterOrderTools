@@ -323,12 +323,34 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
             LOG_DEBUG(TEXT("[CaptainCheckInModule] Processing checkin for uid=%hs, guardLevel=%d, date=%d"), event.uid.c_str(), event.guardLevel, event.sendDate);
             int32_t checkinDate = event.sendDate;
             int32_t continuousDays = ProfileManager::Inst()->CalculateContinuousDays(event.uid, checkinDate);
-
             int32_t previousCheckinDate = profile.lastCheckinDate;
-            profile.lastCheckinDate = checkinDate;
-            profile.continuousDays = continuousDays;
 
-            ProfileManager::Inst()->RecordCheckinAsync(event.uid, event.username, checkinDate, continuousDays);
+            // 检查是否已在处理首次打卡中（含超时清理）
+            bool alreadyPending = false;
+            {
+                std::lock_guard<std::mutex> lock(pendingCheckinLock_);
+                auto it = pendingCheckinData_.find(event.uid);
+                if (it != pendingCheckinData_.end()) {
+                    int64_t elapsed = GetCurrentTimestamp() - it->second.startTime;
+                    if (elapsed > PENDING_CHECKIN_TIMEOUT_MS) {
+                        LOG_WARNING(TEXT("[CaptainCheckInModule] Pending checkin timed out for uid=%hs, clearing and retrying"), event.uid.c_str());
+                        pendingCheckinData_.erase(it);
+                    } else {
+                        alreadyPending = true;
+                    }
+                }
+            }
+
+            if (alreadyPending) {
+                LOG_DEBUG(TEXT("[CaptainCheckInModule] Checkin already pending for uid=%hs, ignoring duplicate"), event.uid.c_str());
+                return;
+            }
+
+            // 首次打卡：延迟保存到数据库，直到AI回复和TTS成功
+            {
+                std::lock_guard<std::mutex> lock(pendingCheckinLock_);
+                pendingCheckinData_[event.uid] = {event.username, checkinDate, continuousDays, GetCurrentTimestamp()};
+            }
 
             CheckinEvent checkinEvt;
             checkinEvt.uid = event.uid;
@@ -337,24 +359,56 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
             checkinEvt.checkinDate = checkinDate;
             checkinEvt.lastCheckinDate = previousCheckinDate;
 
+            auto saveCheckinRecord = [this, uid = event.uid](bool success) {
+                PendingCheckinData data;
+                bool found = false;
+                {
+                    std::lock_guard<std::mutex> lock(pendingCheckinLock_);
+                    auto it = pendingCheckinData_.find(uid);
+                    if (it != pendingCheckinData_.end()) {
+                        data = it->second;
+                        found = true;
+                        pendingCheckinData_.erase(it);
+                    }
+                }
+
+                if (found && success) {
+                    {
+                        std::lock_guard<std::mutex> profileLock(profilesLock_);
+                        auto it = profiles_.find(uid);
+                        if (it != profiles_.end()) {
+                            it->second.lastCheckinDate = data.checkinDate;
+                            it->second.continuousDays = data.continuousDays;
+                            SaveProfileAsync(it->second);
+                        }
+                    }
+                    ProfileManager::Inst()->RecordCheckinAsync(uid, data.username, data.checkinDate, data.continuousDays);
+                    LOG_INFO(TEXT("[CaptainCheckInModule] Checkin record saved after TTS success for uid=%hs"), uid.c_str());
+                } else if (found && !success) {
+                    LOG_WARNING(TEXT("[CaptainCheckInModule] Checkin TTS/AI failed for uid=%hs, record not saved"), uid.c_str());
+                }
+            };
+
             if (event.guardLevel > 0) {
-                GenerateCheckinAnswerAsync(checkinEvt, [this, event](const AnswerResult& result) {
+                GenerateCheckinAnswerAsync(checkinEvt, [this, event, saveCheckinRecord](const AnswerResult& result) {
                     if (result.success && !result.answerContent.empty()) {
                         std::wstring contentCopy = Utf8ToWstring(result.answerContent);
-
                         RECORD_HISTORY(contentCopy.c_str());
 
-                        if (!ConfigManager::Inst()->GetConfig().enableVoice || event.guardLevel == 0) {
+                        if (!ConfigManager::Inst()->GetConfig().enableVoice) {
                             std::wstring usernameW = Utf8ToWstring(event.username);
                             std::wstring answerW = Utf8ToWstring(result.answerContent);
                             if (g_aiReplyCallback) {
                                 g_aiReplyCallback(usernameW.c_str(), answerW.c_str(), g_aiReplyUserData);
                             }
+                            saveCheckinRecord(true);
                         }
 
                         if (ConfigManager::Inst()->GetConfig().enableVoice) {
-                            PlayCheckinTTS(result.answerContent, event.username);
+                            PlayCheckinTTS(result.answerContent, event.username, saveCheckinRecord);
                         }
+                    } else {
+                        saveCheckinRecord(false);
                     }
                 });
             } else {
@@ -368,8 +422,9 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
                     if (g_aiReplyCallback) {
                         g_aiReplyCallback(usernameW.c_str(), answerW.c_str(), g_aiReplyUserData);
                     }
+                    saveCheckinRecord(true);
                 } else {
-                    PlayCheckinTTS(fixedAnswer, event.username);
+                    PlayCheckinTTS(fixedAnswer, event.username, saveCheckinRecord);
                 }
             }
         } else {
@@ -692,11 +747,18 @@ std::string CaptainCheckInModule::GetModuleDictPath() const {
     return exeDir + "/dict";
 }
 
-void CaptainCheckInModule::PlayCheckinTTS(const std::string& text, const std::string& username) {
+void CaptainCheckInModule::PlayCheckinTTS(const std::string& text, const std::string& username, std::function<void(bool success)> callback) {
     if (!ConfigManager::Inst()->GetConfig().enableVoice) {
+        if (callback) {
+            callback(true);
+        }
         return;
     }
 
     TString ttsText = Utf8ToWstring(text);
-    TTSManager::Inst()->SpeakCheckinTTS(ttsText, username);
+    TTSManager::Inst()->SpeakCheckinTTS(ttsText, username, [callback](bool success, const std::string& errorMsg) {
+        if (callback) {
+            callback(success);
+        }
+    });
 }

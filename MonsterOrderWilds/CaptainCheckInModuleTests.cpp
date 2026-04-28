@@ -52,7 +52,7 @@ void TestCaptainCheckInModule_PushDanmuEvent()
 void TestCaptainCheckInModule_GetUserProfile()
 {
     UserProfile profile;
-    bool found = CaptainCheckInModule::Inst()->GetUserProfile(99999, profile);
+    bool found = CaptainCheckInModule::Inst()->GetUserProfile("99999", profile);
     assert(!found);
     std::cout << "[PASS] TestCaptainCheckInModule_GetUserProfile" << std::endl;
 }

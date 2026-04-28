@@ -366,7 +366,7 @@ bool TTSManager::PlayAudioData(const std::vector<uint8_t>& audioData, const std:
     return success;
 }
 
-void TTSManager::SpeakCheckinTTS(const TString& text, const std::string& username) {
+void TTSManager::SpeakCheckinTTS(const TString& text, const std::string& username, std::function<void(bool success, const std::string& errorMsg)> callback) {
 
     auto reqPtr = std::make_shared<AsyncTTSRequest>();
     reqPtr->text = text;
@@ -376,6 +376,7 @@ void TTSManager::SpeakCheckinTTS(const TString& text, const std::string& usernam
     reqPtr->responseFormat = "mp3";
     reqPtr->isCheckinTTS = true;
     reqPtr->checkinUsername = username;
+    reqPtr->callback = callback;
 
     {
         std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
@@ -728,10 +729,16 @@ void TTSManager::ProcessPendingRequestInternal(std::list<std::shared_ptr<AsyncTT
                 pVoice->SetNotifyCallbackFunction(SapiSpeakCallback, (WPARAM)this, 0);
                 ULONGLONG interestMask = SPFEI(SPEI_STREAM_ENDED_ID);
                 pVoice->SetInterest(interestMask, interestMask);
+                if (req.callback) {
+                    req.callback(true, "");
+                }
             } else {
                 LOG_ERROR(TEXT("TTS Async: SAPI Speak failed, hr=0x%08X"), hr);
                 req.state = AsyncTTSState::Failed;
                 req.errorMessage = "SAPI speak failed";
+                if (req.callback) {
+                    req.callback(false, req.errorMessage);
+                }
             }
         }
         return;

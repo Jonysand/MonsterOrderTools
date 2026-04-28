@@ -85,7 +85,17 @@ private:
     bool ShouldSkipDuplicateContent(UserProfile& profile, const std::string& content);
     int64_t GetCurrentTimestamp() const;
     std::string GetModuleDictPath() const;
-    void PlayCheckinTTS(const std::string& text, const std::string& username);
+    void PlayCheckinTTS(const std::string& text, const std::string& username, std::function<void(bool success)> callback = nullptr);
+
+    struct PendingCheckinData {
+        std::string username;
+        int32_t checkinDate = 0;
+        int32_t continuousDays = 0;
+        int64_t startTime = 0;
+    };
+    std::map<std::string, PendingCheckinData> pendingCheckinData_;
+    std::mutex pendingCheckinLock_;
+    static constexpr int64_t PENDING_CHECKIN_TIMEOUT_MS = 30000;
     class JiebaContext;
     static JiebaContext* CreateJiebaContextSafe(const std::string& jiebaDict, const std::string& hmmModel, const std::string& userDict, const std::string& idfPath, const std::string& stopWords);
 

@@ -104,7 +104,7 @@ public:
 public:
 	bool Speak(const TString& text);
 	bool PlayAudioData(const std::vector<uint8_t>& audioData, const std::string& format = "mp3");
-	void SpeakCheckinTTS(const TString& text, const std::string& username);
+	void SpeakCheckinTTS(const TString& text, const std::string& username, std::function<void(bool success, const std::string& errorMsg)> callback = nullptr);
 private:
 	// 异步TTS方法
 	void SpeakWithMimoAsync(const TString& text, std::function<void(bool success, const std::string& errorMsg)> callback = nullptr);

@@ -1,7 +1,8 @@
 #include "framework.h"
 #include "RetroactiveCheckInModule.h"
 #include "ProfileManager.h"
-#include <assert>
+#include <sqlite3.h>
+#include <cassert>
 #include <iostream>
 #include <atomic>
 #include <thread>
