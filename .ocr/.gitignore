@@ -1,6 +1,0 @@
-# OCR:START — managed by open-code-review (do not edit this block)
-sessions/
-data/
-*.db-shm
-*.db-wal
-# OCR:END
