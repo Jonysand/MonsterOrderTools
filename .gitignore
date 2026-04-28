@@ -113,3 +113,7 @@ __pycache__/
 
 # Customized voice files
 CustomizedVoice/
+
+# Dot files and directories (hidden files)
+.*
+!.gitignore
