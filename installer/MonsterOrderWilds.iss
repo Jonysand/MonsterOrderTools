@@ -2,7 +2,7 @@
 ; Inno Setup 6.x
 
 #define MyAppName "MonsterOrderWilds"
-#define MyAppVersion "v24"
+#define MyAppVersion "v24-lite"
 #define MyAppPublisher "JonysandMHDanmuTools"
 #define MyAppExeName "MonsterOrderWilds.exe"
 
@@ -41,8 +41,10 @@ Name: "cert"; Description: "安装签名证书（推荐，可避免WindowsDefend
 Source: "files\MonsterOrderWilds.exe"; DestDir: "{app}"; Flags: ignoreversion; Components: main
 Source: "files\MonsterOrderWildsGUI.dll"; DestDir: "{app}"; Flags: ignoreversion; Components: main
 Source: "files\MonsterOrderWilds.cer"; DestDir: "{app}"; Flags: ignoreversion; Components: cert
-Source: "files\credentials.dat"; DestDir: "{app}\MonsterOrderWilds_configs"; Flags: ignoreversion; Components: main
 Source: "files\monster_list.json"; DestDir: "{app}\MonsterOrderWilds_configs"; Flags: ignoreversion; Components: main
+Source: "files\monster_icons.zip"; DestDir: "{app}\MonsterOrderWilds_configs"; Flags: ignoreversion; Components: main
+Source: "files\credentials.dat"; DestDir: "{app}\MonsterOrderWilds_configs"; Flags: ignoreversion; Components: main
+#ifndef ONLY_ORDER_MONSTER
 ; cppjieba 分词字典文件
 Source: "..\MonsterOrderWilds\dict\jieba.dict.utf8"; DestDir: "{app}\dict"; Flags: ignoreversion; Components: main
 Source: "..\MonsterOrderWilds\dict\hmm_model.utf8"; DestDir: "{app}\dict"; Flags: ignoreversion; Components: main
@@ -51,6 +53,7 @@ Source: "..\MonsterOrderWilds\dict\stop_words.utf8"; DestDir: "{app}\dict"; Flag
 Source: "..\MonsterOrderWilds\dict\user.dict.utf8"; DestDir: "{app}\dict"; Flags: ignoreversion; Components: main
 ; 舰长打卡AI配置说明
 Source: "files\弹幕习惯词黑白名单配置.txt"; DestDir: "{app}\dict"; Flags: ignoreversion; Components: main
+#endif
 
 [InstallDelete]
 ; Clean old program files but preserve config directory

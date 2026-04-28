@@ -4,9 +4,11 @@
 #include <cstring>
 #include <mutex>
 
+#if !ONLY_ORDER_MONSTER
 #include "CaptainCheckInModule.h"
 #include "RetroactiveCheckInModule.h"
 #include "ProfileManager.h"
+#endif
 
 extern "C" {
 
@@ -433,6 +435,7 @@ extern "C" {
     {
         try
         {
+#if !ONLY_ORDER_MONSTER
             if (!ProfileManager::Inst()->Init()) {
                 LOG_ERROR(TEXT("CaptainCheckInModule_Initialize: ProfileManager::Init() failed"));
                 return false;
@@ -451,6 +454,7 @@ extern "C" {
             }
 
             LOG_INFO(TEXT("CaptainCheckInModule_Initialize: initialization sequence completed successfully"));
+#endif
             return true;
         }
         catch (const std::exception& e)
@@ -464,7 +468,9 @@ extern "C" {
     {
         try
         {
+#if !ONLY_ORDER_MONSTER
             CaptainCheckInModule::Inst()->SetEnabled(enabled);
+#endif
         }
         catch (const std::exception& e)
         {
@@ -476,7 +482,11 @@ extern "C" {
     {
         try
         {
+#if !ONLY_ORDER_MONSTER
             return CaptainCheckInModule::Inst()->IsEnabled();
+#else
+            return false;
+#endif
         }
         catch (const std::exception& e)
         {
@@ -489,7 +499,9 @@ extern "C" {
     {
         try
         {
+#if !ONLY_ORDER_MONSTER
             CaptainCheckInModule::Inst()->SetTriggerWords(words);
+#endif
         }
         catch (const std::exception& e)
         {
@@ -504,9 +516,11 @@ std::mutex g_aiReplyMutex;
 
 __declspec(dllexport) void __stdcall DataBridge_SetAIReplyCallback(OnAIReplyCallback callback, void* userData)
 {
+#if !ONLY_ORDER_MONSTER
     std::lock_guard<std::mutex> lock(g_aiReplyMutex);
     g_aiReplyCallback = callback;
     g_aiReplyUserData = userData;
+#endif
 }
 
 extern "C" {
@@ -517,20 +531,29 @@ std::mutex g_checkinTTSPlayMutex;
 
 __declspec(dllexport) void __stdcall DataBridge_SetCheckinTTSPlayCallback(OnCheckinTTSPlayCallback callback, void* userData)
 {
+#if !ONLY_ORDER_MONSTER
     std::lock_guard<std::mutex> lock(g_checkinTTSPlayMutex);
     g_checkinTTSPlayCallback = callback;
     g_checkinTTSPlayUserData = userData;
+#endif
 }
 
 __declspec(dllexport) void __stdcall TTSManager_GetCurrentProviderName(char* outBuffer, int bufferSize)
 {
     try
     {
+#if !ONLY_ORDER_MONSTER
         std::string name = TTSManager::Inst()->GetCurrentProviderName();
         if (outBuffer && bufferSize > 0)
         {
             strncpy_s(outBuffer, bufferSize, name.c_str(), _TRUNCATE);
         }
+#else
+        if (outBuffer && bufferSize > 0)
+        {
+            outBuffer[0] = '\0';
+        }
+#endif
     }
     catch (const std::exception& e)
     {

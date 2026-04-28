@@ -1,7 +1,9 @@
 #include "framework.h"
 #include "DanmuProcessor.h"
 #include "WriteLog.h"
+#if !ONLY_ORDER_MONSTER
 #include "RetroactiveCheckInModule.h"
+#endif
 
 DEFINE_SINGLETON(DanmuProcessor)
 
@@ -38,6 +40,7 @@ DanmuProcessResult DanmuProcessor::ProcessDanmu(const DanmuData& danmu)
     LOGW_DEBUG(L"[DanmuProcessor] ProcessDanmu: user=%s, msg=%s, hasMedal=%d, guardLevel=%d",
         wuserName.c_str(), wmessage.c_str(), danmu.hasMedal, danmu.guardLevel);
 
+#if !ONLY_ORDER_MONSTER
     // 先通知打卡模块（独立于过滤逻辑，打卡功能不受播报过滤配置影响）
 #if TEST_CAPTAIN_REPLY_LOCAL
     {
@@ -83,6 +86,7 @@ DanmuProcessResult DanmuProcessor::ProcessDanmu(const DanmuData& danmu)
 
         NotifyCaptainDanmu(capEvent);
     }
+#endif
 #endif
 
     if (!PassesFilter(danmu))
@@ -367,7 +371,9 @@ void DanmuProcessor::NotifyCaptainDanmu(const CaptainDanmuEvent& event)
         handler(event);
     }
 
+#if !ONLY_ORDER_MONSTER
     RetroactiveCheckInModule::Inst()->PushDanmuEvent(event);
+#endif
 }
 
 LikeEvent DanmuProcessor::ParseLikeJson(const json& j) const

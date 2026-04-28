@@ -37,7 +37,7 @@ def print_step(step, total, message):
 
 
 def read_app_version():
-    """从framework.h读取APP_VERSION"""
+    """从framework.h读取APP_VERSION和ONLY_ORDER_MONSTER"""
     print_step(1, 6, "Reading version from framework.h...")
 
     if not FRAMEWORK_H.exists():
@@ -46,14 +46,22 @@ def read_app_version():
 
     content = FRAMEWORK_H.read_text(encoding="utf-8")
     match = re.search(r"#define\s+APP_VERSION\s+(\d+)", content)
+    only_monster_match = re.search(r"#define\s+ONLY_ORDER_MONSTER\s+(\d+)", content)
 
-    if match:
-        version = match.group(1)
-        print(f"[OK] APP_VERSION = {version}")
-        return version
-    else:
+    if not match:
         print("[Warning] Could not find APP_VERSION, using 1")
-        return "1"
+        version = "1"
+    else:
+        version = match.group(1)
+
+    is_lite = False
+    if only_monster_match and only_monster_match.group(1) == "1":
+        is_lite = True
+        version = f"{version}-lite"
+
+    suffix = " (lite)" if is_lite else ""
+    print(f"[OK] APP_VERSION = {version}{suffix}")
+    return version, is_lite
 
 
 def find_iscc():
@@ -89,7 +97,7 @@ def check_source_files():
     print("[OK] Source files found")
 
 
-def prepare_files():
+def prepare_files(is_lite=False):
     """准备打包文件"""
     print_step(4, 6, "Preparing files...")
 
@@ -107,28 +115,38 @@ def prepare_files():
     shutil.copy2(RELEASE_DLL, FILES_DIR / "MonsterOrderWildsGUI.dll")
     print("[OK] Copied MonsterOrderWildsGUI.dll")
 
-    # 复制配置文件
-    for config_file in [
-        "credentials.dat",
-        "monster_list.json",
-        "弹幕习惯词黑白名单配置.txt",
-    ]:
-        config_src = CONFIGS_DIR / config_file
-        if config_src.exists():
-            shutil.copy2(config_src, FILES_DIR / config_file)
-            print(f"[OK] Copied {config_file}")
+    # monster_list.json、monster_icons.zip、credentials.dat 始终需要
+    for required_file in ["monster_list.json", "monster_icons.zip", "credentials.dat"]:
+        src = CONFIGS_DIR / required_file
+        if src.exists():
+            shutil.copy2(src, FILES_DIR / required_file)
+            print(f"[OK] Copied {required_file}")
         else:
-            print(f"[Warning] {config_src} not found!")
+            print(f"[Warning] {src} not found!")
 
-    # 复制分词词典目录
-    dict_src = PROJECT_DIR / "MonsterOrderWilds" / "dict"
-    dict_dst = FILES_DIR / "dict"
-    if dict_src.exists():
-        shutil.copytree(dict_src, dict_dst)
-        print(f"[OK] Copied dict directory with {len(list(dict_src.iterdir()))} files")
+    if is_lite:
+        print("[Info] Lite mode: skipping dict and config files")
     else:
-        print(f"[Error] {dict_src} not found!")
-        sys.exit(1)
+        # 复制配置文件
+        for config_file in [
+            "弹幕习惯词黑白名单配置.txt",
+        ]:
+            config_src = CONFIGS_DIR / config_file
+            if config_src.exists():
+                shutil.copy2(config_src, FILES_DIR / config_file)
+                print(f"[OK] Copied {config_file}")
+            else:
+                print(f"[Warning] {config_src} not found!")
+
+        # 复制分词词典目录
+        dict_src = PROJECT_DIR / "MonsterOrderWilds" / "dict"
+        dict_dst = FILES_DIR / "dict"
+        if dict_src.exists():
+            shutil.copytree(dict_src, dict_dst)
+            print(f"[OK] Copied dict directory with {len(list(dict_src.iterdir()))} files")
+        else:
+            print(f"[Error] {dict_src} not found!")
+            sys.exit(1)
 
     # 复制证书
     if CERT_FILE.exists():
@@ -272,7 +290,7 @@ def update_iss_version(version):
 
     content = ISS_FILE.read_text(encoding="utf-8")
     new_content = re.sub(
-        r'#define MyAppVersion "v?\d+"', f'#define MyAppVersion "v{version}"', content
+        r'#define MyAppVersion "v?[^"]+"', f'#define MyAppVersion "v{version}"', content
     )
 
     if content != new_content:
@@ -282,17 +300,24 @@ def update_iss_version(version):
         print(f"[OK] Version already set to v{version}")
 
 
-def build_installer(iscc_path, version):
+def build_installer(iscc_path, version, is_lite=False):
     """构建安装包"""
-    print_step(6, 6, f"Building installer (v{version})...")
+    print_step(6, 6, f"Building installer ({version})...")
 
-    # 更新版本信息
-    update_version_info(version)
+    # 更新版本信息（RC文件只接受纯数字版本）
+    numeric_version = version.split("-")[0]
+    update_version_info(numeric_version)
     update_iss_version(version)
+
+    # 构建ISCC命令行参数
+    iscc_args = [str(iscc_path)]
+    if is_lite:
+        iscc_args.append("/DONLY_ORDER_MONSTER")
+    iscc_args.append(str(ISS_FILE))
 
     # 调用Inno Setup
     result = subprocess.run(
-        [str(iscc_path), str(ISS_FILE)],
+        iscc_args,
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -310,7 +335,7 @@ def build_installer(iscc_path, version):
     print(f"\n{'=' * 50}")
     print("  Build completed successfully!")
     print(f"{'=' * 50}")
-    print(f"\nOutput: {OUTPUT_DIR / f'MonsterOrderWilds-Setup-v{version}.exe'}")
+    print(f"\nOutput: {OUTPUT_DIR / f'MonsterOrderWilds-Setup-{version}.exe'}")
 
     # 打开输出目录
     os.startfile(OUTPUT_DIR)
@@ -322,7 +347,7 @@ def main():
     print("=" * 50)
 
     # 1. 读取版本
-    version = read_app_version()
+    version, is_lite = read_app_version()
 
     # 2. 查找Inno Setup
     iscc = find_iscc()
@@ -331,13 +356,13 @@ def main():
     check_source_files()
 
     # 4. 准备文件
-    prepare_files()
+    prepare_files(is_lite)
 
     # 5. 签名
     sign_files()
 
     # 6. 构建
-    build_installer(iscc, version)
+    build_installer(iscc, version, is_lite)
 
     input("\nPress Enter to exit...")
 

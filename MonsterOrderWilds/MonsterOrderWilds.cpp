@@ -1,7 +1,9 @@
 ﻿#include "MonsterOrderWilds.h"
 #include "MHDanmuToolsHost.h"
 #include "BliveManager.h"
+#if !ONLY_ORDER_MONSTER
 #include "TextToSpeech.h"
+#endif
 #include "Network.h"
 #include "WriteLog.h"
 #include "CredentialsManager.h"
@@ -65,8 +67,10 @@ void MonsterOrderWilds::Tick()
 {
 	// BliveManager tick
 	BliveManager::Inst()->Tick();
+#if !ONLY_ORDER_MONSTER
 	// TTSManager tick
 	TTSManager::Inst()->Tick();
+#endif
 	// Commands from WPF
 	tickWPFCommand();
 }

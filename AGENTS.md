@@ -29,6 +29,12 @@
   - 新增的配置文件或数据文件
 - 如需打包，修改 `installer/` 目录下的打包配置或 `wixproj` 文件
 
+## ONLY_ORDER_MONSTER 功能询问规则
+- **新增任何功能时，必须明确询问用户：此功能是否需要在 `ONLY_ORDER_MONSTER=1`（lite 模式）下支持**
+- 默认为不支持，即新功能代码默认应放入 `#if !ONLY_ORDER_MONSTER` 或等效条件判断中
+- C++ 侧优先在 `BliveManager.cpp` 的 `#if !ONLY_ORDER_MONSTER` 块内添加（TTS 播报、点赞等）
+- C# 侧通过 `ToolsMain.IsOnlyOrderMonster` 运行时判断
+
 ## 文件编码规则
 - **所有源代码文件统一使用 UTF-8 with BOM 编码**
 - C# 文件 (.cs): UTF-8 with BOM

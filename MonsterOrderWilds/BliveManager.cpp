@@ -1,9 +1,13 @@
 #include "BliveManager.h"
 #include "CredentialsManager.h"
 #include "WriteLog.h"
+#if !ONLY_ORDER_MONSTER
 #include "TextToSpeech.h"
+#endif
 #include "DataBridge.h"
+#if !ONLY_ORDER_MONSTER
 #include "RetroactiveCheckInModule.h"
+#endif
 
 DEFINE_SINGLETON(BliveManager)
 
@@ -543,23 +547,27 @@ void BliveManager::HandleSmsReply(const std::string& msg)
             return;
         }
         const std::string& cmd = jsonResponse["cmd"].get<std::string>();
-        // 一般弹幕
+#if !ONLY_ORDER_MONSTER
+        // --- TTS 播报 / 点赞（lite模式下跳过）---
         if (cmd == "LIVE_OPEN_PLATFORM_DM")
             TTSManager::Inst()->HandleSpeekDm(jsonResponse["data"]);
-        // 送礼
         else if (cmd == "LIVE_OPEN_PLATFORM_SEND_GIFT")
             TTSManager::Inst()->HandleSpeekSendGift(jsonResponse["data"]);
-        // SC
         else if (cmd == "LIVE_OPEN_PLATFORM_SUPER_CHAT")
             TTSManager::Inst()->HandleSpeekSC(jsonResponse["data"]);
-        // 舰长
         else if (cmd == "LIVE_OPEN_PLATFORM_GUARD")
             TTSManager::Inst()->HandleSpeekGuard(jsonResponse["data"]);
-        // 进入房间
         else if (cmd == "LIVE_OPEN_PLATFORM_LIVE_ROOM_ENTER")
             TTSManager::Inst()->HandleSpeekEnter(jsonResponse["data"]);
-        // 断连，直接重连
-        else if (cmd == "LIVE_OPEN_PLATFORM_INTERACTION_END")
+        // 点赞 → 补签卡统计
+        if (cmd == "LIVE_OPEN_PLATFORM_LIKE") {
+            DanmuProcessor::Inst()->NotifyLikeEvent(
+                DanmuProcessor::Inst()->ParseLikeJson(jsonResponse["data"])
+            );
+        }
+#endif
+        // 断连，直接重连（始终需要）
+        if (cmd == "LIVE_OPEN_PLATFORM_INTERACTION_END")
         {
             const std::string& disconnectedGameId = jsonResponse["data"]["game_id"].get<std::string>();
             bool shouldReconnect = false;
@@ -577,13 +585,7 @@ void BliveManager::HandleSmsReply(const std::string& msg)
             }
         }
 
-        // 点赞
-        if (cmd == "LIVE_OPEN_PLATFORM_LIKE") {
-            DanmuProcessor::Inst()->NotifyLikeEvent(
-                DanmuProcessor::Inst()->ParseLikeJson(jsonResponse["data"])
-            );
-        }
-
+        // 点怪处理（始终需要）
         if (cmd == "LIVE_OPEN_PLATFORM_DM") {
             DanmuProcessor::Inst()->ProcessDanmu(DanmuProcessor::Inst()->ParseDanmuJson(jsonResponse));
         }

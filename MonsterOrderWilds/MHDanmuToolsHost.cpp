@@ -12,6 +12,7 @@ ToolsMainHost^ ToolsMainHost::Inst()
 
 ToolsMainHost::ToolsMainHost()
 {
-	toolsMainInstance = gcnew MonsterOrderWindows::ToolsMain();
-	toolsMainInstance->Inited();
+    toolsMainInstance = gcnew MonsterOrderWindows::ToolsMain();
+    toolsMainInstance->SetOnlyOrderMonsterMode(ONLY_ORDER_MONSTER != 0);
+    toolsMainInstance->Inited();
 }

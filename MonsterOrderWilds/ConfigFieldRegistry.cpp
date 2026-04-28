@@ -1,7 +1,10 @@
 #include "ConfigFieldRegistry.h"
 #include "ConfigManager.h"
 #include "DanmuProcessor.h"
+#if !ONLY_ORDER_MONSTER
+#include "TextToSpeech.h"
 #include "CaptainCheckInModule.h"
+#endif
 #include <cstring>
 
 #define REGISTER_FIELD(name, type, member, fieldType) \
@@ -22,10 +25,12 @@ void ConfigFieldRegistry::RegisterAll()
     if (!fields.empty()) return;
 
     REGISTER_FIELD("idCode", std::string, idCode, ConfigFieldType::String);
+#if !ONLY_ORDER_MONSTER
     REGISTER_FIELD_WITH_CALLBACK("ttsEngine", std::string, ttsEngine, ConfigFieldType::String,
         [](ConfigData& cfg) {
             TTSManager::Inst()->RefreshTTSProvider();
         });
+#endif
     REGISTER_FIELD("mimoApiKey", std::string, mimoApiKey, ConfigFieldType::String);
     REGISTER_FIELD("mimoVoice", std::string, mimoVoice, ConfigFieldType::String);
     REGISTER_FIELD("mimoStyle", std::string, mimoStyle, ConfigFieldType::String);
@@ -71,6 +76,7 @@ void ConfigFieldRegistry::RegisterAll()
 
     REGISTER_FIELD("ttsCacheDaysToKeep", int, ttsCacheDaysToKeep, ConfigFieldType::Int);
 
+#if !ONLY_ORDER_MONSTER
     REGISTER_FIELD_WITH_CALLBACK("enableCaptainCheckinAI", bool, enableCaptainCheckinAI, ConfigFieldType::Bool,
         [](ConfigData& cfg) {
             if (CaptainCheckInModule::Inst()->IsEnabled() != cfg.enableCaptainCheckinAI) {
@@ -82,6 +88,7 @@ void ConfigFieldRegistry::RegisterAll()
         [](ConfigData& cfg) {
             CaptainCheckInModule::Inst()->SetTriggerWords(cfg.checkinTriggerWords);
         });
+#endif
 }
 
 const ConfigFieldMeta* ConfigFieldRegistry::Find(const char* name)

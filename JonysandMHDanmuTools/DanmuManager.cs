@@ -23,11 +23,14 @@ namespace MonsterOrderWindows
             danmuProcessedCallback = OnDanmuProcessed;
             NativeImports.DataBridge_SetDanmuProcessedCallback(danmuProcessedCallback, IntPtr.Zero);
 
-            aiReplyCallback = OnAIReplyCallback;
-            NativeImports.DataBridge_SetAIReplyCallback(aiReplyCallback, IntPtr.Zero);
+            if (!ToolsMain.IsOnlyOrderMonster)
+            {
+                aiReplyCallback = OnAIReplyCallback;
+                NativeImports.DataBridge_SetAIReplyCallback(aiReplyCallback, IntPtr.Zero);
 
-            checkinTTSPlayCallback = OnCheckinTTSPlayCallback;
-            NativeImports.DataBridge_SetCheckinTTSPlayCallback(checkinTTSPlayCallback, IntPtr.Zero);
+                checkinTTSPlayCallback = OnCheckinTTSPlayCallback;
+                NativeImports.DataBridge_SetCheckinTTSPlayCallback(checkinTTSPlayCallback, IntPtr.Zero);
+            }
         }
 
         public void LoadHistoryOrder()

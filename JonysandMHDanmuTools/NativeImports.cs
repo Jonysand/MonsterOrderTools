@@ -96,6 +96,18 @@ namespace MonsterOrderWindows
         [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
         public static extern void TTSManager_GetCurrentProviderName(System.Text.StringBuilder outBuffer, int bufferSize);
 
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
+        public static extern bool CaptainCheckInModule_Initialize();
+
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
+        public static extern void CaptainCheckInModule_SetEnabled(bool enabled);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
+        public static extern bool CaptainCheckInModule_IsEnabled();
+
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
+        public static extern void CaptainCheckInModule_SetTriggerWords(string words);
+
         [UnmanagedFunctionPointer(CallingConvention.StdCall, CharSet = CharSet.Unicode)]
         public delegate void DanmuProcessedCallback(string userName, string monsterName, IntPtr userData);
 

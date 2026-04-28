@@ -107,3 +107,6 @@ TODO.md
 # Installer build files
 installer/files/
 installer/output/
+
+# Python
+__pycache__/

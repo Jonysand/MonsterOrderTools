@@ -17,10 +17,18 @@ namespace MonsterOrderWindows
         public ConfigWindow()
         {
             InitializeComponent();
+
+            if (ToolsMain.IsOnlyOrderMonster)
+            {
+                TabVoiceSettings.Visibility = Visibility.Collapsed;
+                TabCaptainCheckin.Visibility = Visibility.Collapsed;
+            }
+
             Loaded += (s, e) =>
             {
                 _isInitializing = false;
-                StartTTSEngineUpdateTimer();
+                if (!ToolsMain.IsOnlyOrderMonster)
+                    StartTTSEngineUpdateTimer();
             };
             Closed += (s, e) =>
             {
@@ -49,10 +57,13 @@ namespace MonsterOrderWindows
             ConfigProxy.Instance.RefreshFromConfig(config);
 
             IdentityCodeTextBox.Password = config.ID_CODE;
-            if (config.ENABLE_VOICE)
-                EnableVoiceCheckBox.IsChecked = true;
             if (config.ONLY_MEDAL_ORDER)
                 OnlyMedalOrderCheckBox.IsChecked = true;
+
+            if (!ToolsMain.IsOnlyOrderMonster)
+            {
+            if (config.ENABLE_VOICE)
+                EnableVoiceCheckBox.IsChecked = true;
             VoiceRateSlider.Value = config.SPEECH_RATE;
             VoicePitchSlider.Value = config.SPEECH_PITCH;
             VoiceVolumeSlider.Value = config.SPEECH_VOLUME;
@@ -75,10 +86,13 @@ namespace MonsterOrderWindows
             }
             if (config.ONLY_SPEEK_PAID_GIFT)
                 OnlyPaidGiftCheckBox.IsChecked = true;
+            }
             OpacitySlider.Value = config.OPACITY;
             var marqueeText = config.DEFAULT_MARQUEE_TEXT;
             DefaultMarqueeTextBox.Text = string.IsNullOrEmpty(marqueeText) ? "发送'点怪 xxx'进行点怪" : marqueeText;
 
+            if (!ToolsMain.IsOnlyOrderMonster)
+            {
             TtsCacheDaysToKeepTextBox.Text = config.TTS_CACHE_DAYS_TO_KEEP.ToString();
 
             // 舰长打卡AI配置
@@ -145,6 +159,7 @@ namespace MonsterOrderWindows
 
             // 设置 MiniMax 语速
             MiniMaxSpeedSlider.Value = config.MINIMAX_SPEED;
+            }
         }
 
         public void SetStatus(ConnectionState state, DisconnectReason reason)

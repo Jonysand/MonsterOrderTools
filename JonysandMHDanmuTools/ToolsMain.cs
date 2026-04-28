@@ -31,6 +31,13 @@ namespace MonsterOrderWindows
         private OrderedMonsterWindow _OrderedMonsterWindow = null;
         static private ConfigService _Config = null;
 
+        static public bool IsOnlyOrderMonster { get; private set; } = false;
+
+        public void SetOnlyOrderMonsterMode(bool value)
+        {
+            IsOnlyOrderMonster = value;
+        }
+
         [DllImport("user32.dll")]
         private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
@@ -77,6 +84,19 @@ namespace MonsterOrderWindows
             {
                 MessageBox.Show($"启动失败,请将桌面上的错误报告发送给作者（/TДT)/\n{e}", "零食小插件", 0, MessageBoxImage.Error);
                 throw;
+            }
+
+            if (!IsOnlyOrderMonster)
+            {
+                try
+                {
+                    if (!NativeImports.CaptainCheckInModule_Initialize())
+                        System.Diagnostics.Debug.WriteLine("[ToolsMain] CaptainCheckInModule_Initialize failed");
+                }
+                catch (Exception e)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ToolsMain] CaptainCheckInModule init failed: {e.Message}");
+                }
             }
 
             try

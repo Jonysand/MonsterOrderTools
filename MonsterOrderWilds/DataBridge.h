@@ -5,8 +5,10 @@
 #include "MonsterDataManager.h"
 #include "PriorityQueueManager.h"
 #include "DanmuProcessor.h"
+#if !ONLY_ORDER_MONSTER
 #include "ProfileManager.h"
 #include "CaptainCheckInModule.h"
+#endif
 #include "ErrorHandler.h"
 #include <functional>
 #include <string>
@@ -93,10 +95,12 @@ public:
             GetDanmuProcessor()->SetOnlySpeekGuardLevel(config.onlySpeekGuardLevel);
             GetDanmuProcessor()->SetOnlySpeekPaidGift(config.onlySpeekPaidGift);
 
+#if !ONLY_ORDER_MONSTER
             // 初始化舰长签到模块
             ProfileManager::Inst()->Init();
             GetDanmuProcessor()->Init();
             CaptainCheckInModule::Inst()->Init();
+#endif
 
             if (!configLoaded)
                 REPORT_WARNING("DataBridge", "Config file not found, using defaults");

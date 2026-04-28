@@ -48,6 +48,11 @@ using json = nlohmann::json;
 #define TEST_CAPTAIN_REPLY_LOCAL _DEBUG
 #endif
 
+// 仅点怪模式宏 - 设为1时只保留点怪记录功能，去掉播报、打卡等其他功能
+#ifndef ONLY_ORDER_MONSTER
+#define ONLY_ORDER_MONSTER 0
+#endif
+
 #define APP_VERSION 24
 
 #ifdef UNICODE

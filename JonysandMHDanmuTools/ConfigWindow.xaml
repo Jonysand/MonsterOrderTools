@@ -134,7 +134,7 @@
                 Foreground="#222"
                 Height="200"
                 Width="340">
-                <TabItem Header="播报规则">
+                <TabItem x:Name="TabBroadcastRules" Header="点怪设置">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel>
                             <CheckBox
@@ -146,6 +146,12 @@
                                 Foreground="#222"
                                 Checked="OnlyMedalOrderCheckBox_Changed"
                                 Unchecked="OnlyMedalOrderCheckBox_Changed" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+                <TabItem x:Name="TabVoiceSettings" Header="语音设置">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
                             <CheckBox
                                 Name="EnableVoiceCheckBox"
                                 Content="开启语音播报"
@@ -194,12 +200,7 @@
                                 Foreground="#222"
                                 Checked="OnlyPaidGiftCheckBox_Changed"
                                 Unchecked="OnlyPaidGiftCheckBox_Changed" />
-                        </StackPanel>
-                    </ScrollViewer>
-                </TabItem>
-                <TabItem Header="语音设置">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel>
+                            <Separator Margin="8,12,8,4" />
                             <StackPanel Orientation="Horizontal" Margin="8,8,0,0"
                                 VerticalAlignment="Center">
                                 <Label
@@ -474,7 +475,7 @@
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>
-                <TabItem Header="其他设置">
+                <TabItem x:Name="TabOtherSettings" Header="其他设置">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="8,8,0,0"
@@ -588,7 +589,7 @@
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>
-                <TabItem Header="舰长打卡AI">
+                <TabItem x:Name="TabCaptainCheckin" Header="舰长打卡AI">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="8">
                             <CheckBox

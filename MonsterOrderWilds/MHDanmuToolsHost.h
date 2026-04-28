@@ -38,11 +38,13 @@ public:
 
 	inline void OnHotKeyLock() { toolsMainInstance->OnHotKeyLock(); }
 
-	inline std::string GetCommand() { 
-		return std::move(ConvertUtils::StringToStdString(toolsMainInstance->GetCommand())); 
-	}
+    inline std::string GetCommand() { 
+        return std::move(ConvertUtils::StringToStdString(toolsMainInstance->GetCommand())); 
+    }
 
-	inline MonsterOrderWindows::MainConfig^ GetConfig() { return toolsMainInstance->GetConfigService()->Config; }
+    inline bool IsOnlyOrderMonster() { return ONLY_ORDER_MONSTER != 0; }
+
+    inline MonsterOrderWindows::MainConfig^ GetConfig() { return toolsMainInstance->GetConfigService()->Config; }
 
 	inline bool RefreshMonsterList() { return toolsMainInstance->RefreshMonsterList(); }
 
