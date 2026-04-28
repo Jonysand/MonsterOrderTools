@@ -1,7 +1,0 @@
-﻿{
-    "summary":  "Verification passed. All 8 scenarios have implementations in tasks.md. WaitForThreadpoolWorkCallbacks with FALSE param matches async design goal.",
-    "issues_found":  [
-
-                     ],
-    "pass":  true
-}

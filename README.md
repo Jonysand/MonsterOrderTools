@@ -8,6 +8,35 @@
 
 ## [Unreleased]
 
+## [v24] - 2026-04-28
+
+### Added
+- **补签卡系统**: 新增补签卡机制，舰长可通过点赞获取补签卡，用于补签缺失的打卡日期
+  - 连续点赞 7 天获得 1 张补签卡（每 7 天循环发放）
+  - 单日点赞突破 1000 获得 1 张补签卡（每月首次）
+  - 弹幕发送"补签"命令消耗补签卡补签最近的缺失日期
+  - 弹幕发送"补签查询"查看当前补签卡数量和进度
+- **ONLY_ORDER_MONSTER 编译宏**: 新增仅点怪精简模式（Lite），通过 `ONLY_ORDER_MONSTER=1` 条件编译禁用非核心功能（TTS、打卡、补签卡等）
+
+### Changed
+- **Git 管理优化**: `CustomizedVoice` 目录、`monster_icons` 目录独立于版本库管理，安装包通过外部资源分发
+
+### Fixed
+- **Git 配置修复**: gitignore 规则全面梳理，隐藏文件/目录不再被意外跟踪
+
+## [v23] - 2026-04-25
+
+### Added
+- **独立卸载程序**: 新增独立卸载程序，支持清理注册表数据和残留文件
+- **点怪列表自动滚动**: 点怪列表用户名和怪物名添加自动滚动效果，解决长名显示不全问题
+
+### Changed
+- **MiMo Style 标签优化**: 移除预设 style 标签，改为弹幕内 `(风格)` 标签动态实时提取，更灵活适配不同语气需求
+- **DeepSeek 模型更新**: AI 对话模型更新为 `deepseek-v4-flash`，提升回复质量和响应速度
+
+### Fixed
+- **TTS 引擎切换崩溃**: 修复多次切换 TTS 引擎（Manbo/MiniMax/MiMo/SAPI）导致的闪退崩溃问题
+
 ## [v22] - 2026-04-25
 
 ### Added
@@ -18,6 +47,7 @@
   - 修正11个怪物的错误图标映射（大痹贼龙→Great_Girros、凶爪龙→Ebony_Odogaron等）
   - 新增12个历战/历战王怪物的特殊图标（Tempered/Arch-Tempered）
 - **安装包集成图标资源**: 修改 `installer/build.py` 和 `MonsterOrderWilds.iss`，安装时自动复制 `monster_icons.zip`
+- **打卡记录导出**: 新增导出打卡记录功能，支持按打卡天数降序排列
 
 ### Changed
 - **图标加载方式**: `OrderedMonsterWindow` 图标从 `Uri` 网络加载改为 `BitmapImage` zip流加载

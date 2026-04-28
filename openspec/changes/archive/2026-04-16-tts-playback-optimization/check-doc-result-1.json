@@ -1,5 +1,0 @@
-{
-  "pass": true,
-  "issues_found": [],
-  "summary": "PASS - proposal/Design/tasks/spec 四文档一致性检查通过。proposal 的 5 个 What Changes 在 design 中有对应 Decision；design 的 4 个 Decision 在 tasks 中正确拆解；tasks 的实现步骤覆盖 design 全部决策；spec 的 8 个 Scenario 覆盖 tasks 的验收标准；术语一致（readyToPlayQueue_、Caching、Ready、SaveCachedAudioAsync、ProcessCachingState 等在所有文档中一致）。"
-}

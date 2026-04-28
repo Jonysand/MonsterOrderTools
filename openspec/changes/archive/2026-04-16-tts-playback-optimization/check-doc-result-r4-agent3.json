@@ -1,5 +1,0 @@
-﻿{
-  "pass": true,
-  "issues_found": [],
-  "summary": "WaitForThreadpoolWorkCallbacks(work, FALSE) 分析通过。FALSE 参数确保主线程等待 callback 开始执行后返回，但 callback 在 CloseThreadpoolWork 后继续在后台执行（Windows ThreadPool 保证）。虽然带有短暂阻塞（非完全 fire-and-forget），但从功能角度实现正确：callback 持有完整数据副本，CloseThreadpoolWork 不影响已启动的 callback 执行。需要注意的是 previous_round_agent 发现的 'PTP_WORK handle leak' 问题已通过添加 WaitForThreadpoolWorkCallbacks 和 CloseThreadpoolWork 修复。"
-}
