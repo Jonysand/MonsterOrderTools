@@ -121,6 +121,17 @@ namespace MonsterOrderWindows
                 }
             }
 
+            // 设置语音风格（使用Tag属性）
+            for (int i = 0; i < MimoStyleComboBox.Items.Count; i++)
+            {
+                var item = MimoStyleComboBox.Items[i] as System.Windows.Controls.ComboBoxItem;
+                if (item != null && item.Tag?.ToString() == config.MIMO_STYLE)
+                {
+                    MimoStyleComboBox.SelectedIndex = i;
+                    break;
+                }
+            }
+
             // 设置 MiniMax 音色（使用Tag属性）
             for (int i = 0; i < MiniMaxVoiceComboBox.Items.Count; i++)
             {
@@ -239,6 +250,7 @@ namespace MonsterOrderWindows
 
         private void OnlyMedalOrderCheckBox_Changed(object sender, RoutedEventArgs e)
         {
+            if (_isInitializing) return;
             if (OnlyMedalOrderCheckBox.IsChecked == true)
                 GlobalEventListener.Invoke("ConfigChanged", "ONLY_MEDAL_ORDER:1");
             else
@@ -247,6 +259,7 @@ namespace MonsterOrderWindows
 
         private void EnableVoiceCheckBox_Changed(object sender, RoutedEventArgs e)
         {
+            if (_isInitializing) return;
             if (EnableVoiceCheckBox.IsChecked == true)
                 GlobalEventListener.Invoke("ConfigChanged", "ENABLE_VOICE:1");
             else
@@ -418,6 +431,19 @@ namespace MonsterOrderWindows
             GlobalEventListener.Invoke("ConfigChanged", $"MIMO_VOICE:{voice}");
         }
 
+        private void MimoStyleComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            if (_isInitializing) return;
+            var comboBox = sender as System.Windows.Controls.ComboBox;
+            if (comboBox == null || comboBox.SelectedItem == null)
+                return;
+            var selectedItem = comboBox.SelectedItem as System.Windows.Controls.ComboBoxItem;
+            if (selectedItem == null)
+                return;
+            string style = selectedItem.Tag?.ToString() ?? "";
+            GlobalEventListener.Invoke("ConfigChanged", $"MIMO_STYLE:{style}");
+        }
+
         private void MiniMaxVoiceComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
             if (_isInitializing) return;
@@ -457,11 +483,13 @@ namespace MonsterOrderWindows
 
         private void DefaultMarqueeTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
         {
+            if (_isInitializing) return;
             GlobalEventListener.Invoke("ConfigChanged", "DEFAULT_MARQUEE_TEXT:" + DefaultMarqueeTextBox.Text);
         }
 
         private void TtsCacheDaysToKeepTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
         {
+            if (_isInitializing) return;
             if (TtsCacheDaysToKeepTextBox == null) return;
             
             if (int.TryParse(TtsCacheDaysToKeepTextBox.Text, out int days))
@@ -479,6 +507,7 @@ namespace MonsterOrderWindows
 
         private void EnableCaptainCheckinAICheckBox_Changed(object sender, RoutedEventArgs e)
         {
+            if (_isInitializing) return;
             if (EnableCaptainCheckinAICheckBox.IsChecked == true)
                 GlobalEventListener.Invoke("ConfigChanged", "ENABLE_CAPTAIN_CHECKIN_AI:1");
             else
@@ -487,44 +516,8 @@ namespace MonsterOrderWindows
 
         private void CheckinTriggerWordsTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
         {
+            if (_isInitializing) return;
             GlobalEventListener.Invoke("ConfigChanged", "CHECKIN_TRIGGER_WORDS:" + CheckinTriggerWordsTextBox.Text);
-        }
-
-        private void ExportCheckinRecordsButton_Click(object sender, RoutedEventArgs e)
-        {
-            var dialog = new Microsoft.Win32.SaveFileDialog
-            {
-                Filter = "Text files (*.txt)|*.txt",
-                DefaultExt = ".txt",
-                Title = "导出打卡记录"
-            };
-
-            if (dialog.ShowDialog() == true)
-            {
-                ExportCheckinRecordsButton.IsEnabled = false;
-                ExportCheckinRecordsButton.Content = "导出中...";
-
-                Task.Run(() =>
-                {
-                    bool success = NativeImports.ProfileManager_ExportCheckinRecords(dialog.FileName);
-                    Dispatcher.Invoke(() =>
-                    {
-                        ExportCheckinRecordsButton.IsEnabled = true;
-                        ExportCheckinRecordsButton.Content = "导出打卡记录";
-
-                        if (success)
-                        {
-                            System.Windows.MessageBox.Show("导出成功！", "导出打卡记录",
-                                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
-                        }
-                        else
-                        {
-                            System.Windows.MessageBox.Show("导出失败！", "导出打卡记录",
-                                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
-                        }
-                    });
-                });
-            }
         }
     }
 }

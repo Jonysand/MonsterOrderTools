@@ -99,6 +99,8 @@ private:
     void HandleWSMessage();
     // 处理一般的弹幕、送礼等消息
     void HandleSmsReply(const std::string& msg);
+    // 调度重连（防止重复调度）
+    void ScheduleReconnect(uint64_t delayMs);
 private:
     // Async request wrapper for callback-based async operations
     struct AsyncRequest {
@@ -182,6 +184,7 @@ private:
     std::atomic<ConnectionState> connectionState{ ConnectionState::Disconnected };
     std::atomic<DisconnectReason> disconnectReason{ DisconnectReason::None };
     std::atomic<int> reconnectAttemptCount{ 0 };
+    std::atomic<bool> reconnectScheduled_{ false };
     std::atomic<bool> destroying_{ false };
 
     /*

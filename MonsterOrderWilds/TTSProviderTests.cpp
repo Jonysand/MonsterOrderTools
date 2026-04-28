@@ -70,66 +70,36 @@ void TestXiaomiTTSProvider_BuildRequest()
     std::cout << "[SKIP] TestXiaomiTTSProvider_BuildRequest - reads from ConfigManager" << std::endl;
 }
 
-void TestXiaomiTTSProvider_ProcessStyleTags()
+void TestXiaomiTTSProvider_HashtagToStyle_MoveTagToFront()
 {
     XiaomiTTSProvider xiaomi("test_key");
     
-    // 测试半角括号
-    std::string input1 = "(温柔)你好世界";
-    std::string result1 = xiaomi.ProcessStyleTags(input1);
-    assert(result1 == "(温柔)你好世界");
+    // 测试标签在文本中间的情况：标签应该被移到最前面
+    std::string input1 = "阿斗说：#高兴#你好";
+    std::string result1 = xiaomi.HashtagToStyle(input1);
+    assert(result1 == "<style>高兴</style>阿斗说：你好");
     
-    // 测试全角括号
-    std::string input2 = "（温柔）你好世界";
-    std::string result2 = xiaomi.ProcessStyleTags(input2);
-    assert(result2 == "(温柔)你好世界");
+    // 测试标签已经在最前面的情况：保持不变
+    std::string input2 = "#高兴#阿斗说：你好";
+    std::string result2 = xiaomi.HashtagToStyle(input2);
+    assert(result2 == "<style>高兴</style>阿斗说：你好");
     
-    // 测试方括号
-    std::string input3 = "[温柔]你好世界";
-    std::string result3 = xiaomi.ProcessStyleTags(input3);
-    assert(result3 == "(温柔)你好世界");
+    // 测试没有标签的情况：保持不变
+    std::string input3 = "阿斗说：你好";
+    std::string result3 = xiaomi.HashtagToStyle(input3);
+    assert(result3 == "阿斗说：你好");
     
-    // 测试多风格用逗号分隔
-    std::string input4 = "(温柔,轻声)你好世界";
-    std::string result4 = xiaomi.ProcessStyleTags(input4);
-    assert(result4 == "(温柔,轻声)你好世界");
-    
-    // 测试多风格用顿号分隔
-    std::string input5 = "（温柔、轻声）你好世界";
-    std::string result5 = xiaomi.ProcessStyleTags(input5);
-    assert(result5 == "(温柔,轻声)你好世界");
-    
-    // 测试多个独立标签合并
-    std::string input6 = "(温柔)（轻声）你好世界";
-    std::string result6 = xiaomi.ProcessStyleTags(input6);
-    assert(result6 == "(温柔,轻声)你好世界");
-    
-    // 测试标签在文本中间
-    std::string input7 = "你好(温柔)世界";
-    std::string result7 = xiaomi.ProcessStyleTags(input7);
-    assert(result7 == "(温柔)你好世界");
-    
-    // 测试无标签
-    std::string input8 = "你好世界";
-    std::string result8 = xiaomi.ProcessStyleTags(input8);
-    assert(result8 == "你好世界");
+    // 测试多个标签的情况：只移动第一个标签
+    std::string input4 = "你好#高兴#世界#悲伤#结束";
+    std::string result4 = xiaomi.HashtagToStyle(input4);
+    assert(result4 == "<style>高兴</style>你好世界<style>悲伤</style>结束");
     
     // 测试空字符串
-    std::string input9 = "";
-    std::string result9 = xiaomi.ProcessStyleTags(input9);
-    assert(result9 == "");
-
-    // 测试实际弹幕场景：xxx说：（温柔）你好呀
-    std::string input10 = "xxx说：（温柔）你好呀";
-    std::string result10 = xiaomi.ProcessStyleTags(input10);
-    assert(result10 == "(温柔)xxx说：你好呀");
-
-    // 测试多个标签分散在文本中
-    std::string input11 = "xxx说：(温柔)你好(轻声)呀";
-    std::string result11 = xiaomi.ProcessStyleTags(input11);
-    assert(result11 == "(温柔,轻声)xxx说：你好呀");
-
-    std::cout << "[PASS] TestXiaomiTTSProvider_ProcessStyleTags" << std::endl;
+    std::string input5 = "";
+    std::string result5 = xiaomi.HashtagToStyle(input5);
+    assert(result5 == "");
+    
+    std::cout << "[PASS] TestXiaomiTTSProvider_HashtagToStyle_MoveTagToFront" << std::endl;
 }
 
 void TestXiaomiTTSProvider_BuildRequestHeaders()
@@ -376,6 +346,7 @@ void RunTTSProviderTests()
     // TestSapiTTSProvider_IsAvailable();  // Requires TTSManager, disabled
     // TestSapiTTSProvider_RequestTTS_Callback();  // Requires TTSManager, disabled
     TestXiaomiTTSProvider_BuildRequest();
+    TestXiaomiTTSProvider_HashtagToStyle_MoveTagToFront();
     TestXiaomiTTSProvider_BuildRequestHeaders();
     TestXiaomiTTSProvider_ParseResponse_Success();
     TestXiaomiTTSProvider_ParseResponse_Error();

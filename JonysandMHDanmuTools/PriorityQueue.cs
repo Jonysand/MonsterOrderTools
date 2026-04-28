@@ -213,7 +213,7 @@ namespace MonsterOrderWindows
             if (Priority && other.Priority)
             {
                 if (GuardLevel != other.GuardLevel)
-                    return GuardLevel > other.GuardLevel ? -1 : 1;
+                    return GuardLevel < other.GuardLevel ? -1 : 1;
                 return TimeStamp < other.TimeStamp ? -1 : 1;
             }
             return TimeStamp < other.TimeStamp ? -1 : 1;

@@ -200,6 +200,10 @@ namespace MonsterOrderWindows
                 () => GetString("mimoVoice"),
                 v => SetValue("mimoVoice", (string)v, ConfigFieldType.String));
 
+            Register("mimoStyle", ConfigFieldType.String,
+                () => GetString("mimoStyle"),
+                v => SetValue("mimoStyle", (string)v, ConfigFieldType.String));
+
             Register("minimaxVoiceId", ConfigFieldType.String,
                 () => GetString("minimaxVoiceId"),
                 v => SetValue("minimaxVoiceId", (string)v, ConfigFieldType.String));
@@ -403,6 +407,12 @@ namespace MonsterOrderWindows
         {
             get => (string)ConfigFieldRegistry.Get("mimoVoice");
             set { ConfigFieldRegistry.Set("mimoVoice", value); OnPropertyChanged(); }
+        }
+
+        public String MIMO_STYLE
+        {
+            get => (string)ConfigFieldRegistry.Get("mimoStyle");
+            set { ConfigFieldRegistry.Set("mimoStyle", value); OnPropertyChanged(); }
         }
 
         public String MINIMAX_VOICE_ID

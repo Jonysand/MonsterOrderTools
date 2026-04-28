@@ -3,6 +3,7 @@
 #include "WriteLog.h"
 #include "TextToSpeech.h"
 #include "DataBridge.h"
+#include "RetroactiveCheckInModule.h"
 
 DEFINE_SINGLETON(BliveManager)
 
@@ -43,7 +44,7 @@ void BliveManager::SetConnectionState(ConnectionState state, DisconnectReason re
 void BliveManager::Disconnect()
 {
     reconnectAttemptCount.store(0);
-    
+
     {
         std::lock_guard<Lock> lock(wsMsgLock);
         if (webSocket) {
@@ -51,7 +52,7 @@ void BliveManager::Disconnect()
             webSocket = nullptr;
         }
     }
-    
+
     std::string currentGameId;
     {
         std::lock_guard<std::mutex> lock(gameIdLock);
@@ -61,7 +62,13 @@ void BliveManager::Disconnect()
     if (!currentGameId.empty()) {
         End(currentGameId, false);
     }
-    
+
+    {
+        std::lock_guard<Lock> lock(delayedTasksLock);
+        delayedTasks.clear();
+    }
+    reconnectScheduled_.store(false);
+
     SetConnectionState(ConnectionState::Disconnected, DisconnectReason::None);
 }
 
@@ -76,6 +83,16 @@ void BliveManager::Reconnect()
     {
         Start();
     }
+}
+
+void BliveManager::ScheduleReconnect(uint64_t delayMs)
+{
+    bool expected = false;
+    if (!reconnectScheduled_.compare_exchange_strong(expected, true)) {
+        return; // Already scheduled
+    }
+    std::lock_guard<Lock> lock(delayedTasksLock);
+    delayedTasks.push_back({ [this]() { reconnectScheduled_.store(false); Start(); }, delayMs });
 }
 
 void BliveManager::Start(const std::string& IdCode)
@@ -256,6 +273,7 @@ BliveManager::~BliveManager()
         std::lock_guard<Lock> lock(delayedTasksLock);
         delayedTasks.clear();
     }
+    reconnectScheduled_.store(false);
 }
 
 void BliveManager::OnReceiveStartResponse(const std::string& response)
@@ -269,11 +287,8 @@ void BliveManager::OnReceiveStartResponse(const std::string& response)
             code = jsonResponse["code"];
     }
     catch (const json::exception& e) {
-		LOG_ERROR(TEXT("JSON error: %s"), ProtoUtils::Decode(e.what()).c_str());
-        {
-            std::lock_guard<Lock> lock(delayedTasksLock);
-            delayedTasks.push_back({ [this]() { Start(); }, RECONNECT_DELAY_MS });
-        }
+		try { LOG_ERROR(TEXT("JSON error: %s"), ProtoUtils::Decode(e.what()).c_str()); } catch (...) {}
+        ScheduleReconnect(RECONNECT_DELAY_MS);
         return;
 	}
     try {
@@ -309,10 +324,7 @@ void BliveManager::OnReceiveStartResponse(const std::string& response)
                 if (!success) {
                     LOG_ERROR(TEXT("WebSocket connection failed with error: %d"), error);
                     SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::NetworkError);
-                    {
-                        std::lock_guard<Lock> lock(delayedTasksLock);
-                        delayedTasks.push_back({ [this]() { Start(); }, RECONNECT_DELAY_MS });
-                    }
+                    ScheduleReconnect(RECONNECT_DELAY_MS);
                 }
             }
         );
@@ -329,19 +341,13 @@ void BliveManager::OnReceiveStartResponse(const std::string& response)
     default:
         LOG_ERROR(TEXT("Error OnStartResponse: %s"), ProtoUtils::Decode(response).c_str());
         SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::NetworkError);
-        {
-            std::lock_guard<Lock> lock(delayedTasksLock);
-            delayedTasks.push_back({ [this]() { Start(); }, RECONNECT_DELAY_MS });
-        }
+        ScheduleReconnect(RECONNECT_DELAY_MS);
         break;
     }
     } catch (const json::exception& e) {
-        LOG_ERROR(TEXT("JSON access error in OnReceiveStartResponse: %s"), ProtoUtils::Decode(e.what()).c_str());
+        try { LOG_ERROR(TEXT("JSON access error in OnReceiveStartResponse: %s"), ProtoUtils::Decode(e.what()).c_str()); } catch (...) {}
         SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::NetworkError);
-        {
-            std::lock_guard<Lock> lock(delayedTasksLock);
-            delayedTasks.push_back({ [this]() { Start(); }, RECONNECT_DELAY_MS });
-        }
+        ScheduleReconnect(RECONNECT_DELAY_MS);
     }
 }
 
@@ -430,20 +436,14 @@ void BliveManager::OnReceiveAppHeartbeatResponse(const std::string& response)
         default:
             SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::HeartbeatTimeout);
             LOG_ERROR(TEXT("Error OnReceiveAppHeartbeatResponse: %s"), ProtoUtils::Decode(response).c_str());
-            {
-                std::lock_guard<Lock> lock(delayedTasksLock);
-                delayedTasks.push_back({ [this]() { Start(); }, RECONNECT_DELAY_MS });
-            }
+            ScheduleReconnect(RECONNECT_DELAY_MS);
             break;
         }
     }
     catch (const json::exception& e) {
-        LOG_ERROR(TEXT("JSON error in OnReceiveAppHeartbeatResponse: %s"), ProtoUtils::Decode(e.what()).c_str());
+        try { LOG_ERROR(TEXT("JSON error in OnReceiveAppHeartbeatResponse: %s"), ProtoUtils::Decode(e.what()).c_str()); } catch (...) {}
         SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::HeartbeatTimeout);
-        {
-            std::lock_guard<Lock> lock(delayedTasksLock);
-            delayedTasks.push_back({ [this]() { Start(); }, RECONNECT_DELAY_MS });
-        }
+        ScheduleReconnect(RECONNECT_DELAY_MS);
     }
 }
 
@@ -453,23 +453,20 @@ void BliveManager::StartWebsocketHeartBeat()
     packet.op = OP_HEARTBEAT;
     std::vector<uint8_t> packedData = packet.pack();
 
-    HINTERNET ws = nullptr;
     {
         std::lock_guard<Lock> lock(wsMsgLock);
-        ws = webSocket;
-    }
-
-    if (ws) {
-        Network::SendToWebsocketAsync(
-            ws,
-            packedData,
-            [this](bool success, DWORD error) {
-                if (destroying_.load()) return;
-                if (!success) {
-                    LOG_ERROR(TEXT("WebSocket heartbeat send failed with error: %d"), error);
+        if (webSocket) {
+            Network::SendToWebsocketAsync(
+                webSocket,
+                packedData,
+                [this](bool success, DWORD error) {
+                    if (destroying_.load()) return;
+                    if (!success) {
+                        LOG_ERROR(TEXT("WebSocket heartbeat send failed with error: %d"), error);
+                    }
                 }
-            }
-        );
+            );
+        }
     }
 }
 
@@ -524,10 +521,7 @@ void BliveManager::HandleWSMessage()
         default:
             SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::NetworkError);
             LOG_ERROR(TEXT("Receive UNKNOWN from server websocket: %s"), ProtoUtils::Decode(packet.body).c_str());
-            {
-                std::lock_guard<Lock> lock(delayedTasksLock);
-                delayedTasks.push_back({ [this]() { Start(); }, RECONNECT_DELAY_MS });
-            }
+            ScheduleReconnect(RECONNECT_DELAY_MS);
             break;
         }
         ++count;
@@ -568,18 +562,26 @@ void BliveManager::HandleSmsReply(const std::string& msg)
         else if (cmd == "LIVE_OPEN_PLATFORM_INTERACTION_END")
         {
             const std::string& disconnectedGameId = jsonResponse["data"]["game_id"].get<std::string>();
+            bool shouldReconnect = false;
             {
                 std::lock_guard<std::mutex> lock(gameIdLock);
                 if (disconnectedGameId == gameId)
                 {
                     gameId.clear();
-                    SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::ServerClose);
-                    {
-                        std::lock_guard<Lock> lock(delayedTasksLock);
-                        delayedTasks.push_back({ [this]() { Start(); }, RECONNECT_DELAY_MS });
-                    }
+                    shouldReconnect = true;
                 }
             }
+            if (shouldReconnect) {
+                SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::ServerClose);
+                ScheduleReconnect(RECONNECT_DELAY_MS);
+            }
+        }
+
+        // 点赞
+        if (cmd == "LIVE_OPEN_PLATFORM_LIKE") {
+            DanmuProcessor::Inst()->NotifyLikeEvent(
+                DanmuProcessor::Inst()->ParseLikeJson(jsonResponse["data"])
+            );
         }
 
         if (cmd == "LIVE_OPEN_PLATFORM_DM") {
@@ -587,7 +589,7 @@ void BliveManager::HandleSmsReply(const std::string& msg)
         }
     }
     catch (const std::exception& e) {
-        LOG_ERROR(TEXT("[HandleSmsReply] Exception: %s"), ProtoUtils::Decode(e.what()).c_str());
+        try { LOG_ERROR(TEXT("[HandleSmsReply] Exception: %s"), ProtoUtils::Decode(e.what()).c_str()); } catch (...) {}
     }
     catch (...) {
         LOG_ERROR(TEXT("[HandleSmsReply] Unknown exception occurred"), TEXT(""));

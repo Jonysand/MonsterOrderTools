@@ -32,7 +32,7 @@ namespace {
     }
 }
 
-MiniMaxTTSProvider::MiniMaxTTSProvider(const std::string& apiKey) : apiKey_(apiKey), available_(false) {}
+MiniMaxTTSProvider::MiniMaxTTSProvider(const std::string& apiKey) : apiKey_(apiKey), available_(true) {}
 
 std::string MiniMaxTTSProvider::GetProviderName() const { return "minimax"; }
 
@@ -50,13 +50,13 @@ void MiniMaxTTSProvider::RequestTTS(const TTSRequest& request, TTSCallback callb
         headers,
         body,
         true,
-        [self = shared_from_this(), callback](bool success, const std::string& resp, DWORD error) {
+        [this, callback](bool success, const std::string& resp, DWORD error) {
             if (!success || error != 0) {
-                self->lastError_ = "HTTP request failed: " + GetWinHttpErrorString(error);
-                self->available_ = false;
+                lastError_ = "HTTP request failed: " + GetWinHttpErrorString(error);
+                available_ = false;
                 TTSResponse resp;
                 resp.success = false;
-                resp.errorMsg = self->lastError_;
+                resp.errorMsg = lastError_;
                 try {
                     callback(resp);
                 } catch (...) {
@@ -64,10 +64,10 @@ void MiniMaxTTSProvider::RequestTTS(const TTSRequest& request, TTSCallback callb
                 return;
             }
 
-            auto ttsResp = self->ParseResponse(resp);
-            self->available_ = ttsResp.success && !ttsResp.audioData.empty();
-            if (!self->available_) {
-                self->lastError_ = ttsResp.errorMsg;
+            auto ttsResp = ParseResponse(resp);
+            available_ = ttsResp.success && !ttsResp.audioData.empty();
+            if (!available_) {
+                lastError_ = ttsResp.errorMsg;
             }
             try {
                 callback(ttsResp);
@@ -141,9 +141,10 @@ std::vector<uint8_t> MiniMaxTTSProvider::Base64ToBytes(const std::string& base64
     std::vector<uint8_t> decoded;
     int in_len = base64.size();
     int i = 0, in_ = 0;
-    uint8_t char_array_4[4], char_array_3[3];
-    
-    while (in_len-- && (base64[in_] != '=') && 
+    unsigned char char_array_4[4] = {0, 0, 0, 0};
+    unsigned char char_array_3[3] = {0, 0, 0};
+
+    while (in_len-- && (base64[in_] != '=') &&
            (isalnum(base64[in_]) || (base64[in_] == '+') || (base64[in_] == '/'))) {
         char_array_4[i++] = base64[in_]; in_++;
         if (i == 4) {
@@ -175,8 +176,13 @@ std::vector<uint8_t> MiniMaxTTSProvider::Base64ToBytes(const std::string& base64
 }
 
 std::vector<uint8_t> MiniMaxTTSProvider::HexToBytes(const std::string& hex) const {
+    if (hex.length() % 2 != 0) return {};
     std::vector<uint8_t> bytes;
     for (size_t i = 0; i < hex.length(); i += 2) {
+        if (!std::isxdigit(static_cast<unsigned char>(hex[i])) ||
+            !std::isxdigit(static_cast<unsigned char>(hex[i + 1]))) {
+            return {};
+        }
         std::string byteStr = hex.substr(i, 2);
         uint8_t byte = (uint8_t)std::strtol(byteStr.c_str(), nullptr, 16);
         bytes.push_back(byte);

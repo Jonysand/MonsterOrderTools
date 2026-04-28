@@ -155,7 +155,7 @@ private:
 	std::mutex queueMutex_;  // 保护 NormalMsgQueue, GiftMsgQueue, HistoryLogMsgQueue 等队列
 
 	// TTS提供者
-	std::shared_ptr<ITTSProvider> ttsProvider;
+	std::unique_ptr<ITTSProvider> ttsProvider;
 	// 音频播放器
 	AudioPlayer* audioPlayer{ NULL };
 
@@ -192,9 +192,9 @@ private:
 	void CleanupExpiredCooldowns();
 
 	// 引擎降级相关
-	bool isFallback{ false };              // 是否已降级到SAPI
+	std::atomic<bool> isFallback{ false };              // 是否已降级到SAPI
 	std::string fallbackReason;            // 降级原因
-	int consecutiveFailures{ 0 };          // 连续失败次数
+	std::atomic<int> consecutiveFailures{ 0 };          // 连续失败次数
 	std::chrono::steady_clock::time_point lastFailureTime;  // 上次失败时间
 	std::chrono::steady_clock::time_point lastRecoveryAttempt;  // 上次恢复尝试时间
 	static constexpr int MAX_CONSECUTIVE_FAILURES = 3;  // 最大连续失败次数

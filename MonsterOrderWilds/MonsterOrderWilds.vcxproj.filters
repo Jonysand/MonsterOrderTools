@@ -51,6 +51,15 @@
     <ClInclude Include="CaptainCheckInModule.h">
       <Filter>DataProcessing</Filter>
     </ClInclude>
+    <ClInclude Include="DateUtils.h">
+      <Filter>DataProcessing</Filter>
+    </ClInclude>
+    <ClInclude Include="LikeEvent.h">
+      <Filter>DataProcessing</Filter>
+    </ClInclude>
+    <ClInclude Include="RetroactiveCheckInModule.h">
+      <Filter>DataProcessing</Filter>
+    </ClInclude>
     <ClInclude Include="Network.h">
       <Filter>Core</Filter>
     </ClInclude>
@@ -142,6 +151,12 @@
       <Filter>Core</Filter>
     </ClCompile>
     <ClCompile Include="CaptainCheckInModule.cpp">
+      <Filter>DataProcessing</Filter>
+    </ClCompile>
+    <ClCompile Include="DateUtils.cpp">
+      <Filter>DataProcessing</Filter>
+    </ClCompile>
+    <ClCompile Include="RetroactiveCheckInModule.cpp">
       <Filter>DataProcessing</Filter>
     </ClCompile>
     <ClCompile Include="Network.cpp">
@@ -275,6 +290,10 @@
     <ClCompile Include="CaptainCheckInModuleTests.cpp">
       <Filter>UnitTests</Filter>
       <ExcludedFromBuild Condition="'$(Configuration)'=='Release'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="RetroactiveCheckInModuleTests.cpp">
+      <Filter>UnitTests</Filter>
+      <ExcludedFromBuild Condition="'$(Configuration)'!='UnitTest'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="UnitTestMain.cpp">
       <Filter>UnitTests</Filter>

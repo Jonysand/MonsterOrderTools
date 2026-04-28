@@ -1,0 +1,1 @@
+﻿{"pass": true, "issues_found": [], "summary": "所有文档逻辑一致。WaitForThreadpoolWorkCallbacks(FALSE) 语义正确：等待 callback 开始执行（不阻塞完成），之后关闭 handle。上一轮 PTP_WORK handle leak 问题已修复（tasks.md 第 144-146 行已添加 WaitForThreadpoolWorkCallbacks 和 CloseThreadpoolWork）。所有文档（proposal.md, design.md, tasks.md, spec.md）在状态机、队列机制、异步缓存语义上完全一致。"}

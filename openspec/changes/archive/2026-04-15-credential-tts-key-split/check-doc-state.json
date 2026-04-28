@@ -1,0 +1,16 @@
+{
+  "phase": "doc_verification",
+  "change_id": "credential-tts-key-split",
+  "pass_count": 3,
+  "current_round": 3,
+  "max_rounds": 10,
+  "required_passes": 3,
+  "issues_found": [],
+  "documents": {
+  "documents": {
+    "proposal": "D:/VisualStudioProjects/JonysandMHDanmuTools/openspec/changes/credential-tts-key-split/proposal.md",
+    "design": "D:/VisualStudioProjects/JonysandMHDanmuTools/openspec/changes/credential-tts-key-split/design.md",
+    "tasks": "D:/VisualStudioProjects/JonysandMHDanmuTools/openspec/changes/credential-tts-key-split/tasks.md",
+    "spec": "D:/VisualStudioProjects/JonysandMHDanmuTools/openspec/changes/credential-tts-key-split/specs/tts-fallback/spec.md"
+  }
+}

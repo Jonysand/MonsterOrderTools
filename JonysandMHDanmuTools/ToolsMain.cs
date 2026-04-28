@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Windows;
 using System.Runtime.InteropServices;
@@ -103,15 +104,6 @@ namespace MonsterOrderWindows
 
         public void Stop()
         {
-            try
-            {
-                NativeImports.DataBridge_Shutdown();
-            }
-            catch (Exception e)
-            {
-                SendCommand("Log:DataBridge_Shutdown failed: " + e.Message);
-            }
-
             if (_OrderedMonsterWindow != null)
             {
                 _OrderedMonsterWindow.Dispatcher.InvokeAsync(new Action(delegate
@@ -144,6 +136,14 @@ namespace MonsterOrderWindows
                 GetWindowRect(hwnd, out rect);
                 double left = rect.Left;
                 double top = rect.Top;
+                var source = System.Windows.PresentationSource.FromVisual(_OrderedMonsterWindow);
+                if (source != null)
+                {
+                    double dpiX = source.CompositionTarget.TransformFromDevice.M11;
+                    double dpiY = source.CompositionTarget.TransformFromDevice.M22;
+                    left *= dpiX;
+                    top *= dpiY;
+                }
                 System.Diagnostics.Debug.WriteLine($"[DEBUG] WindowPosition: left={left}, top={top}");
                 _Config.Config.TopPos = new Point(left, top);
                 _Config.SaveConfig();
@@ -175,28 +175,29 @@ namespace MonsterOrderWindows
                 ["ID_CODE"] = (k, v) => _Config.Config.ID_CODE = v,
                 ["ONLY_MEDAL_ORDER"] = (k, v) => _Config.Config.ONLY_MEDAL_ORDER = v == "1",
                 ["ENABLE_VOICE"] = (k, v) => _Config.Config.ENABLE_VOICE = v == "1",
-                ["SPEECH_RATE"] = (k, v) => { if (int.TryParse(v, out int val)) _Config.Config.SPEECH_RATE = val; },
-                ["SPEECH_PITCH"] = (k, v) => { if (int.TryParse(v, out int val)) _Config.Config.SPEECH_PITCH = val; },
-                ["SPEECH_VOLUME"] = (k, v) => { if (int.TryParse(v, out int val)) _Config.Config.SPEECH_VOLUME = val; },
+                ["SPEECH_RATE"] = (k, v) => { if (int.TryParse(v, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out int val)) _Config.Config.SPEECH_RATE = val; },
+                ["SPEECH_PITCH"] = (k, v) => { if (int.TryParse(v, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out int val)) _Config.Config.SPEECH_PITCH = val; },
+                ["SPEECH_VOLUME"] = (k, v) => { if (int.TryParse(v, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out int val)) _Config.Config.SPEECH_VOLUME = val; },
                 ["ONLY_SPEEK_WEARING_MEDAL"] = (k, v) => _Config.Config.ONLY_SPEEK_WEARING_MEDAL = v == "1",
-                ["ONLY_SPEEK_GUARD_LEVEL"] = (k, v) => { if (int.TryParse(v, out int val)) _Config.Config.ONLY_SPEEK_GUARD_LEVEL = val; },
+                ["ONLY_SPEEK_GUARD_LEVEL"] = (k, v) => { if (int.TryParse(v, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out int val)) _Config.Config.ONLY_SPEEK_GUARD_LEVEL = val; },
                 ["ONLY_SPEEK_PAID_GIFT"] = (k, v) => _Config.Config.ONLY_SPEEK_PAID_GIFT = v == "1",
                 ["OPACITY"] = (k, v) => {
-                    if (int.TryParse(v, out int val)) {
+                    if (int.TryParse(v, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out int val)) {
                         _Config.Config.OPACITY = val;
                         _OrderedMonsterWindow?.RefreshWindow();
                     }
                 },
                 ["PENETRATING_MODE_OPACITY"] = (k, v) => {
-                    if (int.TryParse(v, out int val)) {
+                    if (int.TryParse(v, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out int val)) {
                         _Config.Config.PENETRATING_MODE_OPACITY = val;
                         _OrderedMonsterWindow?.RefreshWindow();
                     }
                 },
                 ["TTS_ENGINE"] = (k, v) => _Config.Config.TTS_ENGINE = v,
                 ["MINIMAX_VOICE_ID"] = (k, v) => _Config.Config.MINIMAX_VOICE_ID = v,
-                ["MINIMAX_SPEED"] = (k, v) => { if (float.TryParse(v, out float val)) _Config.Config.MINIMAX_SPEED = val; },
+                ["MINIMAX_SPEED"] = (k, v) => { if (float.TryParse(v, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float val)) _Config.Config.MINIMAX_SPEED = val; },
                 ["MIMO_VOICE"] = (k, v) => _Config.Config.MIMO_VOICE = v,
+                ["MIMO_STYLE"] = (k, v) => _Config.Config.MIMO_STYLE = v,
                 ["MIMO_API_KEY"] = (k, v) => _Config.Config.MIMO_API_KEY = v,
                 ["DEFAULT_MARQUEE_TEXT"] = (k, v) => {
                     _Config.Config.DEFAULT_MARQUEE_TEXT = v;
@@ -224,7 +225,6 @@ namespace MonsterOrderWindows
                 _ConfigWindow = new ConfigWindow();
                 _ConfigWindow.FillConfig(_Config.GetConfig());
                 _ConfigWindow.InitLockButtonState(_OrderedMonsterWindow.IsLocked);
-                GlobalEventListener.AddListener("ConfigChanged", (object msg) => ConfigChanged(msg));
                 _OrderedMonsterWindow.LockStateChanged += _ConfigWindow.OnLockStateChanged;
             }
             _ConfigWindow.Show();
@@ -281,19 +281,15 @@ namespace MonsterOrderWindows
             }
         }
 
-        static public Queue<String> CommandQueue;
+        static public ConcurrentQueue<String> CommandQueue = new ConcurrentQueue<String>();
         static public void SendCommand(String message)
         {
-            if (CommandQueue == null)
-                CommandQueue = new Queue<String>();
             CommandQueue.Enqueue(message);
         }
         public String GetCommand()
         {
-            if (CommandQueue == null)
-                CommandQueue = new Queue<String>();
-            if (CommandQueue.Count > 0)
-                return CommandQueue.Dequeue();
+            if (CommandQueue.TryDequeue(out String result))
+                return result;
             return "";
         }
 

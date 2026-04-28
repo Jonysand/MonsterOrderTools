@@ -110,39 +110,22 @@ void ManboTTSProvider::DownloadAudio(const std::string& audioUrl, TTSCallback ca
         "",
         "",
         useHttps,
-        [self = shared_from_this(), callback, audioUrl](bool success, const std::string& resp, DWORD error) {
+        [this, callback](bool success, const std::string& resp, DWORD error) {
             if (!success || error != 0) {
-                self->lastError_ = "Audio download failed";
-                self->available_ = false;
+                lastError_ = "Audio download failed";
+                available_ = false;
                 TTSResponse response;
                 response.success = false;
-                response.errorMsg = self->lastError_;
+                response.errorMsg = lastError_;
                 try {
                     callback(response);
                 } catch (...) {}
                 return;
             }
-
+            
             TTSResponse response;
             response.success = true;
             response.audioData.assign(resp.begin(), resp.end());
-
-            size_t dotPos = audioUrl.rfind('.');
-            size_t queryPos = audioUrl.find('?');
-            if (dotPos != std::string::npos && dotPos < audioUrl.size() - 1) {
-                std::string ext;
-                if (queryPos == std::string::npos || queryPos > dotPos) {
-                    ext = audioUrl.substr(dotPos + 1);
-                } else {
-                    ext = audioUrl.substr(dotPos + 1, queryPos - dotPos - 1);
-                }
-                std::transform(ext.begin(), ext.end(), ext.begin(),
-                    [](unsigned char c) { return std::tolower(c); });
-                if (!ext.empty() && ext.find('/') == std::string::npos) {
-                    response.format = ext;
-                }
-            }
-
             try {
                 callback(response);
             } catch (...) {}
@@ -161,26 +144,26 @@ void ManboTTSProvider::RequestTTS(const TTSRequest& request, TTSCallback callbac
         "",
         "",
         true,
-        [self = shared_from_this(), callback](bool success, const std::string& resp, DWORD error) {
+        [this, callback](bool success, const std::string& resp, DWORD error) {
             if (!success || error != 0) {
-                self->lastError_ = "HTTP request failed";
-                self->available_ = false;
+                lastError_ = "HTTP request failed";
+                available_ = false;
                 TTSResponse response;
                 response.success = false;
-                response.errorMsg = self->lastError_;
+                response.errorMsg = lastError_;
                 try {
                     callback(response);
                 } catch (...) {}
                 return;
             }
             
-            auto apiResp = self->ParseApiResponse(resp);
+            auto apiResp = ParseApiResponse(resp);
             if (!apiResp.success) {
-                self->lastError_ = apiResp.errorMsg;
-                self->available_ = false;
+                lastError_ = apiResp.errorMsg;
+                available_ = false;
                 TTSResponse response;
                 response.success = false;
-                response.errorMsg = self->lastError_;
+                response.errorMsg = lastError_;
                 try {
                     callback(response);
                 } catch (...) {}
@@ -188,6 +171,6 @@ void ManboTTSProvider::RequestTTS(const TTSRequest& request, TTSCallback callbac
             }
             
             std::string audioUrl = apiResp.errorMsg;
-            self->DownloadAudio(audioUrl, callback);
+            DownloadAudio(audioUrl, callback);
         });
 }

@@ -1,0 +1,19 @@
+name: runtime-tts-engine-switch
+version: 1.0.0
+created: 2026-04-16
+status: in_progress
+owner: agent
+
+artifacts:
+  - id: proposal
+    status: done
+  - id: design
+    status: done
+  - id: tasks
+    status: done
+
+applyRequires:
+  - tasks
+
+description: |
+  支持运行时动态切换 TTS 引擎，用户在 UI 上切换后无需重启程序即可生效。

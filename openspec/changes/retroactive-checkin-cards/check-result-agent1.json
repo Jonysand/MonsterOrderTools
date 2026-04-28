@@ -1,0 +1,80 @@
+{
+  "agent_id": "agent1",
+  "check_type": "功能完整性",
+  "passed": false,
+  "issues": [
+    {
+      "severity": "critical",
+      "file": "MonsterOrderWilds/RetroactiveCheckInModule.cpp",
+      "line": 231,
+      "description": "CheckRule1_StreakReward 重复发放条件错误：连续7天奖励在第7天发放后，第8天会因为 streak.streakRewardIssued != date 条件为 true 而再次发放。违反了 '连续14天获得第二张' 的 spec 要求（第14天才能拿到第二张）。",
+      "evidence": "if (streak.currentStreak >= STREAK_DAYS_REQUIRED && streak.streakRewardIssued != date) {\n  // currentStreak=8, streakRewardIssued=day7, date=day8 → 8>=7 ✓, day7!=day8 ✓ → 错误发放\n}",
+      "fix": "将条件改为 streak.currentStreak >= STREAK_DAYS_REQUIRED && streak.currentStreak % STREAK_DAYS_REQUIRED == 0"
+    },
+    {
+      "severity": "major",
+      "file": "MonsterOrderWilds/RetroactiveCheckInModule.cpp",
+      "line": 81,
+      "description": "非标准查询词匹配失败：spec 明确要求 '补签卡查询'、'查询补签卡' 等变体应识别为查询命令，但当前 '补签卡查询' 包含 '补签' 子串，会匹配 retroactiveWords_ 而非 queryWords_，导致触发补签命令而非查询。",
+      "evidence": "SetTriggerWords 默认词 '补签,补签卡,补签查询' → queryWords_=['补签查询'], retroactiveWords_=['补签','补签卡']。IsQueryMessage 检查内容是否包含 '补签查询'（'补签卡查询' 不含此子串），IsRetroactiveMessage 检查是否包含 '补签'（'补签卡查询' 含此子串），导致匹配到补签命令。",
+      "fix": "将默认词改为 '补签,补签卡,补签查询,补签卡查询,查询补签卡,我的补签卡'，或在 SetTriggerWords 中为 queryWords_ 添加更多匹配模式"
+    },
+    {
+      "severity": "minor",
+      "file": "MonsterOrderWilds/RetroactiveCheckInModule.h",
+      "line": 17,
+      "description": "Destroy() 方法缺失：tasks.md 的 header 声明了 void Destroy() 方法，但实际头文件未声明、实现文件未实现。虽然析构函数做了清理，但破坏了与其他模块接口模式的一致性。",
+      "evidence": "tasks.md header: 'void Destroy();' 已声明，但 RetroactiveCheckInModule.h 中无此声明，RetroactiveCheckInModule.cpp 中无 ::Destroy 实现。",
+      "fix": "在 header 中添加 void Destroy(); 声明并在 cpp 中添加实现"
+    },
+    {
+      "severity": "minor",
+      "file": "MonsterOrderWilds/RetroactiveCheckInModule.cpp",
+      "line": 391,
+      "description": "ExecuteRetroactive 回滚非事务性：DeductRetroactiveCard 使用 BEGIN IMMEDIATE 并 COMMIT 后，如果后续 InsertRetroactiveCheckin 失败，通过补偿机制加回卡片。但补偿操作不是事务的一部分，补偿本身也可能失败导致卡片永久丢失。",
+      "evidence": "DeductRetroactiveCard 内部: sqlite3_exec('BEGIN IMMEDIATE') ... sqlite3_exec('COMMIT'); // 已提交\n// 插入失败时才尝试补偿:\ncards.cardCount++; ProfileManager::Inst()->SaveRetroactiveCards(cards);",
+      "fix": "考虑将 DeductRetroactiveCard 和 InsertRetroactiveCheckin 合并到一个事务中，或使用保存点 (SAVEPOINT) 实现完整回滚"
+    },
+    {
+      "severity": "minor",
+      "file": "MonsterOrderWilds/RetroactiveCheckInModuleTests.cpp",
+      "line": 54,
+      "description": "测试未覆盖14天第二张卡场景：TestStreakReward 只测试了7天获得第一张卡，未测试连续14天获得第二张卡的场景，导致无法暴露第8天重复发放的 bug。",
+      "evidence": "TestStreakReward 只循环 7 天: for (int i = 0; i < 7; ++i) { ... }。无第 8-14 天的测试。",
+      "fix": "增加 TestStreak14DaysTwoRewards 测试：连续14天点赞后验证只有第7天和第14天获得奖励"
+    },
+    {
+      "severity": "minor",
+      "file": "MonsterOrderWilds/RetroactiveCheckInModuleTests.cpp",
+      "line": 13,
+      "description": "测试未覆盖 like_count=0 忽略场景（spec: like-event-tracking）：spec 要求 like_count=0 的点赞消息被正常解析但不触发事件分发，无对应测试。",
+      "evidence": "TestLikeEventParsing 只测了 like_count=15 的标准场景。",
+      "fix": "增加 TestLikeCountZeroIgnored 测试：验证 PushLikeEvent(likeCount=0) 不触发 AddDailyLike"
+    },
+    {
+      "severity": "minor",
+      "file": "MonsterOrderWilds/RetroactiveCheckInModuleTests.cpp",
+      "line": 136,
+      "description": "测试未覆盖无卡拒绝和无缺失拒绝场景（spec: retroactive-command）：spec 要求无卡时回复 '你没有补签卡哦~'，无缺失时回复 '当前没有需要补签的日期'，均无对应测试。",
+      "evidence": "TestRetroactiveCommand 直接准备了 2 张卡和缺失日期，只测了成功场景。",
+      "fix": "增加 TestRetroactiveCommand_NoCard 和 TestRetroactiveCommand_NoMissing 测试"
+    },
+    {
+      "severity": "minor",
+      "file": "MonsterOrderWilds/RetroactiveCheckInModule.cpp",
+      "line": 321,
+      "description": "HandleRetroactiveCommand 和 ExecuteRetroactive 对连续天数计算不一致：ExecuteRetroactive 用 targetDate 计算并保存到 profile，而 HandleRetroactiveCommand 用 currentDate 计算回复内容。在多缺失日期的场景下两者结果不同。",
+      "evidence": "ExecuteRetroactive 行 407: CalculateContinuousDays(uidNum, targetDate);\nHandleRetroactiveCommand 行 321: CalculateContinuousDays(event.uid, currentDate);",
+      "fix": "统一使用 currentDate 进行计算，或在 ExecuteRetroactive 返回新的连续天数供 HandleRetroactiveCommand 使用"
+    },
+    {
+      "severity": "minor",
+      "file": "MonsterOrderWilds/MonsterOrderWilds.vcxproj.filters",
+      "line": 288,
+      "description": "ExcludedFromBuild 条件与同文件的其他测试条目不一致：CaptainCheckInModuleTests.cpp（行286）使用 Condition=\"'$(Configuration)'=='Release'\"，而 RetroactiveCheckInModuleTests.cpp（行290）使用 Condition=\"'$(Configuration)'!='UnitTest'\"。虽不影响编译（vcxproj 控制构建），但风格不一致。",
+      "evidence": "行286: <ExcludedFromBuild Condition=\"'$(Configuration)'=='Release'\">true</ExcludedFromBuild>\n行290: <ExcludedFromBuild Condition=\"'$(Configuration)'!='UnitTest'\">true</ExcludedFromBuild>",
+      "fix": "统一使用 '$(Configuration)'!='UnitTest' 或 '$(Configuration)'=='Release'"
+    }
+  ],
+  "summary": "共发现 9 个问题：1 个 Critical（CheckRule1_StreakReward 第8天重复发放）、1 个 Major（非标准查询词不匹配）、7 个 Minor（Destroy缺失、回滚非事务性、5个测试覆盖不足、连续天数计算不一致、vcxproj.filters 条件不一致）。CheckRule1 的 bug 直接违反 spec '连续14天获得第二张' 要求，需要优先修复。测试覆盖总体合格但缺少关键的边界 case。"
+}

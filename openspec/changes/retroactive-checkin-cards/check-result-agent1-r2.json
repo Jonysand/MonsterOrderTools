@@ -1,0 +1,108 @@
+{
+  "phase": "code_verification",
+  "change_id": "retroactive-checkin-cards",
+  "pass_count": 0,
+  "current_round": 2,
+  "max_rounds": 10,
+  "required_passes": 3,
+  "issues_found": [
+    {
+      "severity": "medium",
+      "category": "classification_logic",
+      "file": "MonsterOrderWilds/RetroactiveCheckInModule.cpp",
+      "line": 86,
+      "description": "SetTriggerWords 分类逻辑将"我的补签卡"误分类为 retroactiveWords_ 而非 queryWords_",
+      "detail": "SetTriggerWords 通过 word.find(L"查询") 的 contains 判断将词分类到 queryWords_ 或 retroactiveWords_。"我的补签卡"不包含子串"查询"，被错误地放入 retroactiveWords_。用户发送"我的补签卡"时，PushDanmuEvent 先检查 IsQueryMessage（false，不在 queryWords_），再检查 IsRetroactiveMessage（true，在 retroactiveWords_）→ 触发 HandleRetroactiveCommand 尝试补签而非 HandleQueryCommand 查询卡片状态。",
+      "root_cause": "SetTriggerWords 的分类标准单一（contains"查询"），无法覆盖"我的补签卡"这种不含"查询"但语义为查询命令的场景。",
+      "verification_steps": [
+        "SetTriggerWords 输入：'补签,补签卡,补签查询,补签卡查询,查询补签,查询补签卡,我的补签卡'",
+        "补签 → 不含查询 → retroactiveWords_",
+        "补签卡 → 不含查询 → retroactiveWords_",
+        "补签查询 → 含查询 → queryWords_",
+        "补签卡查询 → 含查询 → queryWords_",
+        "查询补签 → 含查询 → queryWords_",
+        "查询补签卡 → 含查询 → queryWords_",
+        "我的补签卡 → 不含查询 → retroactiveWords_ (错误!)",
+        "预期：'我的补签卡'应在 queryWords_ 中",
+        "影响：发送'我的补签卡'被误处理为补签命令而非查询命令"
+      ],
+      "suggested_fix": "方法A（最小改动）：在 SetTriggerWords 中特殊处理"我的补签卡"，将其从 retroactiveWords_ 移到 queryWords_。方法B（推荐）：将 SetTriggerWords 拆分为 SetRetroactiveWords 和 SetQueryWords 两个独立方法，在 Init() 中分别调用。",
+      "verdict": "Round 1 修复不完整 — 需要修复此分类问题",
+      "test": "需要补充：发送'我的补签卡'弹幕，验证调用 HandleQueryCommand 而非 HandleRetroactiveCommand"
+    }
+  ],
+  "fixed_in_round1": {
+    "CheckRule1_StreakReward": {
+      "status": "PASS",
+      "line": 233,
+      "verification": "streak.currentStreak >= 7 && streak.currentStreak % 7 == 0 && streak.streakRewardIssued != date — 第7天发卡后第8天不重复发放(streak 8→8%7=1->false)，第14天正确发放(streak 14→14%7=0->true)。rewardIssued != date 防止同一天重复发放。",
+      "evidence": "streak 0→1→2→3→4→5→6→7(给卡), 7→8→9→10→11→12→13→14(给卡)"
+    },
+    "IsRetroactiveMessage_IsQueryMessage": {
+      "status": "PASS",
+      "line": 99,
+      "verification": "'补签卡查询' == '补签' ? false. '补签卡查询' == '补签卡' ? false. IsRetroactiveMessage("补签卡查询")=false → 不再误匹配到补签命令。正确。",
+      "evidence": "wcontent == word 精确匹配"
+    },
+    "InsertRetroactiveCheckin_sqlite3_bind": {
+      "status": "PASS",
+      "line": 992,
+      "verification": "sqlite3_bind_int64(stmt, 1, stoull(uid)) — 与 checkin_records.uid INTEGER 类型匹配。",
+      "evidence": "Line 989-992: uint64_t uidNum = std::stoull(uid); sqlite3_bind_int64(stmt, 1, uidNum);"
+    },
+    "FindLastMissingCheckinDate_sqlite3_bind": {
+      "status": "PASS",
+      "line": 1014,
+      "verification": "sqlite3_bind_int64(stmt, 1, stoull(uid)) — 与 checkin_records.uid INTEGER 类型匹配。",
+      "evidence": "Line 1014-1016: uint64_t uidNum = std::stoull(uid); sqlite3_bind_int64(stmt, 1, uidNum); 1067行checkSql同样正确使用int64"
+    }
+  },
+  "spec_coverage": {
+    "点赞事件解析": {
+      "status": "PASS",
+      "file": "DanmuProcessor.cpp:386-427",
+      "detail": "ParseLikeJson 正确提取 uid, username, likeCount, timestamp, 并从 timestamp 计算 date"
+    },
+    "每日点赞累计": {
+      "status": "PASS",
+      "file": "ProfileManager.cpp:193-252",
+      "detail": "AddDailyLike 使用 BEGIN IMMEDIATE 事务保证原子性，先 UPDATE 后 INSERT"
+    },
+    "连续7天奖励": {
+      "status": "PASS",
+      "file": "RetroactiveCheckInModule.cpp:196-250",
+      "detail": "CheckRule1_StreakReward 正确处理连续 tracking，第7/14/21天发卡，同一天不重复"
+    },
+    "月首赞1000": {
+      "status": "PASS",
+      "file": "RetroactiveCheckInModule.cpp:252-282",
+      "detail": "CheckRule2_MonthlyFirst 正确处理跨月重置(claimedMonth比较)，每月仅发一次"
+    },
+    "跨月重置": {
+      "status": "PASS",
+      "file": "RetroactiveCheckInModule.cpp:260-265",
+      "detail": "currentMonth != claimedMonth 时 reset monthlyFirstClaimed=0，测试 TestCrossMonthReset 验证"
+    },
+    "补签命令(扣卡+插记录+更新profile)": {
+      "status": "PASS",
+      "file": "RetroactiveCheckInModule.cpp:392-427",
+      "detail": "DeductRetroactiveCard → InsertRetroactiveCheckin → UpdateProfile(continuousDays+lastCheckinDate)。回滚机制：Insert失败时补偿扣卡。"
+    },
+    "查询命令": {
+      "status": "PASS",
+      "file": "RetroactiveCheckInModule.cpp:346-390",
+      "detail": "HandleQueryCommand 报告：卡片数量、连续点赞进度、本月首次点赞进度"
+    }
+  },
+  "overall_verdict": "Round 1 的 4 个关键修复中 3 个验证通过(CheckRule1条件、精确匹配、sqlite3_bind类型)。但 SetTriggerWords 分类逻辑存在漏洞：'我的补签卡'被误放入 retroactiveWords_ 而非 queryWords_，导致查询命令被错误处理为补签命令。需要 Round 3 修复此问题后重新验证。",
+  "verified_files": [
+    "MonsterOrderWilds/RetroactiveCheckInModule.cpp",
+    "MonsterOrderWilds/RetroactiveCheckInModule.h",
+    "MonsterOrderWilds/RetroactiveCheckInModuleTests.cpp",
+    "MonsterOrderWilds/DanmuProcessor.h",
+    "MonsterOrderWilds/DanmuProcessor.cpp",
+    "MonsterOrderWilds/ProfileManager.h",
+    "MonsterOrderWilds/ProfileManager.cpp",
+    "MonsterOrderWilds/LikeEvent.h"
+  ]
+}

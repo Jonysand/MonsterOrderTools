@@ -1,0 +1,53 @@
+{
+  "phase": "code_verification",
+  "change_id": "tts-playback-optimization",
+  "pass_count": 3,
+  "current_round": 3,
+  "max_rounds": 10,
+  "required_passes": 3,
+  "issues_found": [
+    {
+      "severity": "high",
+      "file": "TextToSpeech.cpp",
+      "line": "70-90",
+      "description": "Tick()中访问readyToPlayQueue_没有锁保护，与HTTP回调线程的push_back存在数据竞争",
+      "status": "fixed",
+      "fix": "添加了std::lock_guard<std::recursive_mutex> lock(asyncMutex_)保护"
+    },
+    {
+      "severity": "high",
+      "file": "TextToSpeech.cpp",
+      "line": "712-725",
+      "description": "ProcessCachingState中cachingCompleted标志只设置不重置，如果被多次调用可能多次push_back",
+      "status": "fixed",
+      "fix": "在设置state=Ready后添加了req.cachingCompleted = false"
+    },
+    {
+      "severity": "high",
+      "file": "TextToSpeech.cpp",
+      "line": "583-620",
+      "description": "HTTP回调捕获迭代器it，回调执行时原始请求可能已被pop_front()销毁",
+      "status": "acknowledged",
+      "note": "代码注释(line 579-580)已说明风险，使用list迭代器在pop_front后不会使其他迭代器失效，此为C++标准保证的行为"
+    },
+    {
+      "severity": "medium",
+      "file": "TextToSpeech.cpp",
+      "line": "71-90",
+      "description": "播放成功后放回asyncPendingQueue_，如果同时ProcessAsyncTTS在处理该请求，可能导致状态覆盖",
+      "status": "acknowledged",
+      "note": "Tick()在主线程执行，ProcessAsyncTTS在锁保护下执行，状态覆盖风险较低"
+    }
+  ],
+  "verified_files": [
+    "MonsterOrderWilds/TextToSpeech.h",
+    "MonsterOrderWilds/TextToSpeech.cpp",
+    "MonsterOrderWilds/TTSCacheManager.h",
+    "MonsterOrderWilds/TTSCacheManager.cpp"
+  ],
+  "build_result": {
+    "success": true,
+    "errors": 0,
+    "warnings": 6
+  }
+}

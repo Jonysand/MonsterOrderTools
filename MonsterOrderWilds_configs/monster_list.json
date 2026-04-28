@@ -1,0 +1,1703 @@
+{
+  "霸主雌火龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "霸主雌火",
+      "霸主太太",
+      "霸主雌火龙"
+    ]
+  },
+  "烈祸月迅龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "烈祸月迅",
+      "烈祸月迅龙"
+    ]
+  },
+  "土砂龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em044_ID.png",
+    "别称": [
+      "土砂",
+      "土砂龙"
+    ]
+  },
+  "骨锤龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em114_ID.png",
+    "别称": [
+      "骨锤",
+      "骨锤龙"
+    ]
+  },
+  "刺花蜘蛛": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/3/38/MHWilds-Lala_Barina_Icon.webp/180px-MHWilds-Lala_Barina_Icon.webp",
+    "别称": [
+      "呲花",
+      "刺花蜘蛛"
+    ]
+  },
+  "嗟怨震天怨虎龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "明日香",
+      "霸天虎",
+      "大胖虎",
+      "独眼胖虎",
+      "震天虎",
+      "嗟怨震天怨虎龙"
+    ]
+  },
+  "大痹贼龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em112_ID.png",
+    "别称": [
+      "痹贼",
+      "大凶颚龙",
+      "凶颚龙",
+      "大痹贼龙"
+    ]
+  },
+  "霸主青熊兽": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "霸主青熊",
+      "霸主青熊兽"
+    ]
+  },
+  "火龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/b/be/MHWilds-Rathalos_Icon.webp/180px-MHWilds-Rathalos_Icon.webp",
+    "别称": [
+      "雄火龙",
+      "雄火",
+      "天空王者",
+      "天空亡者",
+      "火龙"
+    ]
+  },
+  "冰人鱼龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "冰人鱼",
+      "冰人鱼龙"
+    ]
+  },
+  "岩龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "岩龙"
+    ]
+  },
+  "风漂龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em111_ID.png",
+    "别称": [
+      "风漂",
+      "风飘",
+      "风飘龙",
+      "风漂龙"
+    ]
+  },
+  "眩鸟": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em120_ID.png",
+    "别称": [
+      "战地记者",
+      "记者",
+      "眩鸟"
+    ]
+  },
+  "尸套龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em115_ID.png",
+    "别称": [
+      "尸套",
+      "尸套龙"
+    ]
+  },
+  "再会雷狼龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em057_ID.png",
+    "别称": [
+      "再会雷狼龙",
+      "炭只狼",
+      "碳只狼",
+      "炭治郎"
+    ]
+  },
+  "霸主角龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "霸主角龙"
+    ]
+  },
+  "霸主火龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "霸主雄火龙",
+      "霸主火龙"
+    ]
+  },
+  "痹毒龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em109_01_ID.png",
+    "别称": [
+      "痹毒",
+      "痹毒龙"
+    ]
+  },
+  "樱火龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em001_01_ID.png",
+    "别称": [
+      "樱火",
+      "樱火龙"
+    ]
+  },
+  "风暴的棺材": {
+    "默认历战等级": 1,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em024_ID.png",
+    "别称": [
+      "历战钢龙",
+      "风暴的棺材",
+      "棺材"
+    ]
+  },
+  "影蜘蛛": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/b/b2/MHWilds-Nerscylla_Icon.webp/180px-MHWilds-Nerscylla_Icon.webp",
+    "别称": [
+      "影蜘蛛"
+    ]
+  },
+  "毒妖鸟": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em102_ID.png",
+    "别称": [
+      "毒妖",
+      "毒妖鸟"
+    ]
+  },
+  "海龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/a/a9/MHWilds-Lagiacrus_Icon.webp/180px-MHWilds-Lagiacrus_Icon.webp",
+    "别称": [
+      "海龙"
+    ]
+  },
+  "雾瘴尸套龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em115_05_ID.png",
+    "别称": [
+      "雾瘴尸套",
+      "花嫁尸套龙",
+      "花嫁尸套",
+      "雾瘴尸套龙"
+    ]
+  },
+  "百龙渊源雷神龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "百龙渊源",
+      "百雷",
+      "渊雷",
+      "百龙渊源雷神龙"
+    ]
+  },
+  "霞龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "霞龙"
+    ]
+  },
+  "黑狼鸟": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em018_ID.png",
+    "别称": [
+      "黑疯子",
+      "黑狼",
+      "黑鸡",
+      "黑狼鸟"
+    ]
+  },
+  "猛牛龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em123_ID.png",
+    "别称": [
+      "猛牛",
+      "牛牛",
+      "猛牛龙"
+    ]
+  },
+  "煌黑龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em050_ID.png",
+    "别称": [
+      "煌黑",
+      "羊驼",
+      "煌尼玛",
+      "黄黑龙",
+      "黄尼玛",
+      "草泥马",
+      "黎明死星",
+      "黄昏黑星",
+      "煌黑龙"
+    ]
+  },
+  "烈祸棘茶龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "烈祸棘茶",
+      "烈祸棘",
+      "烈祸棘茶龙"
+    ]
+  },
+  "怪异克服钢龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "怪克钢龙",
+      "300钢龙",
+      "怪异克服钢龙"
+    ]
+  },
+  "月迅龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "月迅",
+      "月迅龙"
+    ]
+  },
+  "雷狼龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em057_ID.png",
+    "别称": [
+      "雷狼",
+      "雷娘",
+      "雷狗",
+      "雷狼龙"
+    ]
+  },
+  "250霞龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "250霞龙"
+    ]
+  },
+  "恐暴龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em043_ID.png",
+    "别称": [
+      "恐暴",
+      "丝瓜",
+      "黄瓜",
+      "金瓜",
+      "恐暴龙"
+    ]
+  },
+  "冻峰龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/a/aa/MHWilds-Jin_Dahaad_Icon.webp/180px-MHWilds-Jin_Dahaad_Icon.webp",
+    "别称": [
+      "冻峰",
+      "东风龙",
+      "东风",
+      "冻峰龙"
+    ]
+  },
+  "焰狐龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "焰狐",
+      "紫色答辩",
+      "焰狐龙"
+    ]
+  },
+  "泥翁龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "泥翁",
+      "泥翁龙"
+    ]
+  },
+  "辟兽": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/c/c2/MHWilds-Doshaguma_Icon.webp/180px-MHWilds-Doshaguma_Icon.webp",
+    "别称": [
+      "p兽",
+      "P兽",
+      "阿p",
+      "阿P",
+      "辟兽"
+    ]
+  },
+  "泥鱼龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em108_ID.png",
+    "别称": [
+      "泥鱼",
+      "泥鱼龙"
+    ]
+  },
+  "护辟兽": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/d/d8/MHWilds-Guardian_Doshaguma_Icon.webp/180px-MHWilds-Guardian_Doshaguma_Icon.webp",
+    "别称": [
+      "护辟",
+      "护p",
+      "护p兽",
+      "护P",
+      "护P兽",
+      "护阿p",
+      "护阿P",
+      "护辟兽"
+    ]
+  },
+  "妃蜘蛛": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "妃蜘蛛"
+    ]
+  },
+  "人鱼龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "人鱼",
+      "怪异人鱼",
+      "怪异化人鱼龙",
+      "怪异化人鱼",
+      "怪异人鱼龙",
+      "300人鱼",
+      "300人鱼龙",
+      "人鱼龙"
+    ]
+  },
+  "风铗龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/2/2b/MHWilds-Hirabami_Icon.webp/180px-MHWilds-Hirabami_Icon.webp",
+    "别称": [
+      "风铗",
+      "风夹龙",
+      "风霞龙",
+      "风铗龙"
+    ]
+  },
+  "沙海龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/8/89/MHWilds-Balahara_Icon.webp/180px-MHWilds-Balahara_Icon.webp",
+    "别称": [
+      "沙海",
+      "沙海龙"
+    ]
+  },
+  "棘龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "怪异克服棘龙",
+      "怪克棘龙",
+      "棘龙"
+    ]
+  },
+  "黑角龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em007_01_ID.png",
+    "别称": [
+      "黑角",
+      "黑光炯炯",
+      "黑角龙"
+    ]
+  },
+  "暗器蛸": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/8/81/MHWilds-Xu_Wu_Icon.webp/180px-MHWilds-Xu_Wu_Icon.webp",
+    "别称": [
+      "暗器",
+      "暗器烧",
+      "暗器蛸"
+    ]
+  },
+  "爆鳞龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em118_ID.png",
+    "别称": [
+      "爆鳞",
+      "B52",
+      "上位爆鳞龙",
+      "上位爆鳞",
+      "阿爆",
+      "爆鳞龙"
+    ]
+  },
+  "250炎王龙 250炎王": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "250炎王龙 250炎王"
+    ]
+  },
+  "惶怒恐暴龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em043_05_ID.png",
+    "别称": [
+      "惶怒",
+      "酱瓜",
+      "瓜瓜",
+      "阿瓜",
+      "惶怒恐暴龙"
+    ]
+  },
+  "水妖鸟": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em102_01_ID.png",
+    "别称": [
+      "水妖",
+      "水妖鸟"
+    ]
+  },
+  "白炽龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/9/9f/MHWilds-Zoh_Shia_Icon.webp/180px-MHWilds-Zoh_Shia_Icon.webp",
+    "别称": [
+      "白炽",
+      "白炽龙",
+      "白炽灯",
+      "白痴",
+      "白痴龙"
+    ]
+  },
+  "绯天狗兽": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "绯天狗",
+      "绯天狗兽"
+    ]
+  },
+  "青熊兽": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "青熊",
+      "青熊兽"
+    ]
+  },
+  "爵银龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "爵银",
+      "爵银龙"
+    ]
+  },
+  "狱狼龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em057_01_ID.png",
+    "别称": [
+      "狱狼",
+      "狱娘",
+      "黑狗",
+      "狱狼龙"
+    ]
+  },
+  "古代鹿首精": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em127_01_ID.png",
+    "别称": [
+      "古代鹿",
+      "古代鹿首精"
+    ]
+  },
+  "飞雷龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em109_ID.png",
+    "别称": [
+      "飞雷",
+      "飞雷龙"
+    ]
+  },
+  "炎妃龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em026_ID.png",
+    "别称": [
+      "炎妃",
+      "蓝猫",
+      "蓝色粪怪",
+      "疯婆子",
+      "蓝色答辩",
+      "娜娜",
+      "炎妃龙"
+    ]
+  },
+  "赤甲兽": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "赤甲",
+      "赤甲兽"
+    ]
+  },
+  "炎尾龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/b/b8/MHWilds-Quematrice_Icon.webp/180px-MHWilds-Quematrice_Icon.webp",
+    "别称": [
+      "鸡哥",
+      "坤坤",
+      "炎尾",
+      "炎尾龙"
+    ]
+  },
+  "棘茶龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "茶几",
+      "茶几龙",
+      "棘茶",
+      "棘茶龙"
+    ]
+  },
+  "炎王龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em027_ID.png",
+    "别称": [
+      "炎王",
+      "红猫",
+      "炎喵",
+      "红喵",
+      "火喵",
+      "粉喵",
+      "火炎王",
+      "粉炎王",
+      "炎王龙"
+    ]
+  },
+  "天狗兽": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "天狗",
+      "舔狗",
+      "舔狗兽",
+      "天狗兽"
+    ]
+  },
+  "冥赤龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em104_ID.png",
+    "别称": [
+      "赤龙",
+      "冥赤",
+      "冥赤龙"
+    ]
+  },
+  "将军镰蟹": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "镰蟹",
+      "将军镰蟹"
+    ]
+  },
+  "银火龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em002_02_ID.png",
+    "别称": [
+      "银火",
+      "银火龙"
+    ]
+  },
+  "镰鼬龙王": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "镰鼬",
+      "镰鼬龙",
+      "镰鼬龙王"
+    ]
+  },
+  "贝希摩斯": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em121_ID.png",
+    "别称": [
+      "贝",
+      "贝希摩斯"
+    ]
+  },
+  "电龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "电龙"
+    ]
+  },
+  "护火龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/2/22/MHWilds-Guardian_Rathalos_Icon.webp/180px-MHWilds-Guardian_Rathalos_Icon.webp",
+    "别称": [
+      "护火",
+      "护火龙"
+    ]
+  },
+  "岚龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "岚妹",
+      "岚龙"
+    ]
+  },
+  "冥灯龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em105_ID.png",
+    "别称": [
+      "小明",
+      "冥灯",
+      "冥灯龙"
+    ]
+  },
+  "岩贼龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em116_ID.png",
+    "别称": [
+      "肥宅",
+      "岩贼龙"
+    ]
+  },
+  "我的高贵灵魂": {
+    "默认历战等级": 1,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em026_ID.png",
+    "别称": [
+      "高贵灵魂",
+      "我的高贵灵魂"
+    ]
+  },
+  "冰鱼龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em122_ID.png",
+    "别称": [
+      "冰鱼",
+      "冰鱼龙"
+    ]
+  },
+  "灭日": {
+    "默认历战等级": 1,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em027_ID.png",
+    "别称": [
+      "灭日"
+    ]
+  },
+  "水兽": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "香蕉",
+      "怪异克服水兽",
+      "怪克水兽",
+      "怪异水兽",
+      "水兽"
+    ]
+  },
+  "奇怪龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "夫鲁夫鲁",
+      "奇怪牛牛",
+      "奇怪龙"
+    ]
+  },
+  "原初形态爵银龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "原爵",
+      "烈祸爵银",
+      "烈祸爵",
+      "原初爵银",
+      "原初爵",
+      "原初形态爵银龙",
+      "原初形态爵银龙"
+    ]
+  },
+  "蛮颚龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em100_ID.png",
+    "别称": [
+      "蛮颚",
+      "蛮颚龙",
+      "蛮鄂龙",
+      "蛮鄂"
+    ]
+  },
+  "250钢龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "250钢龙"
+    ]
+  },
+  "天地煌啼龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em126_ID.png",
+    "别称": [
+      "弟弟龙",
+      "地啼龙",
+      "天地煌啼",
+      "天地煌啼龙"
+    ]
+  },
+  "桃毛兽王": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/5/50/MHWilds-Congalala_Icon.webp/180px-MHWilds-Congalala_Icon.webp",
+    "别称": [
+      "大桃毛",
+      "桃毛",
+      "桃毛兽王"
+    ]
+  },
+  "雪狮子王": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/1/1b/MHWilds-Blangonga_Icon.webp/180px-MHWilds-Blangonga_Icon.webp",
+    "别称": [
+      "雪狮子",
+      "大雪狮子",
+      "大雪狮",
+      "雪狮子王"
+    ]
+  },
+  "最后的白骑士": {
+    "默认历战等级": 1,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em042_05_ID.png",
+    "别称": [
+      "历战霜牙",
+      "历战霜刃冰牙",
+      "历战霜冰",
+      "最后的白骑士",
+      "历战霜刃冰牙龙"
+    ]
+  },
+  "雪鬼兽": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "雪鬼",
+      "双刀哥",
+      "双刀侠",
+      "雪鬼兽"
+    ]
+  },
+  "眠狗龙王": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "眠狗",
+      "眠狗龙",
+      "眠狗龙王"
+    ]
+  },
+  "护雷颚龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/f/ff/MHWilds-Guardian_Fulgur_Anjanath_Icon.webp/180px-MHWilds-Guardian_Fulgur_Anjanath_Icon.webp",
+    "别称": [
+      "护雷",
+      "护雷颚龙",
+      "护雷颚",
+      "护雷鄂"
+    ]
+  },
+  "雷颚龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em100_01_ID.png",
+    "别称": [
+      "雷颚",
+      "雷颚龙",
+      "雷鄂龙",
+      "雷鄂"
+    ]
+  },
+  "钢龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em024_ID.png",
+    "别称": [
+      "钢钢子",
+      "阿钢",
+      "钢龙"
+    ]
+  },
+  "270天彗龙 270天彗": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "270天彗龙 270天彗"
+    ]
+  },
+  "千刃龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/9/91/MHWilds-Seregios_Icon.webp/180px-MHWilds-Seregios_Icon.webp",
+    "别称": [
+      "千刃",
+      "千刃鸡",
+      "松果鸡",
+      "千刃鸡",
+      "千刃龙"
+    ]
+  },
+  "红莲爆鳞龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em118_05_ID.png",
+    "别称": [
+      "红莲",
+      "红莲爆鳞",
+      "红莲阿爆",
+      "红莲爆鳞龙"
+    ]
+  },
+  "战痕黑狼鸟": {
+    "默认历战等级": 1,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em018_05_ID.png",
+    "别称": [
+      "战痕黑鸡",
+      "战痕",
+      "战痕黑狼鸟"
+    ]
+  },
+  "黑轰龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em032_01_ID.png",
+    "别称": [
+      "黑轰",
+      "白轰",
+      "白轰龙",
+      "黑轰龙"
+    ]
+  },
+  "锁刃龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/0/0f/MHWilds-Arkveld_Icon.webp/180px-MHWilds-Arkveld_Icon.webp",
+    "别称": [
+      "锁刃",
+      "普锁",
+      "锁刃龙"
+    ]
+  },
+  "斩龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em080_ID.png",
+    "别称": [
+      "斩龙"
+    ]
+  },
+  "搔鸟": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em107_ID.png",
+    "别称": [
+      "骚鸟",
+      "搔鸟"
+    ]
+  },
+  "混沌黑蚀龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "混沌黑蚀",
+      "奥利奥",
+      "混沌黑丝",
+      "混沌黑蚀龙"
+    ]
+  },
+  "溟波龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em125_ID.png",
+    "别称": [
+      "溟波",
+      "溟波龙",
+      "冥波",
+      "冥波龙",
+      "明波龙",
+      "马桶"
+    ]
+  },
+  "熔翁龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "熔翁",
+      "熔翁龙"
+    ]
+  },
+  "护凶爪龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/e/e5/MHWilds-Guardian_Ebony_Odogaron_Icon.webp/180px-MHWilds-Guardian_Ebony_Odogaron_Icon.webp",
+    "别称": [
+      "凶爪",
+      "凶爪龙",
+      "护凶",
+      "护凶爪龙"
+    ]
+  },
+  "溟呼远响": {
+    "默认历战等级": 2,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/d/de/MHWI-Arch_Tempered_Namielle_Icon.png/180px-MHWI-Arch_Tempered_Namielle_Icon.png.webp",
+    "别称": [
+      "王溟波",
+      "历战王溟波龙",
+      "王冥波",
+      "历战王冥波龙",
+      "溟呼远响",
+      "王明波",
+      "王马桶"
+    ]
+  },
+  "鹿首精": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em127_ID.png",
+    "别称": [
+      "鹿首精"
+    ]
+  },
+  "爆锤龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em045_ID.png",
+    "别称": [
+      "爆锤",
+      "姚明",
+      "车轮滚滚",
+      "暴锤",
+      "暴锤龙",
+      "爆锤龙"
+    ]
+  },
+  "刚缠兽": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "刚缠",
+      "刚缠兽"
+    ]
+  },
+  "铠龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/9/9e/MHWilds-Gravios_Icon.webp/180px-MHWilds-Gravios_Icon.webp",
+    "别称": [
+      "铠龙"
+    ]
+  },
+  "熔山龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em106_ID.png",
+    "别称": [
+      "熔山",
+      "熔山龙"
+    ]
+  },
+  "大贼龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em101_ID.png",
+    "别称": [
+      "中分哥",
+      "大凶豺龙",
+      "凶豺龙",
+      "贼龙",
+      "大贼龙"
+    ]
+  },
+  "凶爪龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em113_01_ID.png",
+    "别称": [
+      "凶爪",
+      "凶爪龙"
+    ]
+  },
+  "黑蚀龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/a/a0/MHWilds-Gore_Magala_Icon.webp/180px-MHWilds-Gore_Magala_Icon.webp",
+    "别称": [
+      "黑蚀",
+      "黑丝",
+      "嗨丝",
+      "黑蚀龙"
+    ]
+  },
+  "霜刃冰牙龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em042_05_ID.png",
+    "别称": [
+      "霜牙",
+      "霜刃冰牙",
+      "霜冰",
+      "霜刃冰牙龙"
+    ]
+  },
+  "神秘红光天彗龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "天彗",
+      "天彗龙",
+      "神秘红光天彗龙"
+    ]
+  },
+  "狱焰蛸": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/0/0f/MHWilds-Nu_Udra_Icon.webp/180px-MHWilds-Nu_Udra_Icon.webp",
+    "别称": [
+      "章鱼",
+      "章鱼烧",
+      "大章鱼",
+      "狱焰蛸",
+      "狱焰烧",
+      "狱炎蛸",
+      "狱炎烧",
+      "火章鱼"
+    ]
+  },
+  "暗夜渔火": {
+    "默认历战等级": 2,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/2/26/MHWilds-Arch_Tempered_Nu_Udra_Icon.webp/180px-MHWilds-Arch_Tempered_Nu_Udra_Icon.webp",
+    "别称": [
+      "暗夜渔火，纳吾诅咒",
+      "暗夜渔火纳吾诅咒",
+      "王章鱼",
+      "王章鱼烧",
+      "王大章鱼",
+      "王狱焰蛸",
+      "王狱焰烧",
+      "王狱炎蛸",
+      "王狱炎烧",
+      "王火章鱼",
+      "历战王章鱼",
+      "历战王章鱼烧",
+      "历战王大章鱼",
+      "历战王狱焰蛸",
+      "历战王狱焰烧",
+      "历战王狱炎蛸",
+      "历战王狱炎烧",
+      "历战王火章鱼"
+    ]
+  },
+  "激昂金狮子": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em023_05_ID.png",
+    "别称": [
+      "激昂",
+      "超级赛亚人",
+      "赛亚人",
+      "超赛",
+      "拉詹很生气",
+      "激昂金狮子"
+    ]
+  },
+  "极贝": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "极贝"
+    ]
+  },
+  "雷神龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "雷神",
+      "雷神龙"
+    ]
+  },
+  "冰狼龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "冰狼",
+      "加鲁鲁",
+      "兽人加鲁鲁",
+      "冰狼龙"
+    ]
+  },
+  "煌雷龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/d/dc/MHWilds-Rey_Dau_Icon.webp/180px-MHWilds-Rey_Dau_Icon.webp",
+    "别称": [
+      "黄磊",
+      "煌雷",
+      "黄雷",
+      "煌雷龙"
+    ]
+  },
+  "无言的闪光": {
+    "默认历战等级": 2,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/c/cb/MHWilds-Arch_Tempered_Rey_Dau_Icon.webp/180px-MHWilds-Arch_Tempered_Rey_Dau_Icon.webp",
+    "别称": [
+      "王黄磊",
+      "王煌雷",
+      "王雷",
+      "王黄雷",
+      "王煌雷龙",
+      "历战王黄磊",
+      "历战王煌雷",
+      "历战王雷",
+      "历战王黄雷",
+      "历战王煌雷龙",
+      "无言的闪光",
+      "屋檐的闪光",
+      "无语的闪光"
+    ]
+  },
+  "角龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em007_ID.png",
+    "别称": [
+      "角龙"
+    ]
+  },
+  "冰呪龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em124_ID.png",
+    "别称": [
+      "冰呪",
+      "冰粥",
+      "冰呪龙",
+      "冰粥龙",
+      "冰冰子",
+      "冰咒",
+      "冰咒龙",
+      "冰冰"
+    ]
+  },
+  "怪异克服霞龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "怪克霞龙",
+      "300霞龙",
+      "怪异克服霞龙"
+    ]
+  },
+  "雌火龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/e/ec/MHWilds-Rathian_Icon.webp/180px-MHWilds-Rathian_Icon.webp",
+    "别称": [
+      "雌火",
+      "太太",
+      "雌火龙"
+    ]
+  },
+  "炽妃蜘蛛": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "红蜘蛛",
+      "炽妃蜘蛛"
+    ]
+  },
+  "猛爆碎龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em063_05_ID.png",
+    "别称": [
+      "猛爆",
+      "萌宝",
+      "爆碎",
+      "萌宝碎龙",
+      "猛爆碎龙"
+    ]
+  },
+  "怪异克服天彗龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "怪异克服天彗",
+      "怪克天彗龙",
+      "怪克天彗",
+      "300天彗",
+      "300天彗龙",
+      "怪异克服天彗龙"
+    ]
+  },
+  "苍火龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em002_01_ID.png",
+    "别称": [
+      "苍火",
+      "苍火龙"
+    ]
+  },
+  "冰牙龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em042_ID.png",
+    "别称": [
+      "冰牙",
+      "白色答辩",
+      "灵活的狗",
+      "山里灵活的狗",
+      "白色粪怪",
+      "冰牙龙"
+    ]
+  },
+  "金狮子": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em023_ID.png",
+    "别称": [
+      "辣酱",
+      "金狮子"
+    ]
+  },
+  "风神龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "风神",
+      "风神龙"
+    ]
+  },
+  "毒怪鸟": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/0/0e/MHWilds-Gypceros_Icon.webp/180px-MHWilds-Gypceros_Icon.webp",
+    "别称": [
+      "毒怪鸟"
+    ]
+  },
+  "浮空龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em110_ID.png",
+    "别称": [
+      "浮空",
+      "浮空龙"
+    ]
+  },
+  "白兔兽": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "白兔",
+      "白兔兽"
+    ]
+  },
+  "怪异克服炎王龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "怪异克服炎王",
+      "怪克炎王龙",
+      "怪克炎王",
+      "300炎王",
+      "300炎王龙",
+      "怪异克服炎王龙"
+    ]
+  },
+  "护锁刃龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/6/68/MHWilds-Guardian_Arkveld_Icon.webp/180px-MHWilds-Guardian_Arkveld_Icon.webp",
+    "别称": [
+      "护锁刃",
+      "护锁",
+      "护锁刃龙"
+    ]
+  },
+  "金火龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em001_02_ID.png",
+    "别称": [
+      "金火",
+      "金火龙"
+    ]
+  },
+  "泡狐龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/3/34/MHWilds-Mizutsune_Icon.webp/180px-MHWilds-Mizutsune_Icon.webp",
+    "别称": [
+      "泡狐",
+      "泡泡",
+      "泡狐龙"
+    ]
+  },
+  "迅龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em037_ID.png",
+    "别称": [
+      "迅喵",
+      "迅龙"
+    ]
+  },
+  "波衣龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/9/92/MHWilds-Uth_Duna_Icon.webp/180px-MHWilds-Uth_Duna_Icon.webp",
+    "别称": [
+      "boy龙",
+      "boi龙",
+      "boi",
+      "波一龙",
+      "波衣龙"
+    ]
+  },
+  "涟漪涤得残垣清": {
+    "默认历战等级": 2,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/1/1c/MHWilds-Arch_Tempered_Uth_Duna_Icon.webp/180px-MHWilds-Arch_Tempered_Uth_Duna_Icon.webp",
+    "别称": [
+      "涟漪涤得残垣清",
+      "独爱安眠古都静",
+      "涟漪涤得残垣清，独爱安眠古都静",
+      "涟漪涤得残垣清独爱安眠古都静",
+      "王boy龙",
+      "王boy",
+      "王boi龙",
+      "王boi",
+      "王波一龙",
+      "王波衣龙",
+      "历战王boy龙",
+      "历战王boy",
+      "历战王boi龙",
+      "历战王boi",
+      "历战王波一龙",
+      "历战王波衣龙"
+    ]
+  },
+  "霸主雷狼龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "霸主雷狼",
+      "霸主雷娘",
+      "霸主雷狗",
+      "霸主雷狼龙"
+    ]
+  },
+  "毒狗龙王": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "毒狗",
+      "怪异克服毒狗龙王",
+      "怪克毒狗龙王",
+      "怪异克服毒狗",
+      "怪克毒狗",
+      "怪异毒狗",
+      "怪异毒狗龙",
+      "怪异毒狗龙王",
+      "毒狗龙王"
+    ]
+  },
+  "浮眠龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em110_01_ID.png",
+    "别称": [
+      "浮眠",
+      "眠浮",
+      "眠浮龙",
+      "浮眠龙"
+    ]
+  },
+  "黑龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em013_ID.png",
+    "别称": [
+      "米拉",
+      "米拉小姐",
+      "嗨龙",
+      "米拉波雷亚斯",
+      "尼龙",
+      "黑龙"
+    ]
+  },
+  "麒麟": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em011_ID.png",
+    "别称": [
+      "电驴",
+      "断角麒麟",
+      "彩虹小马",
+      "小马",
+      "麒麟"
+    ]
+  },
+  "惨爪龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em113_ID.png",
+    "别称": [
+      "惨爪",
+      "惨爪龙"
+    ]
+  },
+  "碎龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em063_ID.png",
+    "别称": [
+      "碎龙"
+    ]
+  },
+  "灭尽龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em103_ID.png",
+    "别称": [
+      "灭尽",
+      "上位咩咩",
+      "上位灭尽龙",
+      "上位灭尽",
+      "上位咩咩子",
+      "灭尽龙",
+      "咩",
+      "咩咩子"
+    ]
+  },
+  "冥渊龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "冥渊",
+      "冥渊龙"
+    ]
+  },
+  "怨虎龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "胖虎",
+      "胖虎龙",
+      "怨虎龙"
+    ]
+  },
+  "缠蛙": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/2/27/MHWilds-Chatacabra_Icon.webp/180px-MHWilds-Chatacabra_Icon.webp",
+    "别称": [
+      "蛙蛙",
+      "缠蛙"
+    ]
+  },
+  "赫猿兽": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/8/8b/MHWilds-Ajarakan_Icon.webp/180px-MHWilds-Ajarakan_Icon.webp",
+    "别称": [
+      "二刺螈",
+      "二刺猿",
+      "火猴",
+      "火猴子",
+      "赫猿兽"
+    ]
+  },
+  "伞鸟": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "唐伞妖怪",
+      "怪异伞鸟",
+      "怪异化伞鸟",
+      "300伞鸟",
+      "伞鸟"
+    ]
+  },
+  "歼世灭尽龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em103_05_ID.png",
+    "别称": [
+      "歼灭",
+      "歼咩",
+      "花嫁灭尽",
+      "花嫁灭尽龙",
+      "花嫁歼咩",
+      "花嫁歼灭",
+      "咩咩",
+      "歼世灭尽龙"
+    ]
+  },
+  "雪花沉睡": {
+    "默认历战等级": 2,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/a/ac/MHWI-Arch_Tempered_Velkhana_Icon.png/180px-MHWI-Arch_Tempered_Velkhana_Icon.png.webp",
+    "别称": [
+      "王冰",
+      "王冰呪",
+      "王冰粥",
+      "王冰呪龙",
+      "王冰粥龙",
+      "王冰咒",
+      "王冰冰",
+      "历战王冰",
+      "历战王冰呪",
+      "历战王冰粥",
+      "历战王冰呪龙",
+      "历战王冰粥龙",
+      "历战王冰咒",
+      "历战王冰冰",
+      "雪花沉睡"
+    ]
+  },
+  "轰龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em032_ID.png",
+    "别称": [
+      "车龙",
+      "车车车龙",
+      "车车车",
+      "车车龙",
+      "轰爬爬",
+      "轰龙"
+    ]
+  },
+  "绚辉龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em117_ID.png",
+    "别称": [
+      "富婆",
+      "渣渣辉",
+      "绚辉",
+      "绚辉龙"
+    ]
+  },
+  "你是黄金奖杯": {
+    "默认历战等级": 1,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em023_05_ID.png",
+    "别称": [
+      "奖杯",
+      "黄金奖杯",
+      "原神",
+      "猿神",
+      "你是黄金奖杯",
+      "历战激昂金狮子",
+      "历战激昂",
+      "J8"
+    ]
+  },
+  "沼喷龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/1/19/MHWilds-Rompopolo_Icon.webp/180px-MHWilds-Rompopolo_Icon.webp",
+    "别称": [
+      "蚊子",
+      "蚊子龙",
+      "嗦你屁眼",
+      "嗦你皮炎",
+      "嗦你皮燕",
+      "沼喷龙"
+    ]
+  },
+  "霸主泡狐龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "霸主泡狐",
+      "霸主泡狐龙"
+    ]
+  },
+  "天廻龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "天廻",
+      "天回",
+      "天回龙",
+      "白丝",
+      "天廻龙"
+    ]
+  },
+  "硫斩龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em080_01_ID.png",
+    "别称": [
+      "硫斩",
+      "流斩",
+      "硫斩龙"
+    ]
+  },
+  "怪鸟": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/f/fc/MHWilds-Yian_Kut-Ku_Icon.webp/180px-MHWilds-Yian_Kut-Ku_Icon.webp",
+    "别称": [
+      "大怪鸟",
+      "羊库库",
+      "老师",
+      "怪鸟"
+    ]
+  },
+  "熔岩龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em036_ID.png",
+    "别称": [
+      "烤鱼",
+      "熔岩龙"
+    ]
+  },
+  "霜翼风漂龙": {
+    "默认历战等级": 0,
+    "图标地址": "https://cdn.kiranico.net/file/kiranico/mhworld-web/mhw/icon/em111_05_ID.png",
+    "别称": [
+      "霜漂",
+      "霜飘",
+      "霜翼风漂",
+      "霜翼风飘龙",
+      "霜翼风飘",
+      "霜翼风漂龙"
+    ]
+  },
+  "怪异克服天廻龙": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "怪异克服天廻",
+      "怪克天廻龙",
+      "怪克天廻",
+      "怪异克服天回",
+      "怪克天回龙",
+      "怪克天回",
+      "300天回",
+      "300天廻",
+      "怪异克服天廻龙"
+    ]
+  },
+  "大名盾蟹": {
+    "默认历战等级": 0,
+    "图标地址": "",
+    "别称": [
+      "盾蟹",
+      "大名盾蟹"
+    ]
+  },
+  "零式游星欧米茄": {
+    "默认历战等级": 1,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/f/fa/MHWilds-Tempered_Omega_Planetes_Icon.webp/180px-MHWilds-Tempered_Omega_Planetes_Icon.webp",
+    "别称": [
+      "零式欧米茄",
+      "零式欧米加",
+      "历战欧米茄",
+      "历战欧米加",
+      "零食欧米茄",
+      "零食欧米加",
+      "零式",
+      "零食",
+      "历战游星欧米茄",
+      "历战游星欧米加",
+      "零式游星欧米茄",
+      "零食游星欧米茄",
+      "零式游星欧米加",
+      "零食游星欧米加",
+      "历战游星欧米茄",
+      "历战游星欧米加"
+    ]
+  },
+  "游星欧米茄": {
+    "默认历战等级": 0,
+    "图标地址": "https://monsterhunterwiki.org/images/thumb/f/fb/MHWilds-Omega_Planetes_Icon.webp/180px-MHWilds-Omega_Planetes_Icon.webp",
+    "别称": [
+      "欧米茄",
+      "欧米加",
+      "游星欧米茄",
+      "游星欧米加"
+    ]
+  }
+}

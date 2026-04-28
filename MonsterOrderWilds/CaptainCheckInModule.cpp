@@ -91,11 +91,13 @@ CaptainCheckInModule* CaptainCheckInModule::Inst() {
 void CaptainCheckInModule::Destroy() {
     LOG_INFO(TEXT("CaptainCheckInModule::Destroy"));
 
-    lock_guard<std::mutex> lock(profilesLock_);
-    for (auto& [uid, profile] : profiles_) {
-        SaveProfileToDb(profile);
+    {
+        lock_guard<std::mutex> lock(profilesLock_);
+        for (auto& [uid, profile] : profiles_) {
+            SaveProfileToDb(profile);
+        }
+        profiles_.clear();
     }
-    profiles_.clear();
 
     jiebaContext_.reset();
     triggerWords_.clear();
@@ -115,7 +117,7 @@ bool CaptainCheckInModule::Init() {
 
     LOG_INFO(TEXT("CaptainCheckInModule::Init"));
 
-    auto& config = ConfigManager::Inst()->GetConfig();
+    const auto config = ConfigManager::Inst()->GetConfig();
     triggerWordsStr_ = config.checkinTriggerWords;
 
     aiProviderJson_ = GetAI_PROVIDER();
@@ -129,12 +131,10 @@ bool CaptainCheckInModule::Init() {
 
     JiebaContext* rawContext = CreateJiebaContextSafe(jiebaDict, hmmModel, userDict, idfPath, stopWords);
     jiebaContext_.reset(rawContext);
-
+    
     if (!jiebaContext_) {
         LOG_ERROR(TEXT("CaptainCheckInModule::Init: JiebaContext creation failed, keyword extraction disabled"));
     }
-
-    LoadStopWords(stopWords);
 
     inited_ = true;
     LOG_INFO(TEXT("CaptainCheckInModule::Init done"));
@@ -159,19 +159,28 @@ void CaptainCheckInModule::SetTriggerWords(const std::string& words) {
     triggerWordsStr_ = words;
     triggerWords_.clear();
 
-    std::wstringstream ss(std::wstring(words.begin(), words.end()));
+    std::wstring wwords = Utf8ToWstring(words);
     std::wstring word;
-    while (std::getline(ss, word, L',')) {
-        // Trim leading and trailing spaces
-        size_t start = word.find_first_not_of(L" \t\r\n");
-        if (start != std::wstring::npos) {
-            size_t end = word.find_last_not_of(L" \t\r\n");
-            word = word.substr(start, end - start + 1);
+    for (size_t i = 0; i <= wwords.length(); ++i) {
+        wchar_t c = (i < wwords.length()) ? wwords[i] : L'\0';
+        // 支持中英文逗号作为分隔符（英文逗号 U+002C，中文逗号 U+FF0C）
+        if (c == L',' || c == L'\uFF0C' || c == L'\0') {
+            if (!word.empty()) {
+                // Trim leading and trailing spaces
+                size_t start = word.find_first_not_of(L" \t\r\n");
+                if (start != std::wstring::npos) {
+                    size_t end = word.find_last_not_of(L" \t\r\n");
+                    word = word.substr(start, end - start + 1);
+                } else {
+                    word.clear();
+                }
+                if (!word.empty()) {
+                    triggerWords_.push_back(word);
+                }
+                word.clear();
+            }
         } else {
-            word.clear();
-        }
-        if (!word.empty()) {
-            triggerWords_.push_back(word);
+            word += c;
         }
     }
     LOG_INFO(TEXT("CaptainCheckInModule trigger words updated: %s"), words.c_str());
@@ -190,7 +199,7 @@ bool CaptainCheckInModule::IsCheckinMessage(const std::string& content) const {
     if (!enabled_) return false;
 
     try {
-        std::wstring wcontent(content.begin(), content.end());
+        std::wstring wcontent = Utf8ToWstring(content);
         for (const auto& word : triggerWords_) {
             if (_wcsicmp(wcontent.c_str(), word.c_str()) == 0) {
                 return true;
@@ -291,8 +300,7 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
         if (shouldCheckin && profile.lastCheckinDate == event.sendDate) {
             LOG_DEBUG(TEXT("[CaptainCheckInModule] Repeated checkin detected for uid=%hs, date=%d"), event.uid.c_str(), event.sendDate);
             int32_t continuousDays = ProfileManager::Inst()->CalculateContinuousDays(event.uid, event.sendDate);
-            int32_t cumulativeDays = profile.cumulativeDays > 0 ? profile.cumulativeDays : continuousDays;
-            std::string repeatedAnswer = event.username + "今日已打卡，连续" + std::to_string(continuousDays) + "天，累计" + std::to_string(cumulativeDays) + "天";
+            std::string repeatedAnswer = event.username + "今日已打卡，连续" + std::to_string(continuousDays) + "天";
 
             std::wstring contentCopy = Utf8ToWstring(repeatedAnswer);
             RECORD_HISTORY(contentCopy.c_str());
@@ -316,14 +324,9 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
             int32_t checkinDate = event.sendDate;
             int32_t continuousDays = ProfileManager::Inst()->CalculateContinuousDays(event.uid, checkinDate);
 
+            int32_t previousCheckinDate = profile.lastCheckinDate;
             profile.lastCheckinDate = checkinDate;
             profile.continuousDays = continuousDays;
-            
-            if (profile.cumulativeDays > 0) {
-                profile.cumulativeDays += 1;
-            } else {
-                profile.cumulativeDays = 1;
-            }
 
             ProfileManager::Inst()->RecordCheckinAsync(event.uid, event.username, checkinDate, continuousDays);
 
@@ -331,9 +334,8 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
             checkinEvt.uid = event.uid;
             checkinEvt.username = event.username;
             checkinEvt.continuousDays = continuousDays;
-            checkinEvt.cumulativeDays = profile.cumulativeDays;
             checkinEvt.checkinDate = checkinDate;
-            checkinEvt.lastCheckinDate = profile.lastCheckinDate;
+            checkinEvt.lastCheckinDate = previousCheckinDate;
 
             if (event.guardLevel > 0) {
                 GenerateCheckinAnswerAsync(checkinEvt, [this, event](const AnswerResult& result) {
@@ -379,17 +381,29 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
 void CaptainCheckInModule::ExtractKeywords(UserProfile& profile, const std::string& content) {
     if (!jiebaContext_) return;
 
-    std::string processedContent = content;
-    // 移除所有 (风格) 标签，避免学习为观众习惯词
-    std::regex tagPattern(R"((?:\(|（|\[)[^\)\]）]+(?:\)|）|\]))");
-    processedContent = std::regex_replace(processedContent, tagPattern, "");
+    // 提取 #标签# 中的标签词，学习时排除
+    std::set<std::string> hashtagLabels;
+    std::regex hashtagPattern(R"(#([^#]+)#)");
+    std::sregex_iterator iter(content.begin(), content.end(), hashtagPattern);
+    std::sregex_iterator end;
+    for (; iter != end; ++iter) {
+        std::string label = (*iter)[1].str();
+        std::vector<std::string> labelWords;
+        jiebaContext_->jieba_.Cut(label, labelWords, true);
+        for (const auto& w : labelWords) {
+            if (w.length() >= MIN_WORD_LENGTH) {
+                hashtagLabels.insert(w);
+            }
+        }
+    }
 
     std::vector<std::string> words;
-    jiebaContext_->jieba_.Cut(processedContent, words, true);
+    jiebaContext_->jieba_.Cut(content, words, true);
 
     for (const auto& word : words) {
         if (word.length() < MIN_WORD_LENGTH) continue;
         if (IsStopWord(word)) continue;
+        if (hashtagLabels.find(word) != hashtagLabels.end()) continue;
 
         auto it = std::find_if(profile.keywords.begin(), profile.keywords.end(),
             [&word](const KeywordRecord& r) { return r.word == word; });
@@ -412,32 +426,7 @@ void CaptainCheckInModule::ExtractKeywords(UserProfile& profile, const std::stri
         [](const KeywordRecord& a, const KeywordRecord& b) { return a.frequency > b.frequency; });
 }
 
-void CaptainCheckInModule::LoadStopWords(const std::string& filePath) {
-    std::ifstream file(filePath);
-    if (!file.is_open()) {
-        LOG_ERROR(TEXT("CaptainCheckInModule::LoadStopWords: failed to open %s"), filePath.c_str());
-        return;
-    }
-
-    std::string line;
-    while (std::getline(file, line)) {
-        // Trim whitespace and newlines
-        size_t start = line.find_first_not_of(" \t\r\n");
-        if (start == std::string::npos) continue;
-        size_t end = line.find_last_not_of(" \t\r\n");
-        std::string word = line.substr(start, end - start + 1);
-        if (!word.empty()) {
-            stopWords_.insert(word);
-        }
-    }
-
-    LOG_INFO(TEXT("CaptainCheckInModule::LoadStopWords: loaded %zu words from %s"), stopWords_.size(), filePath.c_str());
-}
-
 bool CaptainCheckInModule::IsStopWord(const std::string& word) const {
-    if (!stopWords_.empty()) {
-        return stopWords_.find(word) != stopWords_.end();
-    }
     return STOP_WORDS.find(word) != STOP_WORDS.end();
 }
 
@@ -451,7 +440,6 @@ void CaptainCheckInModule::LoadProfileFromDb(const std::string& uid) {
             profile.username = dbProfile.username;
             profile.lastCheckinDate = dbProfile.lastCheckinDate;
             profile.continuousDays = dbProfile.continuousDays;
-            profile.cumulativeDays = dbProfile.cumulativeDays;
             profile.lastDanmuTimestamp = dbProfile.lastDanmuTimestamp;
             profile.createdAt = dbProfile.createdAt;
             profile.keywords = dbProfile.keywords;
@@ -461,7 +449,6 @@ void CaptainCheckInModule::LoadProfileFromDb(const std::string& uid) {
             it->second.username = dbProfile.username;
             it->second.lastCheckinDate = dbProfile.lastCheckinDate;
             it->second.continuousDays = dbProfile.continuousDays;
-            it->second.cumulativeDays = dbProfile.cumulativeDays;
             it->second.lastDanmuTimestamp = dbProfile.lastDanmuTimestamp;
             it->second.keywords = dbProfile.keywords;
             it->second.danmuHistory = dbProfile.danmuHistory;
@@ -475,7 +462,6 @@ void CaptainCheckInModule::SaveProfileToDb(const UserProfile& profile) {
     dbProfile.username = profile.username;
     dbProfile.lastCheckinDate = profile.lastCheckinDate;
     dbProfile.continuousDays = profile.continuousDays;
-    dbProfile.cumulativeDays = profile.cumulativeDays;
     dbProfile.lastDanmuTimestamp = profile.lastDanmuTimestamp;
     dbProfile.createdAt = profile.createdAt;
     dbProfile.keywords = profile.keywords;
@@ -491,7 +477,6 @@ void CaptainCheckInModule::SaveProfileAsync(const UserProfile& profile) {
         dbProfile.username = profileCopy.username;
         dbProfile.lastCheckinDate = profileCopy.lastCheckinDate;
         dbProfile.continuousDays = profileCopy.continuousDays;
-        dbProfile.cumulativeDays = profileCopy.cumulativeDays;
         dbProfile.lastDanmuTimestamp = profileCopy.lastDanmuTimestamp;
         dbProfile.createdAt = profileCopy.createdAt;
         dbProfile.keywords = profileCopy.keywords;
@@ -509,7 +494,6 @@ void CaptainCheckInModule::LoadProfileAsync(const std::string& uid, std::functio
             profile.username = dbProfile.username;
             profile.lastCheckinDate = dbProfile.lastCheckinDate;
             profile.continuousDays = dbProfile.continuousDays;
-            profile.cumulativeDays = dbProfile.cumulativeDays;
             profile.lastDanmuTimestamp = dbProfile.lastDanmuTimestamp;
             profile.createdAt = dbProfile.createdAt;
             profile.keywords = dbProfile.keywords;
@@ -540,18 +524,22 @@ void CaptainCheckInModule::GenerateCheckinAnswerAsync(const CheckinEvent& event,
 AnswerResult CaptainCheckInModule::GenerateCheckinAnswerSync(const CheckinEvent& event, UserProfile* profile) {
     AnswerResult result;
 
-    if (!profile) {
+    UserProfile profileCopy;
+    const UserProfile* profilePtr = profile;
+
+    if (!profilePtr) {
         lock_guard<std::mutex> lock(profilesLock_);
         auto it = profiles_.find(event.uid);
         if (it != profiles_.end()) {
-            profile = &it->second;
+            profileCopy = it->second;
+            profilePtr = &profileCopy;
         }
     }
 
     if (!aiProviderJson_.empty()) {
         auto provider = AIChatProviderFactory::Create(aiProviderJson_);
         if (provider && provider->IsAvailable()) {
-            std::string prompt = BuildPrompt(event, profile);
+            std::string prompt = BuildPrompt(event, profilePtr);
             std::string aiResponse;
             if (provider->CallAPI(prompt, aiResponse)) {
                 result.success = true;
@@ -628,18 +616,23 @@ std::string CaptainCheckInModule::BuildPrompt(const CheckinEvent& event, const U
     }
 
     std::ostringstream oss;
-    oss << "用户" << event.username << "是一位舰长，连续第" << event.continuousDays << "天打卡，累计打卡" << event.cumulativeDays << "天" << lastCheckinInfo << "。\n"
+    oss << "用户" << event.username << "是一位舰长，连续第" << event.continuousDays << "天打卡" << lastCheckinInfo << "。\n"
         << "他的发言习惯包含：" << keywords << "\n"
         << "最近发言：" << recentMessages << "\n"
-        << "请在回复中明确提到用户" << event.username << "的姓名，用轻松友好且有点皮的语气回复他的打卡，控制在30字以内。\n"
+        << "请在回复中明确提到用户" << event.username << "的姓名，用轻松友好且有点皮的语气回复他的打卡，控制在20字以内。\n"
         << "回复内容需要适合TTS语音播报，避免生僻字和复杂句式。";
     return oss.str();
 }
 
 std::string CaptainCheckInModule::GetFallbackAnswer(const CheckinEvent& event) {
-    std::ostringstream oss;
-    oss << event.username << "连续第" << event.continuousDays << "天打卡！累计" << event.cumulativeDays << "天";
-    return oss.str();
+    if (event.continuousDays <= 1) {
+        return event.username + "打卡成功！";
+    }
+    else {
+        std::ostringstream oss;
+        oss << event.username << "连续第" << event.continuousDays << "天打卡！";
+        return oss.str();
+    }
 }
 
 std::string CaptainCheckInModule::GenerateAIAnswer(const CheckinEvent& event, const UserProfile* profile) {
@@ -653,23 +646,24 @@ std::string CaptainCheckInModule::GenerateAIAnswer(const CheckinEvent& event, co
     return GetFallbackAnswer(event);
 }
 
-const UserProfile* CaptainCheckInModule::GetUserProfile(const std::string& uid) const {
+bool CaptainCheckInModule::GetUserProfile(const std::string& uid, UserProfile& outProfile) const {
     lock_guard<std::mutex> lock(profilesLock_);
     auto it = profiles_.find(uid);
     if (it != profiles_.end()) {
-        return &it->second;
+        outProfile = it->second;
+        return true;
     }
-    return nullptr;
+    return false;
 }
 
 std::vector<std::string> CaptainCheckInModule::GetUserTopKeywords(const std::string& uid) const {
     std::vector<std::string> result;
-    auto profile = GetUserProfile(uid);
-    if (!profile) return result;
+    UserProfile profile;
+    if (!GetUserProfile(uid, profile)) return result;
 
-    int count = (std::min)(10, (int)profile->keywords.size());
+    int count = (std::min)(10, (int)profile.keywords.size());
     for (int i = 0; i < count; ++i) {
-        result.push_back(profile->keywords[i].word);
+        result.push_back(profile.keywords[i].word);
     }
     return result;
 }

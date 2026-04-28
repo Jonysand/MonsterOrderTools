@@ -128,6 +128,13 @@ namespace MonsterOrderWindows
             set { _mimoVoice = value; OnPropertyChanged(); }
         }
 
+        private string _mimoStyle = "";
+        public string MimoStyle
+        {
+            get => _mimoStyle;
+            set { _mimoStyle = value; OnPropertyChanged(); }
+        }
+
         private string _minimaxVoiceId = "female-tianmei";
         public string MinimaxVoiceId
         {
@@ -201,6 +208,7 @@ namespace MonsterOrderWindows
             MimoApiKey = config.MIMO_API_KEY ?? "";
             MinimaxApiKey = config.MINIMAX_API_KEY ?? "";
             MimoVoice = config.MIMO_VOICE ?? "mimo_default";
+            MimoStyle = config.MIMO_STYLE ?? "";
             MinimaxVoiceId = config.MINIMAX_VOICE_ID ?? "female-tianmei";
             MinimaxSpeed = config.MINIMAX_SPEED;
             TopPosX = config.TopPos.X;
@@ -228,6 +236,7 @@ namespace MonsterOrderWindows
             config.MIMO_API_KEY = MimoApiKey;
             config.MINIMAX_API_KEY = MinimaxApiKey;
             config.MIMO_VOICE = MimoVoice;
+            config.MIMO_STYLE = MimoStyle;
             config.MINIMAX_VOICE_ID = MinimaxVoiceId;
             config.MINIMAX_SPEED = MinimaxSpeed;
             config.TopPos = new System.Windows.Point(TopPosX, TopPosY);

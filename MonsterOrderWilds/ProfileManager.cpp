@@ -1,11 +1,12 @@
 #include "framework.h"
 #include "ProfileManager.h"
 #include "WriteLog.h"
+#include "DateUtils.h"
 #include <mutex>
 #include <chrono>
 #include <sstream>
-#include <fstream>
 #include <iomanip>
+#include <limits>
 #include <sys/stat.h>
 
 #ifdef _WIN32
@@ -101,7 +102,6 @@ bool ProfileManager::Init() {
         "username TEXT NOT NULL,"
         "last_checkin_date INTEGER DEFAULT 0,"
         "continuous_days INTEGER DEFAULT 0,"
-        "cumulative_days INTEGER DEFAULT 0,"
         "last_danmu_timestamp INTEGER DEFAULT 0,"
         "created_at INTEGER DEFAULT 0,"
         "updated_at INTEGER DEFAULT 0,"
@@ -136,52 +136,161 @@ bool ProfileManager::Init() {
         return false;
     }
 
-    storage_ = (void*)db;
+    const char* createDailyLikesSql =
+        "CREATE TABLE IF NOT EXISTS user_daily_likes ("
+        "uid TEXT NOT NULL,"
+        "like_date INTEGER NOT NULL,"
+        "total_likes INTEGER DEFAULT 0,"
+        "PRIMARY KEY (uid, like_date)"
+        ")";
 
-    const char* alterSql = "ALTER TABLE user_profiles ADD COLUMN cumulative_days INTEGER DEFAULT 0";
-    sqlite3_exec(db, alterSql, nullptr, nullptr, nullptr);
-
-    const char* migrateSql = "UPDATE user_profiles SET cumulative_days = continuous_days WHERE cumulative_days = 0 AND continuous_days > 0";
-    char* migrateErr = nullptr;
-    if (sqlite3_exec(db, migrateSql, nullptr, nullptr, &migrateErr) != SQLITE_OK) {
-        LOG_WARNING(TEXT("ProfileManager: Failed to migrate cumulative_days: %hs"), migrateErr);
-        sqlite3_free(migrateErr);
+    result = sqlite3_exec(db, createDailyLikesSql, nullptr, nullptr, &errMsg);
+    if (result != SQLITE_OK) {
+        LOG_ERROR(TEXT("ProfileManager: Failed to create user_daily_likes table: %hs"), errMsg);
+        sqlite3_free(errMsg);
+        sqlite3_close(db);
+        return false;
     }
+
+    const char* createLikeStreaksSql =
+        "CREATE TABLE IF NOT EXISTS user_like_streaks ("
+        "uid TEXT PRIMARY KEY,"
+        "current_streak INTEGER DEFAULT 0,"
+        "last_like_date INTEGER DEFAULT 0,"
+        "streak_reward_issued INTEGER DEFAULT 0"
+        ")";
+
+    result = sqlite3_exec(db, createLikeStreaksSql, nullptr, nullptr, &errMsg);
+    if (result != SQLITE_OK) {
+        LOG_ERROR(TEXT("ProfileManager: Failed to create user_like_streaks table: %hs"), errMsg);
+        sqlite3_free(errMsg);
+        sqlite3_close(db);
+        return false;
+    }
+
+    const char* createRetroactiveCardsSql =
+        "CREATE TABLE IF NOT EXISTS retroactive_cards ("
+        "uid TEXT PRIMARY KEY,"
+        "card_count INTEGER DEFAULT 0,"
+        "total_earned INTEGER DEFAULT 0,"
+        "monthly_first_claimed INTEGER DEFAULT 0,"
+        "last_earned_date INTEGER DEFAULT 0"
+        ")";
+
+    result = sqlite3_exec(db, createRetroactiveCardsSql, nullptr, nullptr, &errMsg);
+    if (result != SQLITE_OK) {
+        LOG_ERROR(TEXT("ProfileManager: Failed to create retroactive_cards table: %hs"), errMsg);
+        sqlite3_free(errMsg);
+        sqlite3_close(db);
+        return false;
+    }
+
+    storage_ = (void*)db;
 
     LOG_INFO(TEXT("ProfileManager::Init success"));
     return true;
+}
+
+bool ProfileManager::AddDailyLike(const std::string& uid, int32_t likeDate, int32_t likeCount, int32_t& outTotalLikes) {
+    if (!storage_) return false;
+    if (likeCount <= 0) return false;
+
+    sqlite3* db = (sqlite3*)storage_;
+
+    // 使用事务保证原子性
+    if (sqlite3_exec(db, "BEGIN IMMEDIATE", nullptr, nullptr, nullptr) != SQLITE_OK) {
+        return false;
+    }
+
+    sqlite3_stmt* stmt = nullptr;
+
+    const char* updateSql = "UPDATE user_daily_likes SET total_likes = total_likes + ? WHERE uid = ? AND like_date = ?";
+    if (sqlite3_prepare_v2(db, updateSql, -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_int(stmt, 1, likeCount);
+        sqlite3_bind_text(stmt, 2, uid.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_int(stmt, 3, likeDate);
+
+        if (sqlite3_step(stmt) == SQLITE_DONE) {
+            int changes = sqlite3_changes(db);
+            sqlite3_finalize(stmt);
+
+            if (changes > 0) {
+                const char* selectSql = "SELECT total_likes FROM user_daily_likes WHERE uid = ? AND like_date = ?";
+                if (sqlite3_prepare_v2(db, selectSql, -1, &stmt, nullptr) == SQLITE_OK) {
+                    sqlite3_bind_text(stmt, 1, uid.c_str(), -1, SQLITE_TRANSIENT);
+                    sqlite3_bind_int(stmt, 2, likeDate);
+                    if (sqlite3_step(stmt) == SQLITE_ROW) {
+                        outTotalLikes = sqlite3_column_int(stmt, 0);
+                    } else {
+                        LOG_ERROR(TEXT("ProfileManager: AddDailyLike SELECT failed after UPDATE: %hs"), sqlite3_errmsg(db));
+                        sqlite3_finalize(stmt);
+                        sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+                        return false;
+                    }
+                    sqlite3_finalize(stmt);
+                    if (sqlite3_exec(db, "COMMIT", nullptr, nullptr, nullptr) != SQLITE_OK) {
+                        LOG_ERROR(TEXT("ProfileManager: AddDailyLike COMMIT failed: %hs"), sqlite3_errmsg(db));
+                        return false;
+                    }
+                    return true;
+                }
+            } else {
+                const char* insertSql = "INSERT INTO user_daily_likes (uid, like_date, total_likes) VALUES (?, ?, ?)";
+                if (sqlite3_prepare_v2(db, insertSql, -1, &stmt, nullptr) == SQLITE_OK) {
+                    sqlite3_bind_text(stmt, 1, uid.c_str(), -1, SQLITE_TRANSIENT);
+                    sqlite3_bind_int(stmt, 2, likeDate);
+                    sqlite3_bind_int(stmt, 3, likeCount);
+                    if (sqlite3_step(stmt) == SQLITE_DONE) {
+                        outTotalLikes = likeCount;
+                        sqlite3_finalize(stmt);
+                        if (sqlite3_exec(db, "COMMIT", nullptr, nullptr, nullptr) != SQLITE_OK) {
+                            LOG_ERROR(TEXT("ProfileManager: AddDailyLike COMMIT failed: %hs"), sqlite3_errmsg(db));
+                            return false;
+                        }
+                        return true;
+                    }
+                    sqlite3_finalize(stmt);
+                }
+            }
+        } else {
+            sqlite3_finalize(stmt);
+        }
+    }
+
+    sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+    return false;
 }
 
 bool ProfileManager::LoadProfileFromDb(const std::string& uid, UserProfileData& outProfile) {
     if (!storage_) return false;
 
     sqlite3* db = (sqlite3*)storage_;
+    const char* sql = "SELECT uid, username, last_checkin_date, continuous_days, last_danmu_timestamp, created_at, updated_at, keywords_json, danmu_history_json FROM user_profiles WHERE uid = ?";
+
     sqlite3_stmt* stmt = nullptr;
-    const char* sql = "SELECT uid, username, last_checkin_date, continuous_days, cumulative_days, last_danmu_timestamp, created_at, updated_at, keywords_json, danmu_history_json FROM user_profiles WHERE uid = ?";
-    
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
         LOG_ERROR(TEXT("ProfileManager: Failed to prepare select statement: %hs"), sqlite3_errmsg(db));
         return false;
     }
-    
+
     sqlite3_bind_text(stmt, 1, uid.c_str(), -1, SQLITE_TRANSIENT);
 
     if (sqlite3_step(stmt) == SQLITE_ROW) {
         outProfile.uid = (const char*)sqlite3_column_text(stmt, 0);
-        outProfile.username = (const char*)sqlite3_column_text(stmt, 1);
+        const char* rawUsername = (const char*)sqlite3_column_text(stmt, 1);
+        outProfile.username = rawUsername ? rawUsername : "";
         outProfile.lastCheckinDate = sqlite3_column_int(stmt, 2);
         outProfile.continuousDays = sqlite3_column_int(stmt, 3);
-        outProfile.cumulativeDays = sqlite3_column_int(stmt, 4);
-        outProfile.lastDanmuTimestamp = sqlite3_column_int64(stmt, 5);
-        outProfile.createdAt = sqlite3_column_int64(stmt, 6);
-        outProfile.updatedAt = sqlite3_column_int64(stmt, 7);
+        outProfile.lastDanmuTimestamp = sqlite3_column_int64(stmt, 4);
+        outProfile.createdAt = sqlite3_column_int64(stmt, 5);
+        outProfile.updatedAt = sqlite3_column_int64(stmt, 6);
 
-        const char* keywordsJson = (const char*)sqlite3_column_text(stmt, 8);
+        const char* keywordsJson = (const char*)sqlite3_column_text(stmt, 7);
         if (keywordsJson) {
             outProfile.keywords = JsonToKeywords(keywordsJson);
         }
 
-        const char* danmuHistoryJson = (const char*)sqlite3_column_text(stmt, 9);
+        const char* danmuHistoryJson = (const char*)sqlite3_column_text(stmt, 8);
         if (danmuHistoryJson) {
             outProfile.danmuHistory = JsonToDanmuHistory(danmuHistoryJson);
         }
@@ -199,7 +308,7 @@ void ProfileManager::SaveProfileToDb(const UserProfileData& profile) {
 
     sqlite3* db = (sqlite3*)storage_;
     sqlite3_stmt* stmt = nullptr;
-    const char* sql = "INSERT OR REPLACE INTO user_profiles (uid, username, last_checkin_date, continuous_days, cumulative_days, last_danmu_timestamp, created_at, updated_at, keywords_json, danmu_history_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    const char* sql = "INSERT OR REPLACE INTO user_profiles (uid, username, last_checkin_date, continuous_days, last_danmu_timestamp, created_at, updated_at, keywords_json, danmu_history_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
     
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
         LOG_ERROR(TEXT("ProfileManager: Failed to prepare insert statement: %hs"), sqlite3_errmsg(db));
@@ -210,12 +319,11 @@ void ProfileManager::SaveProfileToDb(const UserProfileData& profile) {
     sqlite3_bind_text(stmt, 2, profile.username.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_int(stmt, 3, profile.lastCheckinDate);
     sqlite3_bind_int(stmt, 4, profile.continuousDays);
-    sqlite3_bind_int(stmt, 5, profile.cumulativeDays);
-    sqlite3_bind_int64(stmt, 6, profile.lastDanmuTimestamp);
-    sqlite3_bind_int64(stmt, 7, profile.createdAt);
-    sqlite3_bind_int64(stmt, 8, GetCurrentTimestamp());
-    sqlite3_bind_text(stmt, 9, KeywordsToJson(profile.keywords).c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 10, DanmuHistoryToJson(profile.danmuHistory).c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int64(stmt, 5, profile.lastDanmuTimestamp);
+    sqlite3_bind_int64(stmt, 6, profile.createdAt);
+    sqlite3_bind_int64(stmt, 7, GetCurrentTimestamp());
+    sqlite3_bind_text(stmt, 8, KeywordsToJson(profile.keywords).c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 9, DanmuHistoryToJson(profile.danmuHistory).c_str(), -1, SQLITE_TRANSIENT);
     
     if (sqlite3_step(stmt) != SQLITE_DONE) {
         LOG_ERROR(TEXT("ProfileManager: Failed to execute insert: %hs"), sqlite3_errmsg(db));
@@ -308,14 +416,15 @@ std::vector<std::pair<int64_t, std::string>> ProfileManager::JsonToDanmuHistory(
 }
 
 void ProfileManager::SaveProfile(const UserProfileData& profile) {
-    std::lock_guard<std::mutex> lock(profilesLock_);
+    std::lock_guard<std::recursive_mutex> lock(profilesLock_);
     profiles_[profile.uid] = profile;
+    EvictOldestProfileIfNeeded();
     SaveProfileToDb(profile);
     LOG_INFO(TEXT("ProfileManager: Saved profile for uid=%hs"), profile.uid.c_str());
 }
 
 bool ProfileManager::LoadProfile(const std::string& uid, UserProfileData& outProfile) {
-    std::lock_guard<std::mutex> lock(profilesLock_);
+    std::lock_guard<std::recursive_mutex> lock(profilesLock_);
 
     auto it = profiles_.find(uid);
     if (it != profiles_.end()) {
@@ -325,6 +434,7 @@ bool ProfileManager::LoadProfile(const std::string& uid, UserProfileData& outPro
 
     if (LoadProfileFromDb(uid, outProfile)) {
         profiles_[uid] = outProfile;
+        EvictOldestProfileIfNeeded();
         return true;
     }
 
@@ -332,12 +442,12 @@ bool ProfileManager::LoadProfile(const std::string& uid, UserProfileData& outPro
 }
 
 void ProfileManager::DeleteProfile(const std::string& uid) {
-    std::lock_guard<std::mutex> lock(profilesLock_);
+    std::lock_guard<std::recursive_mutex> lock(profilesLock_);
     profiles_.erase(uid);
     if (storage_) {
         sqlite3* db = (sqlite3*)storage_;
-        sqlite3_stmt* stmt = nullptr;
         const char* sql = "DELETE FROM user_profiles WHERE uid = ?";
+        sqlite3_stmt* stmt = nullptr;
         if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
             sqlite3_bind_text(stmt, 1, uid.c_str(), -1, SQLITE_TRANSIENT);
             sqlite3_step(stmt);
@@ -348,7 +458,7 @@ void ProfileManager::DeleteProfile(const std::string& uid) {
 }
 
 void ProfileManager::RecordCheckin(const std::string& uid, const std::string& username, int32_t checkinDate) {
-    std::lock_guard<std::mutex> lock(profilesLock_);
+    std::lock_guard<std::recursive_mutex> lock(profilesLock_);
 
     int32_t continuousDays = CalculateContinuousDays(uid, checkinDate);
 
@@ -361,26 +471,24 @@ void ProfileManager::RecordCheckin(const std::string& uid, const std::string& us
         profile.uid = uid;
         profile.username = username;
         profile.createdAt = GetCurrentTimestamp();
+        profile.updatedAt = GetCurrentTimestamp();
     }
-    int32_t oldLastCheckinDate = profile.lastCheckinDate;
     profile.lastCheckinDate = checkinDate;
     profile.continuousDays = continuousDays;
-    
-    if (oldLastCheckinDate != checkinDate) {
-        if (profile.cumulativeDays > 0) {
-            profile.cumulativeDays += 1;
-        } else {
-            profile.cumulativeDays = 1;
-        }
-    }
 
     bool dbSuccess = true;
     if (storage_) {
         sqlite3* db = (sqlite3*)storage_;
-        
+
+        // 开始事务
+        if (sqlite3_exec(db, "BEGIN IMMEDIATE", nullptr, nullptr, nullptr) != SQLITE_OK) {
+            LOG_ERROR(TEXT("ProfileManager: RecordCheckin BEGIN failed: %hs"), sqlite3_errmsg(db));
+            return;
+        }
+
         sqlite3_stmt* stmt = nullptr;
         const char* sql = "INSERT INTO checkin_records (uid, checkin_date, created_at, username) VALUES (?, ?, ?, ?) ON CONFLICT(uid, checkin_date) DO UPDATE SET created_at = excluded.created_at, username = excluded.username WHERE checkin_records.created_at != excluded.created_at";
-        
+
         if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK) {
             sqlite3_bind_text(stmt, 1, uid.c_str(), -1, SQLITE_TRANSIENT);
             sqlite3_bind_int(stmt, 2, checkinDate);
@@ -400,6 +508,15 @@ void ProfileManager::RecordCheckin(const std::string& uid, const std::string& us
         if (dbSuccess) {
             SaveProfileToDb(profile);
             profiles_[uid] = profile;
+            EvictOldestProfileIfNeeded();
+            if (sqlite3_exec(db, "COMMIT", nullptr, nullptr, nullptr) != SQLITE_OK) {
+                LOG_ERROR(TEXT("ProfileManager: RecordCheckin COMMIT failed: %hs"), sqlite3_errmsg(db));
+                dbSuccess = false;
+            }
+        }
+
+        if (!dbSuccess) {
+            sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
         }
     }
 
@@ -412,7 +529,7 @@ void ProfileManager::RecordCheckinAsync(const std::string& uid, const std::strin
         UserProfileData profile;
         int64_t timestamp = GetCurrentTimestamp();
         {
-            std::lock_guard<std::mutex> lock(self->profilesLock_);
+            std::lock_guard<std::recursive_mutex> lock(self->profilesLock_);
             auto it = self->profiles_.find(uid);
             if (it != self->profiles_.end()) {
                 profile = it->second;
@@ -420,19 +537,11 @@ void ProfileManager::RecordCheckinAsync(const std::string& uid, const std::strin
                 profile.uid = uid;
                 profile.username = username;
                 profile.createdAt = timestamp;
+                profile.updatedAt = timestamp;
             }
         }
-        int32_t oldLastCheckinDate = profile.lastCheckinDate;
         profile.lastCheckinDate = checkinDate;
         profile.continuousDays = continuousDays;
-        
-        if (oldLastCheckinDate != checkinDate) {
-            if (profile.cumulativeDays > 0) {
-                profile.cumulativeDays += 1;
-            } else {
-                profile.cumulativeDays = 1;
-            }
-        }
 
         bool dbSuccess = true;
         if (self->storage_) {
@@ -448,11 +557,12 @@ void ProfileManager::RecordCheckinAsync(const std::string& uid, const std::strin
                 for (int32_t retry = 0; retry < CHECKIN_RETRY_MAX; ++retry) {
                     self->SaveProfileToDb(profile);
                     {
-                        std::lock_guard<std::mutex> lock(self->profilesLock_);
+                        std::lock_guard<std::recursive_mutex> lock(self->profilesLock_);
                         self->profiles_[uid] = profile;
+                        self->EvictOldestProfileIfNeeded();
                     }
                     {
-                        std::lock_guard<std::mutex> lock(self->profilesLock_);
+                        std::lock_guard<std::recursive_mutex> lock(self->profilesLock_);
                         auto it = self->profiles_.find(uid);
                         if (it != self->profiles_.end() && it->second.lastCheckinDate == checkinDate) {
                             break;
@@ -480,28 +590,10 @@ void ProfileManager::RecordCheckinAsync(const std::string& uid, const std::strin
     }).detach();
 }
 
-namespace {
-    bool IsLeapYear(int32_t year) {
-        return (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);
-    }
-
-    int32_t GetDaysInMonth(int32_t year, int32_t month) {
-        switch (month) {
-            case 1: case 3: case 5: case 7: case 8: case 10: case 12:
-                return 31;
-            case 4: case 6: case 9: case 11:
-                return 30;
-            case 2:
-                return IsLeapYear(year) ? 29 : 28;
-            default:
-                return 30;
-        }
-    }
-}
 
 bool ProfileManager::GetLastCheckinRecordFromDb(const std::string& uid, int32_t& outLastDate, int32_t& outContinuousDays) {
     {
-        std::lock_guard<std::mutex> lock(profilesLock_);
+        std::lock_guard<std::recursive_mutex> lock(profilesLock_);
         auto it = profiles_.find(uid);
         if (it != profiles_.end()) {
             outLastDate = it->second.lastCheckinDate;
@@ -515,13 +607,13 @@ bool ProfileManager::GetLastCheckinRecordFromDb(const std::string& uid, int32_t&
     }
 
     sqlite3* db = (sqlite3*)storage_;
-    sqlite3_stmt* stmt = nullptr;
     const char* sql = "SELECT last_checkin_date, continuous_days FROM user_profiles WHERE uid = ?";
-    
+
+    sqlite3_stmt* stmt = nullptr;
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
         return false;
     }
-    
+
     sqlite3_bind_text(stmt, 1, uid.c_str(), -1, SQLITE_TRANSIENT);
 
     if (sqlite3_step(stmt) == SQLITE_ROW) {
@@ -530,7 +622,7 @@ bool ProfileManager::GetLastCheckinRecordFromDb(const std::string& uid, int32_t&
         sqlite3_finalize(stmt);
 
         {
-            std::lock_guard<std::mutex> lock(profilesLock_);
+            std::lock_guard<std::recursive_mutex> lock(profilesLock_);
             auto it = profiles_.find(uid);
             if (it != profiles_.end()) {
                 it->second.lastCheckinDate = outLastDate;
@@ -540,7 +632,9 @@ bool ProfileManager::GetLastCheckinRecordFromDb(const std::string& uid, int32_t&
                 newProfile.uid = uid;
                 newProfile.lastCheckinDate = outLastDate;
                 newProfile.continuousDays = outContinuousDays;
+                newProfile.updatedAt = GetCurrentTimestamp();
                 profiles_[uid] = newProfile;
+                EvictOldestProfileIfNeeded();
             }
         }
 
@@ -580,7 +674,7 @@ int32_t ProfileManager::CalculateContinuousDays(const std::string& uid, int32_t 
         }
     }
     else if (year == lastYear && month == lastMonth + 1) {
-        int32_t lastMonthDays = GetDaysInMonth(lastYear, lastMonth);
+        int32_t lastMonthDays = DateUtils::GetDaysInMonth(lastYear, lastMonth);
         if (day == 1 && lastDay == lastMonthDays) {
             return lastContinuousDays + 1;
         }
@@ -591,19 +685,13 @@ int32_t ProfileManager::CalculateContinuousDays(const std::string& uid, int32_t 
                 return lastContinuousDays + 1;
             }
         }
-        else if (month == 2 && lastMonth == 1) {
-            int32_t lastMonthDays = GetDaysInMonth(lastYear, lastMonth);
-            if (day == 1 && lastDay == lastMonthDays) {
-                return lastContinuousDays + 1;
-            }
-        }
     }
 
     return 1;
 }
 
 void ProfileManager::AddKeyword(const std::string& uid, const std::string& keyword) {
-    std::lock_guard<std::mutex> lock(profilesLock_);
+    std::lock_guard<std::recursive_mutex> lock(profilesLock_);
 
     auto it = profiles_.find(uid);
     if (it == profiles_.end()) return;
@@ -632,7 +720,7 @@ void ProfileManager::AddKeyword(const std::string& uid, const std::string& keywo
 }
 
 void ProfileManager::AddDanmuHistory(const std::string& uid, int64_t timestamp, const std::string& content) {
-    std::lock_guard<std::mutex> lock(profilesLock_);
+    std::lock_guard<std::recursive_mutex> lock(profilesLock_);
 
     auto it = profiles_.find(uid);
     if (it == profiles_.end()) return;
@@ -650,10 +738,9 @@ std::string ProfileManager::SerializeToJson(const UserProfileData& profile) {
     std::ostringstream oss;
     oss << "{";
     oss << "\"uid\":\"" << profile.uid << "\",";
-    oss << "\"username\":\"" << profile.username << "\",";
+    oss << "\"username\":\"" << EscapeJsonString(profile.username) << "\",";
     oss << "\"lastCheckinDate\":" << profile.lastCheckinDate << ",";
     oss << "\"continuousDays\":" << profile.continuousDays << ",";
-    oss << "\"cumulativeDays\":" << profile.cumulativeDays << ",";
     oss << "\"lastDanmuTimestamp\":" << profile.lastDanmuTimestamp << ",";
     oss << "\"createdAt\":" << profile.createdAt << ",";
     oss << "\"keywords\":" << KeywordsToJson(profile.keywords) << ",";
@@ -671,7 +758,6 @@ bool ProfileManager::DeserializeFromJson(const std::string& json, UserProfileDat
         outProfile.username = j.value("username", "");
         outProfile.lastCheckinDate = j.value("lastCheckinDate", 0);
         outProfile.continuousDays = j.value("continuousDays", 0);
-        outProfile.cumulativeDays = j.value("cumulativeDays", 0);
         outProfile.lastDanmuTimestamp = j.value("lastDanmuTimestamp", 0);
         outProfile.createdAt = j.value("createdAt", 0);
 
@@ -690,97 +776,543 @@ bool ProfileManager::DeserializeFromJson(const std::string& json, UserProfileDat
     }
 }
 
-void ProfileManager::GetAllProfilesSortedByCheckinDays(std::vector<UserProfileData>& outProfiles) {
-    std::lock_guard<std::mutex> lock(profilesLock_);
-    outProfiles.clear();
+void ProfileManager::EvictOldestProfileIfNeeded() {
+    if (profiles_.size() <= 1000) return;
 
-    if (!storage_) {
-        return;
+    auto oldest = profiles_.end();
+    int64_t oldestTime = (std::numeric_limits<int64_t>::max)();
+    for (auto it = profiles_.begin(); it != profiles_.end(); ++it) {
+        if (it->second.updatedAt == 0) continue; // skip profiles with uninitialized updatedAt
+        if (it->second.updatedAt < oldestTime) {
+            oldestTime = it->second.updatedAt;
+            oldest = it;
+        }
     }
+    if (oldest != profiles_.end()) {
+        profiles_.erase(oldest);
+    }
+}
+
+bool ProfileManager::GetDailyLike(const std::string& uid, int32_t likeDate, DailyLikeData& outData) {
+    if (!storage_) return false;
 
     sqlite3* db = (sqlite3*)storage_;
     sqlite3_stmt* stmt = nullptr;
-    const char* sql = "SELECT uid, username, last_checkin_date, continuous_days, cumulative_days, last_danmu_timestamp, created_at, updated_at, keywords_json, danmu_history_json FROM user_profiles";
+    const char* sql = "SELECT uid, like_date, total_likes FROM user_daily_likes WHERE uid = ? AND like_date = ?";
 
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
-        LOG_ERROR(TEXT("ProfileManager: Failed to prepare select all profiles: %hs"), sqlite3_errmsg(db));
-        return;
-    }
-
-    while (sqlite3_step(stmt) == SQLITE_ROW) {
-        UserProfileData profile;
-        profile.uid = (const char*)sqlite3_column_text(stmt, 0);
-        profile.username = (const char*)sqlite3_column_text(stmt, 1);
-        profile.lastCheckinDate = sqlite3_column_int(stmt, 2);
-        profile.continuousDays = sqlite3_column_int(stmt, 3);
-        profile.cumulativeDays = sqlite3_column_int(stmt, 4);
-        profile.lastDanmuTimestamp = sqlite3_column_int64(stmt, 5);
-        profile.createdAt = sqlite3_column_int64(stmt, 6);
-        profile.updatedAt = sqlite3_column_int64(stmt, 7);
-
-        const char* keywordsJson = (const char*)sqlite3_column_text(stmt, 8);
-        if (keywordsJson) {
-            profile.keywords = JsonToKeywords(keywordsJson);
-        }
-
-        const char* danmuHistoryJson = (const char*)sqlite3_column_text(stmt, 9);
-        if (danmuHistoryJson) {
-            profile.danmuHistory = JsonToDanmuHistory(danmuHistoryJson);
-        }
-
-        outProfiles.push_back(profile);
-    }
-
-    sqlite3_finalize(stmt);
-
-    std::sort(outProfiles.begin(), outProfiles.end(),
-        [](const UserProfileData& a, const UserProfileData& b) {
-            return a.continuousDays > b.continuousDays;
-        });
-}
-
-bool ProfileManager::ExportCheckinRecordsToFile(const std::string& filePath) {
-    std::vector<UserProfileData> profiles;
-    GetAllProfilesSortedByCheckinDays(profiles);
-
-    std::ofstream ofs(filePath, std::ios::out | std::ios::binary);
-    if (!ofs) {
-        LOG_ERROR(TEXT("ProfileManager: Failed to open file for export: %hs"), filePath.c_str());
         return false;
     }
 
-    // Write UTF-8 BOM
-    unsigned char bom[] = { 0xEF, 0xBB, 0xBF };
-    ofs.write(reinterpret_cast<char*>(bom), 3);
+    sqlite3_bind_text(stmt, 1, uid.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 2, likeDate);
 
-    // Write header
-    ofs << "用户名\t连续打卡天数\t累计打卡天数\t最后打卡时间\n";
-
-    for (const auto& profile : profiles) {
-        std::string username = profile.username;
-        // Replace tabs in username with spaces to avoid format issues
-        for (char& c : username) {
-            if (c == '\t') c = ' ';
-        }
-
-        // Format lastCheckinDate (YYYYMMDD) to readable format (YYYY-MM-DD)
-        std::string lastCheckinStr = "无记录";
-        if (profile.lastCheckinDate > 0) {
-            int year = profile.lastCheckinDate / 10000;
-            int month = (profile.lastCheckinDate % 10000) / 100;
-            int day = profile.lastCheckinDate % 100;
-            char buf[32];
-            snprintf(buf, sizeof(buf), "%04d-%02d-%02d", year, month, day);
-            lastCheckinStr = buf;
-        }
-
-        ofs << username << "\t"
-            << profile.continuousDays << "天\t"
-            << profile.cumulativeDays << "天\t"
-            << lastCheckinStr << "\n";
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        outData.uid = (const char*)sqlite3_column_text(stmt, 0);
+        outData.likeDate = sqlite3_column_int(stmt, 1);
+        outData.totalLikes = sqlite3_column_int(stmt, 2);
+        sqlite3_finalize(stmt);
+        return true;
     }
 
-    ofs.close();
-    LOG_INFO(TEXT("ProfileManager: Exported %d checkin records to %hs"), profiles.size(), filePath.c_str());
+    sqlite3_finalize(stmt);
+    return false;
+}
+
+bool ProfileManager::LoadLikeStreak(const std::string& uid, LikeStreakData& outData) {
+    if (!storage_) return false;
+
+    sqlite3* db = (sqlite3*)storage_;
+    sqlite3_stmt* stmt = nullptr;
+    const char* sql = "SELECT uid, current_streak, last_like_date, streak_reward_issued FROM user_like_streaks WHERE uid = ?";
+
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        return false;
+    }
+
+    sqlite3_bind_text(stmt, 1, uid.c_str(), -1, SQLITE_TRANSIENT);
+
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        outData.uid = (const char*)sqlite3_column_text(stmt, 0);
+        outData.currentStreak = sqlite3_column_int(stmt, 1);
+        outData.lastLikeDate = sqlite3_column_int(stmt, 2);
+        outData.streakRewardIssued = sqlite3_column_int(stmt, 3);
+        sqlite3_finalize(stmt);
+        return true;
+    }
+
+    sqlite3_finalize(stmt);
+    outData.uid = uid;
+    outData.currentStreak = 0;
+    outData.lastLikeDate = 0;
+    outData.streakRewardIssued = 0;
     return true;
+}
+
+bool ProfileManager::SaveLikeStreak(const LikeStreakData& data) {
+    if (!storage_) return false;
+
+    sqlite3* db = (sqlite3*)storage_;
+    sqlite3_stmt* stmt = nullptr;
+    const char* sql = "INSERT OR REPLACE INTO user_like_streaks (uid, current_streak, last_like_date, streak_reward_issued) VALUES (?, ?, ?, ?)";
+
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        return false;
+    }
+
+    sqlite3_bind_text(stmt, 1, data.uid.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 2, data.currentStreak);
+    sqlite3_bind_int(stmt, 3, data.lastLikeDate);
+    sqlite3_bind_int(stmt, 4, data.streakRewardIssued);
+
+    bool success = sqlite3_step(stmt) == SQLITE_DONE;
+    sqlite3_finalize(stmt);
+    return success;
+}
+
+bool ProfileManager::LoadRetroactiveCards(const std::string& uid, RetroactiveCardData& outData) {
+    if (!storage_) return false;
+
+    sqlite3* db = (sqlite3*)storage_;
+    sqlite3_stmt* stmt = nullptr;
+    const char* sql = "SELECT uid, card_count, total_earned, monthly_first_claimed, last_earned_date FROM retroactive_cards WHERE uid = ?";
+
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        return false;
+    }
+
+    sqlite3_bind_text(stmt, 1, uid.c_str(), -1, SQLITE_TRANSIENT);
+
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        outData.uid = (const char*)sqlite3_column_text(stmt, 0);
+        outData.cardCount = sqlite3_column_int(stmt, 1);
+        outData.totalEarned = sqlite3_column_int(stmt, 2);
+        outData.monthlyFirstClaimed = sqlite3_column_int(stmt, 3);
+        outData.lastEarnedDate = sqlite3_column_int(stmt, 4);
+        sqlite3_finalize(stmt);
+        return true;
+    }
+
+    sqlite3_finalize(stmt);
+    outData.uid = uid;
+    outData.cardCount = 0;
+    outData.totalEarned = 0;
+    outData.monthlyFirstClaimed = 0;
+    outData.lastEarnedDate = 0;
+    return true;
+}
+
+bool ProfileManager::SaveRetroactiveCards(const RetroactiveCardData& data) {
+    if (!storage_) return false;
+
+    sqlite3* db = (sqlite3*)storage_;
+    sqlite3_stmt* stmt = nullptr;
+    const char* sql = "INSERT OR REPLACE INTO retroactive_cards (uid, card_count, total_earned, monthly_first_claimed, last_earned_date) VALUES (?, ?, ?, ?, ?)";
+
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        return false;
+    }
+
+    sqlite3_bind_text(stmt, 1, data.uid.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 2, data.cardCount);
+    sqlite3_bind_int(stmt, 3, data.totalEarned);
+    sqlite3_bind_int(stmt, 4, data.monthlyFirstClaimed);
+    sqlite3_bind_int(stmt, 5, data.lastEarnedDate);
+
+    bool success = sqlite3_step(stmt) == SQLITE_DONE;
+    sqlite3_finalize(stmt);
+    return success;
+}
+
+bool ProfileManager::DeductRetroactiveCard(const std::string& uid) {
+    if (!storage_) return false;
+
+    sqlite3* db = (sqlite3*)storage_;
+
+    if (sqlite3_exec(db, "BEGIN IMMEDIATE", nullptr, nullptr, nullptr) != SQLITE_OK) {
+        return false;
+    }
+
+    sqlite3_stmt* stmt = nullptr;
+    const char* selectSql = "SELECT card_count FROM retroactive_cards WHERE uid = ?";
+
+    if (sqlite3_prepare_v2(db, selectSql, -1, &stmt, nullptr) != SQLITE_OK) {
+        sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+        return false;
+    }
+
+    sqlite3_bind_text(stmt, 1, uid.c_str(), -1, SQLITE_TRANSIENT);
+
+    int cardCount = 0;
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        cardCount = sqlite3_column_int(stmt, 0);
+    }
+    sqlite3_finalize(stmt);
+
+    if (cardCount <= 0) {
+        sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+        return false;
+    }
+
+    const char* updateSql = "UPDATE retroactive_cards SET card_count = card_count - 1 WHERE uid = ?";
+    if (sqlite3_prepare_v2(db, updateSql, -1, &stmt, nullptr) != SQLITE_OK) {
+        sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+        return false;
+    }
+
+    sqlite3_bind_text(stmt, 1, uid.c_str(), -1, SQLITE_TRANSIENT);
+    bool success = sqlite3_step(stmt) == SQLITE_DONE;
+    sqlite3_finalize(stmt);
+
+    if (success) {
+        if (sqlite3_exec(db, "COMMIT", nullptr, nullptr, nullptr) != SQLITE_OK) {
+            LOG_ERROR(TEXT("ProfileManager: DeductRetroactiveCard COMMIT failed: %hs"), sqlite3_errmsg(db));
+            return false;
+        }
+        return true;
+    } else {
+        sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+        return false;
+    }
+}
+
+bool ProfileManager::AddRetroactiveCard(const std::string& uid, int32_t count) {
+    if (!storage_) return false;
+    if (count <= 0) return false;
+
+    sqlite3* db = (sqlite3*)storage_;
+
+    if (sqlite3_exec(db, "BEGIN IMMEDIATE", nullptr, nullptr, nullptr) != SQLITE_OK) {
+        return false;
+    }
+
+    sqlite3_stmt* stmt = nullptr;
+    const char* selectSql = "SELECT card_count FROM retroactive_cards WHERE uid = ?";
+
+    if (sqlite3_prepare_v2(db, selectSql, -1, &stmt, nullptr) != SQLITE_OK) {
+        sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+        return false;
+    }
+
+    sqlite3_bind_text(stmt, 1, uid.c_str(), -1, SQLITE_TRANSIENT);
+
+    bool exists = false;
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        exists = true;
+    }
+    sqlite3_finalize(stmt);
+
+    bool success = false;
+    if (exists) {
+        const char* updateSql = "UPDATE retroactive_cards SET card_count = card_count + ?, total_earned = total_earned + ? WHERE uid = ?";
+        if (sqlite3_prepare_v2(db, updateSql, -1, &stmt, nullptr) == SQLITE_OK) {
+            sqlite3_bind_int(stmt, 1, count);
+            sqlite3_bind_int(stmt, 2, count);
+            sqlite3_bind_text(stmt, 3, uid.c_str(), -1, SQLITE_TRANSIENT);
+            success = sqlite3_step(stmt) == SQLITE_DONE;
+            sqlite3_finalize(stmt);
+        }
+    } else {
+        const char* insertSql = "INSERT INTO retroactive_cards (uid, card_count, total_earned) VALUES (?, ?, ?)";
+        if (sqlite3_prepare_v2(db, insertSql, -1, &stmt, nullptr) == SQLITE_OK) {
+            sqlite3_bind_text(stmt, 1, uid.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_bind_int(stmt, 2, count);
+            sqlite3_bind_int(stmt, 3, count);
+            success = sqlite3_step(stmt) == SQLITE_DONE;
+            sqlite3_finalize(stmt);
+        }
+    }
+
+    if (success) {
+        if (sqlite3_exec(db, "COMMIT", nullptr, nullptr, nullptr) != SQLITE_OK) {
+            LOG_ERROR(TEXT("ProfileManager: AddRetroactiveCard COMMIT failed: %hs"), sqlite3_errmsg(db));
+            return false;
+        }
+        return true;
+    } else {
+        sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+        return false;
+    }
+}
+
+bool ProfileManager::IssueStreakReward(const std::string& uid, int32_t date) {
+    if (!storage_) return false;
+
+    sqlite3* db = (sqlite3*)storage_;
+    if (sqlite3_exec(db, "BEGIN IMMEDIATE", nullptr, nullptr, nullptr) != SQLITE_OK) {
+        return false;
+    }
+
+    sqlite3_stmt* stmt = nullptr;
+
+    // 原子性更新 streak_reward_issued 和补签卡数量，添加幂等保护
+    const char* updateSql = 
+        "UPDATE user_like_streaks SET streak_reward_issued = ? WHERE uid = ? AND streak_reward_issued != ?";
+    if (sqlite3_prepare_v2(db, updateSql, -1, &stmt, nullptr) != SQLITE_OK) {
+        sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+        return false;
+    }
+    sqlite3_bind_int(stmt, 1, date);
+    sqlite3_bind_text(stmt, 2, uid.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 3, date);
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        sqlite3_finalize(stmt);
+        sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+        return false;
+    }
+    sqlite3_finalize(stmt);
+
+    // 检查是否真正更新了记录（幂等性）
+    if (sqlite3_changes(db) == 0) {
+        sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+        return false;
+    }
+
+    // 增加补签卡
+    const char* cardSql = 
+        "UPDATE retroactive_cards SET card_count = card_count + 1, total_earned = total_earned + 1, last_earned_date = ? WHERE uid = ?";
+    if (sqlite3_prepare_v2(db, cardSql, -1, &stmt, nullptr) != SQLITE_OK) {
+        sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+        return false;
+    }
+    sqlite3_bind_int(stmt, 1, date);
+    sqlite3_bind_text(stmt, 2, uid.c_str(), -1, SQLITE_TRANSIENT);
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        sqlite3_finalize(stmt);
+        sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+        return false;
+    }
+    sqlite3_finalize(stmt);
+
+    if (sqlite3_exec(db, "COMMIT", nullptr, nullptr, nullptr) != SQLITE_OK) {
+        LOG_ERROR(TEXT("ProfileManager: IssueStreakReward COMMIT failed: %hs"), sqlite3_errmsg(db));
+        return false;
+    }
+    return true;
+}
+
+bool ProfileManager::IssueMonthlyFirstReward(const std::string& uid, int32_t date) {
+    if (!storage_) return false;
+
+    sqlite3* db = (sqlite3*)storage_;
+    if (sqlite3_exec(db, "BEGIN IMMEDIATE", nullptr, nullptr, nullptr) != SQLITE_OK) {
+        return false;
+    }
+
+    sqlite3_stmt* stmt = nullptr;
+
+    // 原子性更新 monthly_first_claimed 和补签卡数量，添加幂等保护
+    // 只有当 monthly_first_claimed 不是当前月时才更新
+    int32_t currentMonth = date / 100;
+    const char* updateSql = 
+        "UPDATE retroactive_cards SET card_count = card_count + 1, total_earned = total_earned + 1, monthly_first_claimed = ?, last_earned_date = ? WHERE uid = ? AND (monthly_first_claimed = 0 OR monthly_first_claimed / 100 != ?)";
+    if (sqlite3_prepare_v2(db, updateSql, -1, &stmt, nullptr) != SQLITE_OK) {
+        sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+        return false;
+    }
+    sqlite3_bind_int(stmt, 1, date);
+    sqlite3_bind_int(stmt, 2, date);
+    sqlite3_bind_text(stmt, 3, uid.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 4, currentMonth);
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        sqlite3_finalize(stmt);
+        sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+        return false;
+    }
+    sqlite3_finalize(stmt);
+
+    // 检查是否真正更新了记录（幂等性）
+    if (sqlite3_changes(db) == 0) {
+        sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+        return false;
+    }
+
+    if (sqlite3_exec(db, "COMMIT", nullptr, nullptr, nullptr) != SQLITE_OK) {
+        LOG_ERROR(TEXT("ProfileManager: IssueMonthlyFirstReward COMMIT failed: %hs"), sqlite3_errmsg(db));
+        return false;
+    }
+    return true;
+}
+
+bool ProfileManager::ExecuteRetroactiveCheckin(const std::string& uid, const std::string& username, int32_t targetDate, int32_t& outNewCardCount) {
+    outNewCardCount = 0;
+    if (!storage_) return false;
+
+    sqlite3* db = (sqlite3*)storage_;
+
+    // 开始事务
+    if (sqlite3_exec(db, "BEGIN IMMEDIATE", nullptr, nullptr, nullptr) != SQLITE_OK) {
+        return false;
+    }
+
+    sqlite3_stmt* stmt = nullptr;
+    bool success = false;
+
+    // 1. 检查并扣减补签卡
+    const char* selectSql = "SELECT card_count FROM retroactive_cards WHERE uid = ?";
+    if (sqlite3_prepare_v2(db, selectSql, -1, &stmt, nullptr) != SQLITE_OK) {
+        sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+        return false;
+    }
+
+    sqlite3_bind_text(stmt, 1, uid.c_str(), -1, SQLITE_TRANSIENT);
+    int cardCount = 0;
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        cardCount = sqlite3_column_int(stmt, 0);
+    }
+    sqlite3_finalize(stmt);
+
+    if (cardCount <= 0) {
+        sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+        return false;
+    }
+
+    const char* updateSql = "UPDATE retroactive_cards SET card_count = card_count - 1 WHERE uid = ?";
+    if (sqlite3_prepare_v2(db, updateSql, -1, &stmt, nullptr) != SQLITE_OK) {
+        sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+        return false;
+    }
+    sqlite3_bind_text(stmt, 1, uid.c_str(), -1, SQLITE_TRANSIENT);
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        sqlite3_finalize(stmt);
+        sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+        return false;
+    }
+    sqlite3_finalize(stmt);
+    outNewCardCount = cardCount - 1;
+
+    // 2. 插入补签记录
+    const char* insertSql = "INSERT OR REPLACE INTO checkin_records (uid, checkin_date, created_at, username) VALUES (?, ?, ?, ?)";
+    if (sqlite3_prepare_v2(db, insertSql, -1, &stmt, nullptr) != SQLITE_OK) {
+        sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+        outNewCardCount = 0;
+        return false;
+    }
+    sqlite3_bind_text(stmt, 1, uid.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 2, targetDate);
+    sqlite3_bind_int64(stmt, 3, GetCurrentTimestamp());
+    sqlite3_bind_text(stmt, 4, username.c_str(), -1, SQLITE_TRANSIENT);
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        sqlite3_finalize(stmt);
+        sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+        outNewCardCount = 0;
+        return false;
+    }
+    sqlite3_finalize(stmt);
+
+    // 3. 更新用户 profile
+    UserProfileData profile;
+    if (LoadProfileFromDb(uid, profile)) {
+        int32_t newContinuousDays = CalculateContinuousDays(uid, targetDate);
+        profile.continuousDays = newContinuousDays;
+        if (targetDate > profile.lastCheckinDate) {
+            profile.lastCheckinDate = targetDate;
+        }
+        profile.updatedAt = GetCurrentTimestamp();
+        SaveProfileToDb(profile);
+    }
+
+    // 提交事务
+    if (sqlite3_exec(db, "COMMIT", nullptr, nullptr, nullptr) != SQLITE_OK) {
+        LOG_ERROR(TEXT("ProfileManager: ExecuteRetroactiveCheckin COMMIT failed: %hs"), sqlite3_errmsg(db));
+        return false;
+    }
+    return true;
+}
+
+bool ProfileManager::InsertRetroactiveCheckin(const std::string& uid, const std::string& username, int32_t checkinDate) {
+    if (!storage_) return false;
+
+    sqlite3* db = (sqlite3*)storage_;
+    sqlite3_stmt* stmt = nullptr;
+    const char* sql = "INSERT OR REPLACE INTO checkin_records (uid, checkin_date, created_at, username) VALUES (?, ?, ?, ?)";
+
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        return false;
+    }
+
+    sqlite3_bind_text(stmt, 1, uid.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 2, checkinDate);
+    sqlite3_bind_int64(stmt, 3, GetCurrentTimestamp());
+    sqlite3_bind_text(stmt, 4, username.c_str(), -1, SQLITE_TRANSIENT);
+
+    bool success = sqlite3_step(stmt) == SQLITE_DONE;
+    sqlite3_finalize(stmt);
+    return success;
+}
+
+int32_t ProfileManager::FindLastMissingCheckinDate(const std::string& uid, int32_t currentDate) {
+    if (!storage_) return 0;
+
+    sqlite3* db = (sqlite3*)storage_;
+    sqlite3_stmt* stmt = nullptr;
+
+    const char* sql = "SELECT MAX(checkin_date) FROM checkin_records WHERE uid = ?";
+
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        return 0;
+    }
+
+    sqlite3_bind_text(stmt, 1, uid.c_str(), -1, SQLITE_TRANSIENT);
+
+    int32_t lastCheckinDate = 0;
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        lastCheckinDate = sqlite3_column_int(stmt, 0);
+    }
+    sqlite3_finalize(stmt);
+
+    if (lastCheckinDate == 0) {
+        return 0;
+    }
+
+    if (lastCheckinDate >= currentDate) {
+        return 0;
+    }
+
+    int32_t year = currentDate / 10000;
+    int32_t month = (currentDate % 10000) / 100;
+    int32_t day = currentDate % 100;
+
+    int32_t lastYear = lastCheckinDate / 10000;
+    int32_t lastMonth = (lastCheckinDate % 10000) / 100;
+    int32_t lastDay = lastCheckinDate % 100;
+
+    if (year == lastYear && month == lastMonth && day == lastDay + 1) {
+        return 0;
+    }
+    int32_t lastMonthDays = DateUtils::GetDaysInMonth(lastYear, lastMonth);
+    if (year == lastYear && month == lastMonth + 1 && day == 1 && lastDay == lastMonthDays) {
+        return 0;
+    }
+    if (year == lastYear + 1 && month == 1 && lastMonth == 12 && day == 1 && lastDay == 31) {
+        return 0;
+    }
+
+    int32_t missingDate = currentDate;
+    if (day > 1) {
+        missingDate = currentDate - 1;
+    } else {
+        int32_t prevMonth = month - 1;
+        int32_t prevYear = year;
+        if (prevMonth == 0) {
+            prevMonth = 12;
+            prevYear--;
+        }
+        int32_t prevMonthDays = DateUtils::GetDaysInMonth(prevYear, prevMonth);
+        missingDate = prevYear * 10000 + prevMonth * 100 + prevMonthDays;
+    }
+
+    const char* checkSql = "SELECT 1 FROM checkin_records WHERE uid = ? AND checkin_date = ?";
+    if (sqlite3_prepare_v2(db, checkSql, -1, &stmt, nullptr) == SQLITE_OK) {
+        sqlite3_bind_text(stmt, 1, uid.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_int(stmt, 2, missingDate);
+
+        if (sqlite3_step(stmt) == SQLITE_ROW) {
+            sqlite3_finalize(stmt);
+            return 0;
+        }
+        sqlite3_finalize(stmt);
+    }
+
+    return missingDate;
 }

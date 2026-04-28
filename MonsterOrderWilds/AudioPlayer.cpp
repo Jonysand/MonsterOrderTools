@@ -16,7 +16,7 @@ AudioPlayer::~AudioPlayer()
     Stop();
     CleanupTempFile();
 
-    // Cleanup entire TempAudio directory
+    // Cleanup entire TempAudio directory (including subdirectories)
     wchar_t exePath[MAX_PATH];
     GetModuleFileNameW(NULL, exePath, MAX_PATH);
     std::wstring exeDir = exePath;
@@ -26,21 +26,11 @@ AudioPlayer::~AudioPlayer()
     }
     std::wstring tempDir = exeDir + L"\\TempAudio";
 
-    // Delete all files in TempAudio
-    WIN32_FIND_DATAW findData;
-    HANDLE hFind = FindFirstFileW((tempDir + L"\\*.*").c_str(), &findData);
-    if (hFind != INVALID_HANDLE_VALUE) {
-        do {
-            if (!(findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
-                std::wstring filePath = tempDir + L"\\" + findData.cFileName;
-                DeleteFileW(filePath.c_str());
-            }
-        } while (FindNextFileW(hFind, &findData));
-        FindClose(hFind);
+    std::error_code ec;
+    std::filesystem::remove_all(tempDir, ec);
+    if (ec) {
+        LOG_WARNING(TEXT("AudioPlayer: Failed to remove TempAudio directory: %hs"), ec.message().c_str());
     }
-
-    // Remove directory
-    RemoveDirectoryW(tempDir.c_str());
 }
 
 bool AudioPlayer::Play(const std::vector<uint8_t>& audioData, const std::string& format)
@@ -146,19 +136,25 @@ bool AudioPlayer::PlayFile(const std::wstring& filePath)
         return true;
     }
 
+    // 设置音量 (配置范围 0-200, MCI 音量范围 0-1000) - must be set BEFORE play
+    int mciVolume = volume_ * 5;
+    std::wstring volumeCmd = L"setaudio mimo_audio_alias volume to " + std::to_wstring(mciVolume);
+    ExecuteMCICommand(volumeCmd, true);
+    LOG_DEBUG(TEXT("AudioPlayer: Set volume to %d (MCI: %d)"), volume_, mciVolume);
+
     MCIERROR playErr = mciSendStringW(L"play mimo_audio_alias", NULL, 0, NULL);
     if (playErr != 0) {
         wchar_t errorMsg[256];
         mciGetErrorStringW(playErr, errorMsg, 256);
         std::wstring errStr = errorMsg;
-        
+
         if (errStr.find(L"指定的设备未打开") != std::wstring::npos ||
             errStr.find(L"不被 MCI 所识别") != std::wstring::npos) {
             LOG_WARNING(TEXT("AudioPlayer: Play failed with MCI device error, treating as completed"));
             ExecuteMCICommand(L"close mimo_audio_alias", true);
             return true;
         }
-        
+
         ExecuteMCICommand(L"close mimo_audio_alias", true);
         lastError = "Failed to play audio";
         lock.lock();
@@ -170,12 +166,6 @@ bool AudioPlayer::PlayFile(const std::wstring& filePath)
     lock.lock();
     playing = true;
     lock.unlock();
-
-    // 设置音量 (配置范围 0-200, MCI 音量范围 0-1000)
-    int mciVolume = volume_ * 5;
-    std::wstring volumeCmd = L"setaudio mimo_audio_alias volume to " + std::to_wstring(mciVolume);
-    ExecuteMCICommand(volumeCmd, true);
-    LOG_DEBUG(TEXT("AudioPlayer: Set volume to %d (MCI: %d)"), volume_, mciVolume);
 
     LOG_INFO(TEXT("AudioPlayer: Started playing audio"));
     return true;
@@ -203,9 +193,9 @@ bool AudioPlayer::IsPlaying() const
 
 bool AudioPlayer::WaitForCompletion(DWORD timeoutMs)
 {
-    DWORD startTime = GetTickCount();
+    ULONGLONG startTime = GetTickCount64();
     int checkInterval = 50;  // Start with 50ms
-    
+
     while (IsPlaying()) {
         wchar_t status[256] = {0};
         MCIERROR err = mciSendStringW(L"status mimo_audio_alias mode", status, 256, NULL);
@@ -224,7 +214,7 @@ bool AudioPlayer::WaitForCompletion(DWORD timeoutMs)
         }
 
         if (timeoutMs > 0) {
-            DWORD elapsed = GetTickCount() - startTime;
+            ULONGLONG elapsed = GetTickCount64() - startTime;
             if (elapsed >= timeoutMs) {
                 LOG_ERROR(TEXT("AudioPlayer: Playback timeout"));
                 return false;
@@ -301,24 +291,13 @@ std::wstring AudioPlayer::WriteToTempFile(const std::vector<uint8_t>& audioData,
         }
     }
 
-    std::wstring extension;
-    if (!format.empty()) {
-        std::string fmt = format;
-        size_t queryPos = fmt.find('?');
-        if (queryPos != std::string::npos) {
-            fmt = fmt.substr(0, queryPos);
-        }
-        extension = L"." + utf8_to_wstring(fmt);
-    } else {
-        extension = L".mp3";
-    }
+    std::wstring extension = L"." + utf8_to_wstring(format);
     std::wstring filePath = tempDir + L"\\mimo_tts_" + std::to_wstring(GetTickCount64()) + extension;
 
     HANDLE hFile = CreateFileW(filePath.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hFile == INVALID_HANDLE_VALUE) {
-        DWORD err = ::GetLastError();
         lastError = "Failed to create temp file";
-        LOG_ERROR(TEXT("AudioPlayer: %s, path: %s, error code: %d"), utf8_to_wstring(lastError).c_str(), filePath.c_str(), err);
+        LOG_ERROR(TEXT("AudioPlayer: %s"), utf8_to_wstring(lastError).c_str());
         return L"";
     }
 

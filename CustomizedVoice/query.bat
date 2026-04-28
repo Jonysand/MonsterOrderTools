@@ -1,0 +1,2 @@
+python upload_voice_clone.py list
+pause

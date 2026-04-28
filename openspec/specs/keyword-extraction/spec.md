@@ -229,19 +229,3 @@ constexpr int32_t MAX_SAME_CONTENT_SKIP = 3;
 | `main.cpp` | 添加 Global VEH handler 捕获未处理异常 |
 
 **修复效果**：cppjieba 初始化失败时，程序继续运行（关键词提取功能被禁用），其他功能正常。
-
-## MiMo TTS 风格标签过滤 (2026-04-19)
-
-**问题描述**：当使用 MiMo TTS 引擎时，弹幕中的 `#标签#` 格式会被转换为 `<style>标签</style>`，但同时这些标签词会被 `ExtractKeywords` 学习为观众习惯词，导致观众画像不准确。
-
-**根本原因**：
-- `XiaomiTTSProvider::HashtagToStyle` 将 `#标签#` 转换为 `<style>标签</style>`
-- `ExtractKeywords` 对弹幕内容进行分词学习时，没有排除 TTS 风格标签格式
-
-**修复方案**：
-
-| 文件 | 修改内容 |
-|------|---------|
-| `CaptainCheckInModule.cpp` | `ExtractKeywords()` 在 MiMo TTS 引擎下，先用正则 `#[^#]+#` 过滤掉 `#标签#` 格式，再进行关键词提取 |
-
-**修复效果**：当使用 MiMo TTS 引擎时，`#标签#` 格式的内容不会被学习为观众习惯词，保持观众画像准确性。

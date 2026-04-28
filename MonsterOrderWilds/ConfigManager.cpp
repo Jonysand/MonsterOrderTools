@@ -24,6 +24,7 @@ namespace
             DWORD bufferSize = sizeof(buffer);
             if (RegQueryValueExA(hKey, REG_VALUE_NAME, nullptr, nullptr, (LPBYTE)buffer, &bufferSize) == ERROR_SUCCESS)
             {
+                buffer[min(bufferSize, (DWORD)(sizeof(buffer) - 1))] = '\0';
                 result = buffer;
             }
             RegCloseKey(hKey);
@@ -61,6 +62,7 @@ std::string ConfigManager::GetConfigPath() const
 
 bool ConfigManager::LoadConfig()
 {
+    std::lock_guard<Lock> lock(lock_);
     try
     {
         std::string path = GetConfigPath();
@@ -87,43 +89,68 @@ bool ConfigManager::LoadConfig()
             configLoaded = true;
 
             // 基本配置（idCode 从注册表读取，不从 JSON）
-            if (j.contains("ONLY_MEDAL_ORDER")) config_.onlyMedalOrder = j["ONLY_MEDAL_ORDER"].get<bool>();
-            if (j.contains("ENABLE_VOICE")) config_.enableVoice = j["ENABLE_VOICE"].get<bool>();
-            if (j.contains("SPEECH_RATE")) config_.speechRate = j["SPEECH_RATE"].get<int>();
-            if (j.contains("SPEECH_PITCH")) config_.speechPitch = j["SPEECH_PITCH"].get<int>();
-            if (j.contains("SPEECH_VOLUME")) config_.speechVolume = j["SPEECH_VOLUME"].get<int>();
-            if (j.contains("ONLY_SPEEK_WEARING_MEDAL")) config_.onlySpeekWearingMedal = j["ONLY_SPEEK_WEARING_MEDAL"].get<bool>();
-            if (j.contains("ONLY_SPEEK_GUARD_LEVEL")) config_.onlySpeekGuardLevel = j["ONLY_SPEEK_GUARD_LEVEL"].get<int>();
-            if (j.contains("ONLY_SPEEK_PAID_GIFT")) config_.onlySpeekPaidGift = j["ONLY_SPEEK_PAID_GIFT"].get<bool>();
-            if (j.contains("OPACITY")) config_.opacity = j["OPACITY"].get<int>();
-            if (j.contains("PENETRATING_MODE_OPACITY")) config_.penetratingModeOpacity = j["PENETRATING_MODE_OPACITY"].get<int>();
+            try { if (j.contains("ONLY_MEDAL_ORDER")) config_.onlyMedalOrder = j["ONLY_MEDAL_ORDER"].get<bool>(); }
+            catch (const std::exception& e) { LOG_DEBUG(TEXT("ConfigManager: ONLY_MEDAL_ORDER wrong type, using default: %s"), e.what()); }
+            try { if (j.contains("ENABLE_VOICE")) config_.enableVoice = j["ENABLE_VOICE"].get<bool>(); }
+            catch (const std::exception& e) { LOG_DEBUG(TEXT("ConfigManager: ENABLE_VOICE wrong type, using default: %s"), e.what()); }
+            try { if (j.contains("SPEECH_RATE")) config_.speechRate = j["SPEECH_RATE"].get<int>(); }
+            catch (const std::exception& e) { LOG_DEBUG(TEXT("ConfigManager: SPEECH_RATE wrong type, using default: %s"), e.what()); }
+            try { if (j.contains("SPEECH_PITCH")) config_.speechPitch = j["SPEECH_PITCH"].get<int>(); }
+            catch (const std::exception& e) { LOG_DEBUG(TEXT("ConfigManager: SPEECH_PITCH wrong type, using default: %s"), e.what()); }
+            try { if (j.contains("SPEECH_VOLUME")) config_.speechVolume = j["SPEECH_VOLUME"].get<int>(); }
+            catch (const std::exception& e) { LOG_DEBUG(TEXT("ConfigManager: SPEECH_VOLUME wrong type, using default: %s"), e.what()); }
+            try { if (j.contains("ONLY_SPEEK_WEARING_MEDAL")) config_.onlySpeekWearingMedal = j["ONLY_SPEEK_WEARING_MEDAL"].get<bool>(); }
+            catch (const std::exception& e) { LOG_DEBUG(TEXT("ConfigManager: ONLY_SPEEK_WEARING_MEDAL wrong type, using default: %s"), e.what()); }
+            try { if (j.contains("ONLY_SPEEK_GUARD_LEVEL")) config_.onlySpeekGuardLevel = j["ONLY_SPEEK_GUARD_LEVEL"].get<int>(); }
+            catch (const std::exception& e) { LOG_DEBUG(TEXT("ConfigManager: ONLY_SPEEK_GUARD_LEVEL wrong type, using default: %s"), e.what()); }
+            try { if (j.contains("ONLY_SPEEK_PAID_GIFT")) config_.onlySpeekPaidGift = j["ONLY_SPEEK_PAID_GIFT"].get<bool>(); }
+            catch (const std::exception& e) { LOG_DEBUG(TEXT("ConfigManager: ONLY_SPEEK_PAID_GIFT wrong type, using default: %s"), e.what()); }
+            try { if (j.contains("OPACITY")) config_.opacity = j["OPACITY"].get<int>(); }
+            catch (const std::exception& e) { LOG_DEBUG(TEXT("ConfigManager: OPACITY wrong type, using default: %s"), e.what()); }
+            try { if (j.contains("PENETRATING_MODE_OPACITY")) config_.penetratingModeOpacity = j["PENETRATING_MODE_OPACITY"].get<int>(); }
+            catch (const std::exception& e) { LOG_DEBUG(TEXT("ConfigManager: PENETRATING_MODE_OPACITY wrong type, using default: %s"), e.what()); }
 
             // 窗口位置
-            if (j.contains("TopPos"))
-            {
-                auto& pos = j["TopPos"];
-                if (pos.contains("X")) config_.topPosX = pos["X"].get<double>();
-                if (pos.contains("Y")) config_.topPosY = pos["Y"].get<double>();
+            try {
+                if (j.contains("TopPos"))
+                {
+                    auto& pos = j["TopPos"];
+                    if (pos.contains("X")) config_.topPosX = pos["X"].get<double>();
+                    if (pos.contains("Y")) config_.topPosY = pos["Y"].get<double>();
+                }
             }
+            catch (const std::exception& e) { LOG_DEBUG(TEXT("ConfigManager: TopPos wrong type, using default: %s"), e.what()); }
 
             // 跑马灯默认文本
-            if (j.contains("DEFAULT_MARQUEE_TEXT")) config_.defaultMarqueeText = j["DEFAULT_MARQUEE_TEXT"].get<std::string>();
+            try { if (j.contains("DEFAULT_MARQUEE_TEXT")) config_.defaultMarqueeText = j["DEFAULT_MARQUEE_TEXT"].get<std::string>(); }
+            catch (const std::exception& e) { LOG_DEBUG(TEXT("ConfigManager: DEFAULT_MARQUEE_TEXT wrong type, using default: %s"), e.what()); }
 
             // MiMo TTS 配置
-            if (j.contains("TTS_ENGINE")) config_.ttsEngine = j["TTS_ENGINE"].get<std::string>();
-            if (j.contains("MIMO_API_KEY")) config_.mimoApiKey = j["MIMO_API_KEY"].get<std::string>();
-            if (j.contains("MIMO_VOICE")) config_.mimoVoice = j["MIMO_VOICE"].get<std::string>();
-            if (j.contains("MIMO_AUDIO_FORMAT")) config_.mimoAudioFormat = j["MIMO_AUDIO_FORMAT"].get<std::string>();
+            try { if (j.contains("TTS_ENGINE")) config_.ttsEngine = j["TTS_ENGINE"].get<std::string>(); }
+            catch (const std::exception& e) { LOG_DEBUG(TEXT("ConfigManager: TTS_ENGINE wrong type, using default: %s"), e.what()); }
+            try { if (j.contains("MIMO_API_KEY")) config_.mimoApiKey = j["MIMO_API_KEY"].get<std::string>(); }
+            catch (const std::exception& e) { LOG_DEBUG(TEXT("ConfigManager: MIMO_API_KEY wrong type, using default: %s"), e.what()); }
+            try { if (j.contains("MIMO_VOICE")) config_.mimoVoice = j["MIMO_VOICE"].get<std::string>(); }
+            catch (const std::exception& e) { LOG_DEBUG(TEXT("ConfigManager: MIMO_VOICE wrong type, using default: %s"), e.what()); }
+            try { if (j.contains("MIMO_STYLE")) config_.mimoStyle = j["MIMO_STYLE"].get<std::string>(); }
+            catch (const std::exception& e) { LOG_DEBUG(TEXT("ConfigManager: MIMO_STYLE wrong type, using default: %s"), e.what()); }
+            try { if (j.contains("MIMO_AUDIO_FORMAT")) config_.mimoAudioFormat = j["MIMO_AUDIO_FORMAT"].get<std::string>(); }
+            catch (const std::exception& e) { LOG_DEBUG(TEXT("ConfigManager: MIMO_AUDIO_FORMAT wrong type, using default: %s"), e.what()); }
 
             // MiniMax TTS 配置
-            if (j.contains("MINIMAX_VOICE_ID")) config_.minimaxVoiceId = j["MINIMAX_VOICE_ID"].get<std::string>();
-            if (j.contains("MINIMAX_SPEED")) config_.minimaxSpeed = j["MINIMAX_SPEED"].get<float>();
+            try { if (j.contains("MINIMAX_VOICE_ID")) config_.minimaxVoiceId = j["MINIMAX_VOICE_ID"].get<std::string>(); }
+            catch (const std::exception& e) { LOG_DEBUG(TEXT("ConfigManager: MINIMAX_VOICE_ID wrong type, using default: %s"), e.what()); }
+            try { if (j.contains("MINIMAX_SPEED")) config_.minimaxSpeed = j["MINIMAX_SPEED"].get<float>(); }
+            catch (const std::exception& e) { LOG_DEBUG(TEXT("ConfigManager: MINIMAX_SPEED wrong type, using default: %s"), e.what()); }
 
-            if (j.contains("TTS_CACHE_DAYS_TO_KEEP")) config_.ttsCacheDaysToKeep = j["TTS_CACHE_DAYS_TO_KEEP"].get<int>();
+            try { if (j.contains("TTS_CACHE_DAYS_TO_KEEP")) config_.ttsCacheDaysToKeep = j["TTS_CACHE_DAYS_TO_KEEP"].get<int>(); }
+            catch (const std::exception& e) { LOG_DEBUG(TEXT("ConfigManager: TTS_CACHE_DAYS_TO_KEEP wrong type, using default: %s"), e.what()); }
 
             // 舰长打卡AI配置
-            if (j.contains("ENABLE_CAPTAIN_CHECKIN_AI")) config_.enableCaptainCheckinAI = j["ENABLE_CAPTAIN_CHECKIN_AI"].get<bool>();
-            if (j.contains("CHECKIN_TRIGGER_WORDS")) config_.checkinTriggerWords = j["CHECKIN_TRIGGER_WORDS"].get<std::string>();
+            try { if (j.contains("ENABLE_CAPTAIN_CHECKIN_AI")) config_.enableCaptainCheckinAI = j["ENABLE_CAPTAIN_CHECKIN_AI"].get<bool>(); }
+            catch (const std::exception& e) { LOG_DEBUG(TEXT("ConfigManager: ENABLE_CAPTAIN_CHECKIN_AI wrong type, using default: %s"), e.what()); }
+            try { if (j.contains("CHECKIN_TRIGGER_WORDS")) config_.checkinTriggerWords = j["CHECKIN_TRIGGER_WORDS"].get<std::string>(); }
+            catch (const std::exception& e) { LOG_DEBUG(TEXT("ConfigManager: CHECKIN_TRIGGER_WORDS wrong type, using default: %s"), e.what()); }
         }
         else
         {
@@ -147,6 +174,7 @@ bool ConfigManager::LoadConfig()
 
 bool ConfigManager::SaveConfig(bool force)
 {
+    std::lock_guard<Lock> lock(lock_);
     if (!force && !dirty_)
         return true;
 
@@ -178,6 +206,7 @@ bool ConfigManager::SaveConfig(bool force)
         j["TTS_ENGINE"] = config_.ttsEngine;
         j["MIMO_API_KEY"] = config_.mimoApiKey;
         j["MIMO_VOICE"] = config_.mimoVoice;
+        j["MIMO_STYLE"] = config_.mimoStyle;
         j["MIMO_AUDIO_FORMAT"] = config_.mimoAudioFormat;
 
         // MiniMax TTS 配置
@@ -194,15 +223,25 @@ bool ConfigManager::SaveConfig(bool force)
         j["DEFAULT_MARQUEE_TEXT"] = config_.defaultMarqueeText;
 
         std::string path = GetConfigPath();
-        std::ofstream file(path);
+        std::string tempPath = path + ".tmp";
+        std::ofstream file(tempPath);
         if (!file.is_open())
         {
-            LOG_ERROR(TEXT("ConfigManager: Cannot open config file for writing: %s"), path.c_str());
+            LOG_ERROR(TEXT("ConfigManager: Cannot open temp config file for writing: %s"), tempPath.c_str());
             return false;
         }
 
         file << j.dump(4);
         file.close();
+
+        if (!file.good())
+        {
+            LOG_ERROR(TEXT("ConfigManager: Write to temp config file failed, not renaming: %s"), tempPath.c_str());
+            std::filesystem::remove(tempPath);
+            return false;
+        }
+
+        std::filesystem::rename(tempPath, path);
 
         // 将 idCode 写入注册表
         if (!WriteIdCodeToRegistry(config_.idCode))
@@ -227,12 +266,10 @@ void ConfigManager::MarkDirty()
     dirty_ = true;
 }
 
-const ConfigData& ConfigManager::GetConfig() const
+ConfigData ConfigManager::GetConfig() const
 {
-    lock_.lock();
-    cachedConfig_ = config_;  // 拷贝到缓存
-    lock_.unlock();
-    return cachedConfig_;
+    std::lock_guard<Lock> lock(lock_);
+    return config_;
 }
 
 void ConfigManager::UpdateConfig(const ConfigData& newData)
@@ -361,6 +398,15 @@ void ConfigManager::SetMimoVoice(const std::string& value)
     if (changed) NotifyConfigChanged();
 }
 
+void ConfigManager::SetMimoStyle(const std::string& value)
+{
+    lock_.lock();
+    bool changed = config_.mimoStyle != value;
+    if (changed) { config_.mimoStyle = value; dirty_ = true; }
+    lock_.unlock();
+    if (changed) NotifyConfigChanged();
+}
+
 void ConfigManager::SetMimoAudioFormat(const std::string& value)
 {
     lock_.lock();
@@ -413,14 +459,25 @@ void ConfigManager::SetCheckinTriggerWords(const std::string& value)
 
 void ConfigManager::AddConfigChangedListener(const ConfigChangedHandler& handler)
 {
+    std::lock_guard<std::mutex> lock(listenerLock_);
     configChangedListeners_.push_back(handler);
 }
 
 void ConfigManager::NotifyConfigChanged()
 {
-    for (const auto& handler : configChangedListeners_)
+    ConfigData configCopy;
     {
-        handler(config_);
+        std::lock_guard<Lock> lock(lock_);
+        configCopy = config_;
+    }
+    std::vector<ConfigChangedHandler> listenersCopy;
+    {
+        std::lock_guard<std::mutex> lock(listenerLock_);
+        listenersCopy = configChangedListeners_;
+    }
+    for (const auto& handler : listenersCopy)
+    {
+        handler(configCopy);
     }
 }
 
@@ -429,33 +486,29 @@ void ConfigManager::SetValueByMeta(const ConfigFieldMeta* meta, const void* valu
     if (!meta) return;
     lock_.lock();
     char* base = reinterpret_cast<char*>(&config_) + meta->offset;
-    char* cachedBase = reinterpret_cast<char*>(&cachedConfig_) + meta->offset;
-    
+
     switch (meta->type)
     {
     case ConfigFieldType::Bool:
         *reinterpret_cast<bool*>(base) = *static_cast<const bool*>(value);
-        *reinterpret_cast<bool*>(cachedBase) = *static_cast<const bool*>(value);
         break;
     case ConfigFieldType::Int:
         *reinterpret_cast<int*>(base) = *static_cast<const int*>(value);
-        *reinterpret_cast<int*>(cachedBase) = *static_cast<const int*>(value);
         break;
     case ConfigFieldType::Float:
         *reinterpret_cast<float*>(base) = *static_cast<const float*>(value);
-        *reinterpret_cast<float*>(cachedBase) = *static_cast<const float*>(value);
         break;
     case ConfigFieldType::Double:
         *reinterpret_cast<double*>(base) = *static_cast<const double*>(value);
-        *reinterpret_cast<double*>(cachedBase) = *static_cast<const double*>(value);
         break;
     case ConfigFieldType::String:
         *reinterpret_cast<std::string*>(base) = *static_cast<const std::string*>(value);
-        *reinterpret_cast<std::string*>(cachedBase) = *static_cast<const std::string*>(value);
         break;
     }
     dirty_ = true;
+    ConfigData configCopy = config_;
     lock_.unlock();
 
-    ConfigFieldRegistry::InvokeOnChanged(meta, config_);
+    ConfigFieldRegistry::InvokeOnChanged(meta, configCopy);
+    NotifyConfigChanged();
 }

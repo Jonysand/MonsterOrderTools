@@ -85,8 +85,6 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
-    <Reference Include="System.IO.Compression" />
-    <Reference Include="System.IO.Compression.FileSystem" />
     <Reference Include="System.Xaml" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -103,7 +101,6 @@
     <Compile Include="DataStructures.cs" />
     <Compile Include="DanmuManager.cs" />
     <Compile Include="MonsterData.cs" />
-    <Compile Include="MonsterIconLoader.cs" />
     <Compile Include="NativeImports.cs" />
     <Compile Include="OrderedMonsterWindow.xaml.cs">
       <DependentUpon>OrderedMonsterWindow.xaml</DependentUpon>

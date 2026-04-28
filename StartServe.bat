@@ -1,0 +1,1 @@
+opencode serve --port 4099 --hostname 192.168.1.4

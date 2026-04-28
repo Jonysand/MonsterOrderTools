@@ -33,6 +33,7 @@
 #include <stdexcept>
 #include <thread>
 #include <atomic>
+#include <mutex>
 #include <chrono>
 
 // json decode
@@ -47,7 +48,7 @@ using json = nlohmann::json;
 #define TEST_CAPTAIN_REPLY_LOCAL _DEBUG
 #endif
 
-#define APP_VERSION 23
+#define APP_VERSION 24
 
 #ifdef UNICODE
 typedef std::wstring TString;
@@ -77,7 +78,11 @@ typedef std::string TString;
 									static CLASS* __Instance;
 #define DEFINE_SINGLETON(CLASS) CLASS* CLASS::__Instance = nullptr; \
 								CLASS* CLASS::Inst(){ \
-									if (!__Instance) __Instance = new CLASS(); \
+									if (!__Instance) { \
+										static std::mutex __singleton_mtx; \
+										std::lock_guard<std::mutex> __lk(__singleton_mtx); \
+										if (!__Instance) __Instance = new CLASS(); \
+									} \
 									return __Instance; } \
 								void CLASS::Destroy() { \
 									GetDestroyingFlag().store(true); \

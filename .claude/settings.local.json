@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -E \"\\\\.\\(cpp|h\\)$\")",
+      "Bash(grep -E \"\\\\.\\(cpp\\)$\")",
+      "Bash(xargs grep:*)",
+      "Bash(wc -l \"H:\\\\JonysandMHDanmuTools/MonsterOrderWilds\"/*.cpp)",
+      "Bash(find /h/JonysandMHDanmuTools -type f \\\\\\( -name \"*.h\" -o -name \"*.cpp\" \\\\\\) -exec grep -l \"Utf8ToWstring\" {} \\\\;)",
+      "Bash(grep -n \"inline.*Utf8ToWstring\\\\|inline.*WstringToUtf8\" /h/JonysandMHDanmuTools/MonsterOrderWilds/*.h -A 15)",
+      "Bash(find:*)",
+      "Bash(\"D:\\\\Microsoft Visual Studio\\\\2022\\\\Community\\\\MSBuild\\\\Current\\\\Bin\\\\MSBuild.exe\" -version)",
+      "Read(//d/Microsoft Visual Studio/**)",
+      "Read(//c/Program Files/Microsoft Visual Studio/2022//**)",
+      "Read(//c/Program Files \\(x86\\)/Microsoft Visual Studio/**)",
+      "Bash(\"/c/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/MSBuild.exe\" JonysandMHDanmuTools.sln -p:Configuration=Debug -p:Platform=x64 -t:Build -m -nologo)"
+    ]
+  }
+}

@@ -68,6 +68,7 @@ namespace MonsterOrderWindows
                 TtsEngine = config.TTS_ENGINE ?? "auto",
                 MimoApiKey = config.MIMO_API_KEY ?? "",
                 MimoVoice = config.MIMO_VOICE ?? "mimo_default",
+                MimoStyle = config.MIMO_STYLE ?? "",
                 MimoAudioFormat = "mp3",
                 MinimaxApiKey = config.MINIMAX_API_KEY ?? "",
                 MinimaxVoiceId = config.MINIMAX_VOICE_ID ?? "female-tianmei",
@@ -100,6 +101,7 @@ namespace MonsterOrderWindows
             config.TTS_ENGINE = TtsEngine;
             config.MIMO_API_KEY = MimoApiKey;
             config.MIMO_VOICE = MimoVoice;
+            config.MIMO_STYLE = MimoStyle;
             config.MINIMAX_API_KEY = MinimaxApiKey;
             config.MINIMAX_VOICE_ID = MinimaxVoiceId;
             config.MINIMAX_SPEED = MinimaxSpeed;

@@ -13,17 +13,18 @@ private:
     std::string lastError_;
 };
 
-class XiaomiTTSProvider : public ITTSProvider, public std::enable_shared_from_this<XiaomiTTSProvider> {
+class XiaomiTTSProvider : public ITTSProvider {
 public:
     XiaomiTTSProvider(const std::string& apiKey);
     std::string GetProviderName() const override;
-    bool IsAvailable() const override { return !apiKey_.empty(); }
+    bool IsAvailable() const override { return !apiKey_.empty() && available_; }
+    void ResetAvailable() override { available_ = true; }
     std::string GetLastError() const override;
     void RequestTTS(const TTSRequest& request, TTSCallback callback) override;
     std::string BuildRequestBody(const TTSRequest& request) const;
     std::string BuildRequestHeaders(const std::string& apiKey) const;
     TTSResponse ParseResponse(const std::string& responseBody, int httpStatusCode) const;
-    std::string ProcessStyleTags(const std::string& input) const;
+    std::string HashtagToStyle(const std::string& input) const;
 private:
     std::vector<uint8_t> Base64ToBytes(const std::string& base64) const;
     std::string apiKey_;
@@ -31,11 +32,12 @@ private:
     bool available_;
 };
 
-class MiniMaxTTSProvider : public ITTSProvider, public std::enable_shared_from_this<MiniMaxTTSProvider> {
+class MiniMaxTTSProvider : public ITTSProvider {
 public:
     MiniMaxTTSProvider(const std::string& apiKey);
     std::string GetProviderName() const override;
-    bool IsAvailable() const override { return !apiKey_.empty(); }
+    bool IsAvailable() const override { return !apiKey_.empty() && available_; }
+    void ResetAvailable() override { available_ = true; }
     std::string GetLastError() const override;
     void RequestTTS(const TTSRequest& request, TTSCallback callback) override;
     std::string BuildRequestBody(const TTSRequest& request) const;
@@ -49,12 +51,12 @@ private:
     bool available_;
 };
 
-class ManboTTSProvider : public ITTSProvider, public std::enable_shared_from_this<ManboTTSProvider> {
+class ManboTTSProvider : public ITTSProvider {
 public:
     ManboTTSProvider();
     std::string GetProviderName() const override;
     bool IsAvailable() const override { return available_; }
-    void ResetAvailable() { available_ = true; }
+    void ResetAvailable() override { available_ = true; }
     std::string GetLastError() const override;
     void RequestTTS(const TTSRequest& request, TTSCallback callback) override;
     std::string BuildRequestUrl(const TTSRequest& request) const;

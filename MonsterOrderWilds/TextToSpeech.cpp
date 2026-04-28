@@ -141,10 +141,13 @@ void TTSManager::Tick()
         }
     }
 
-    static int64_t lastCooldownCleanup = 0;
-    if (GetTickCount64() - lastCooldownCleanup > COOLDOWN_CLEANUP_INTERVAL_MS) {
-        CleanupExpiredCooldowns();
-        lastCooldownCleanup = GetTickCount64();
+    {
+        std::lock_guard<std::mutex> lock(queueMutex_);
+        static int64_t lastCooldownCleanup = 0;
+        if (GetTickCount64() - lastCooldownCleanup > COOLDOWN_CLEANUP_INTERVAL_MS) {
+            CleanupExpiredCooldowns();
+            lastCooldownCleanup = GetTickCount64();
+        }
     }
 }
 
@@ -182,6 +185,10 @@ void TTSManager::HandleSpeekDm(const json& data)
 
 void TTSManager::HandleSpeekSendGift(const json& data)
 {
+    if (!data.contains("paid") || !data.contains("uname") || !data.contains("gift_name") ||
+        !data.contains("gift_num") || !data.contains("open_id") || !data.contains("gift_id")) {
+        return;
+    }
     const auto& paid = data["paid"].get<bool>();
     const auto& uname = data["uname"].get<std::string>();
     const auto& gift_name = data["gift_name"].get<std::string>();
@@ -203,7 +210,9 @@ void TTSManager::HandleSpeekSendGift(const json& data)
             return;
         }
 
-        if (paid && data.contains("combo_info")) {
+        if (paid && data.contains("combo_info") && data["combo_info"].contains("combo_id") &&
+            data["combo_info"].contains("combo_timeout") && data["combo_info"].contains("combo_base_num") &&
+            data["combo_info"].contains("combo_count")) {
             std::string official_combo_id = data["combo_info"]["combo_id"].get<std::string>();
             int combo_timeout = data["combo_info"]["combo_timeout"].get<int>();
             int combo_base_num = data["combo_info"]["combo_base_num"].get<int>();
@@ -269,6 +278,9 @@ void TTSManager::HandleSpeekSendGift(const json& data)
 
 void TTSManager::HandleSpeekSC(const json& data)
 {
+    if (!data.contains("uname") || !data.contains("rmb") || !data.contains("message")) {
+        return;
+    }
     const auto& uname = data["uname"].get<std::string>();
     const auto& rmb = data["rmb"].get<int>();
     const auto& message = data["message"].get<std::string>();
@@ -280,6 +292,10 @@ void TTSManager::HandleSpeekSC(const json& data)
 
 void TTSManager::HandleSpeekGuard(const json& data)
 {
+    if (!data.contains("user_info") || !data["user_info"].contains("uname") ||
+        !data.contains("guard_level") || !data.contains("guard_num") || !data.contains("guard_unit")) {
+        return;
+    }
     const auto& uname = data["user_info"]["uname"].get<std::string>();
     const auto& guard_level = data["guard_level"].get<int>();
     const auto& guard_num = data["guard_num"].get<int>();
@@ -309,6 +325,9 @@ void TTSManager::HandleSpeekGuard(const json& data)
 
 void TTSManager::HandleSpeekEnter(const json& data)
 {
+    if (!data.contains("uname")) {
+        return;
+    }
     const auto& uname = data["uname"].get<std::string>();
     TString msg = utf8_to_wstring(uname) + TEXT(" 进入直播间");
     std::lock_guard<std::mutex> lock(queueMutex_);
@@ -424,6 +443,10 @@ bool TTSManager::SpeakWithSapi(const TString& text)
 
 TTSEngineType TTSManager::GetActiveEngineType() const
 {
+    // Bug #2 fix: When in fallback mode, always use SAPI
+    if (isFallback) {
+        return TTSEngineType::SAPI;
+    }
     const auto& config = ConfigManager::Inst()->GetConfig();
     if (config.ttsEngine.empty() || config.ttsEngine == "auto") {
         return TTSEngineType::Auto;
@@ -520,7 +543,6 @@ void TTSManager::RefreshTTSProvider()
 {
     const auto& config = ConfigManager::Inst()->GetConfig();
     LOG_INFO(TEXT("Refreshing TTS provider, engine: %s"), config.ttsEngine.c_str());
-    
     std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
     ttsProvider = TTSProviderFactory::Create(
         GetMIMO_API_KEY(),
@@ -538,38 +560,6 @@ std::string TTSManager::GetCurrentProviderName() const
     return "none";
 }
 
-bool TTSManager::TrySwitchToNextProvider()
-{
-    // 注意：调用方必须已持有 asyncMutex_（当前由 ProcessAsyncTTS 在持有锁时调用）
-    if (!ttsProvider) return false;
-
-    std::string currentName = ttsProvider->GetProviderName();
-    std::string nextEngine;
-
-    // 降级链：manbo -> minimax -> mimo -> sapi
-    if (currentName == "manbo") {
-        if (!GetMINIMAX_API_KEY().empty()) nextEngine = "minimax";
-        else if (!GetMIMO_API_KEY().empty()) nextEngine = "mimo";
-        else nextEngine = "sapi";
-    } else if (currentName == "minimax") {
-        if (!GetMIMO_API_KEY().empty()) nextEngine = "mimo";
-        else nextEngine = "sapi";
-    } else if (currentName == "xiaomi") {
-        nextEngine = "sapi";
-    } else {
-        return false; // 已经是SAPI或未知Provider，无法降级
-    }
-
-    LOG_WARNING(TEXT("TTS: Downgrading from %hs to %hs"), currentName.c_str(), nextEngine.c_str());
-    ttsProvider = TTSProviderFactory::Create(GetMIMO_API_KEY(), GetMINIMAX_API_KEY(), nextEngine);
-
-    if (ttsProvider) {
-        LOG_INFO(TEXT("TTS: Successfully switched to %hs"), ttsProvider->GetProviderName().c_str());
-        return true;
-    }
-
-    return false;
-}
 
 void TTSManager::SpeakWithMimoAsync(const TString& text, std::function<void(bool success, const std::string& errorMsg)> callback)
 {
@@ -623,30 +613,32 @@ void TTSManager::ProcessAsyncTTS()
     // 处理所有当前活跃的请求（需要加锁保护asyncPendingQueue_）
     std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
 
-    // 处理活跃请求：遍历当前活跃的请求
+    // 处理活跃请求：遍历当前活跃的请求（Bug #15 fix: iterate properly instead of always begin())
     int processed = 0;
-    while (processed < activeRequestCount_ && !asyncPendingQueue_.empty()) {
-        auto it = asyncPendingQueue_.begin();
+    auto it = asyncPendingQueue_.begin();
+    while (processed < activeRequestCount_ && it != asyncPendingQueue_.end()) {
         auto& reqPtr = *it;
-        AsyncTTSRequest& req = *reqPtr;
         switch (reqPtr->state) {
         case AsyncTTSState::Pending:
             ProcessPendingRequestInternal(it);
+            ++it;
             processed++;
             break;
         case AsyncTTSState::Requesting:
             ProcessRequestingStateInternal(*reqPtr);
+            ++it;
             processed++;
             break;
         case AsyncTTSState::Playing:
             ProcessPlayingStateInternal(*reqPtr);
+            ++it;
             processed++;
             break;
         case AsyncTTSState::Completed:
         case AsyncTTSState::Failed:
             LOG_INFO(TEXT("TTS Async: Request %s, cleaning up"),
                 reqPtr->state == AsyncTTSState::Completed ? TEXT("completed") : TEXT("failed"));
-            asyncPendingQueue_.pop_front();
+            it = asyncPendingQueue_.erase(it);
             activeRequestCount_--;
             processed++;
             break;
@@ -795,9 +787,6 @@ void TTSManager::ProcessPendingRequestInternal(std::list<std::shared_ptr<AsyncTT
         if (response.success && !response.audioData.empty()) {
             reqPtr->audioData = response.audioData;
             reqPtr->state = AsyncTTSState::Playing;
-            if (!response.format.empty()) {
-                reqPtr->responseFormat = response.format;
-            }
             LOG_INFO(TEXT("TTS Async: API request succeeded, starting playback"));
 
             if (reqPtr->isCheckinTTS && !reqPtr->checkinUsername.empty()) {
@@ -923,11 +912,43 @@ void TTSManager::ProcessPlayingStateInternal(AsyncTTSRequest& req)
                 audioPlayer->CleanupTempFile();
             }
             req.state = AsyncTTSState::Completed;
-            consecutiveFailures++;
+            consecutiveFailures = 0;
             lastFailureTime = std::chrono::steady_clock::now();
             return;
         }
     }
+}
+
+bool TTSManager::TrySwitchToNextProvider()
+{
+    if (!ttsProvider) return false;
+
+    std::string currentName = ttsProvider->GetProviderName();
+    std::string nextEngine;
+
+    // 降级链：manbo -> minimax -> mimo -> sapi
+    if (currentName == "manbo") {
+        if (!GetMINIMAX_API_KEY().empty()) nextEngine = "minimax";
+        else if (!GetMIMO_API_KEY().empty()) nextEngine = "mimo";
+        else nextEngine = "sapi";
+    } else if (currentName == "minimax") {
+        if (!GetMIMO_API_KEY().empty()) nextEngine = "mimo";
+        else nextEngine = "sapi";
+    } else if (currentName == "xiaomi") {
+        nextEngine = "sapi";
+    } else {
+        return false; // 已经是SAPI或未知Provider，无法降级
+    }
+
+    LOG_WARNING(TEXT("TTS: Downgrading from %hs to %hs"), currentName.c_str(), nextEngine.c_str());
+    ttsProvider = TTSProviderFactory::Create(GetMIMO_API_KEY(), GetMINIMAX_API_KEY(), nextEngine);
+
+    if (ttsProvider) {
+        LOG_INFO(TEXT("TTS: Successfully switched to %hs"), ttsProvider->GetProviderName().c_str());
+        return true;
+    }
+
+    return false;
 }
 
 bool TTSManager::HandleRequestFailureInternal(AsyncTTSRequest& req)
@@ -939,6 +960,7 @@ bool TTSManager::HandleRequestFailureInternal(AsyncTTSRequest& req)
     if (req.retryCount < MAX_RETRY_COUNT) {
         req.retryCount++;
         req.state = AsyncTTSState::Pending;  // 重置为Pending，重新请求
+        activeRequestCount_--;  // Bug #3 fix: decrement to avoid double-counting when second loop picks it up
         LOG_WARNING(TEXT("TTS Async: Retrying request (%d/%d)"), req.retryCount, MAX_RETRY_COUNT);
         return false;
     }
@@ -947,6 +969,7 @@ bool TTSManager::HandleRequestFailureInternal(AsyncTTSRequest& req)
     if (TrySwitchToNextProvider()) {
         req.retryCount = 0;  // 重置重试次数，使用新Provider重试
         req.state = AsyncTTSState::Pending;
+        activeRequestCount_--;
         LOG_WARNING(TEXT("TTS Async: Provider switched, retrying with new provider"));
         return false;
     }
@@ -1024,7 +1047,7 @@ void TTSManager::TriggerFallback()
         isFallback = true;
         fallbackReason = "Consecutive failures exceeded limit";
         LOG_WARNING(TEXT("TTS engine fallback triggered: switching to SAPI after %d consecutive failures"),
-            consecutiveFailures);
+            consecutiveFailures.load());
     }
 
 }
@@ -1036,16 +1059,19 @@ void TTSManager::TryRecovery()
         return;
     }
 
-    LOG_INFO(TEXT("Attempting MiMo TTS recovery..."));
-    
+    LOG_INFO(TEXT("Attempting TTS recovery..."));
+
+    // Reset available flag to allow a test request
+    ttsProvider->ResetAvailable();
+
     if (ttsProvider->IsAvailable()) {
         isFallback = false;
         consecutiveFailures = 0;
         lastRecoveryAttempt = std::chrono::steady_clock::now();
-        LOG_INFO(TEXT("MiMo TTS recovery successful"));
+        LOG_INFO(TEXT("TTS recovery successful"));
     } else {
         lastRecoveryAttempt = std::chrono::steady_clock::now();
-        LOG_WARNING(TEXT("MiMo TTS recovery failed - API still not available"));
+        LOG_WARNING(TEXT("TTS recovery failed - API still not available"));
     }
 
 }
@@ -1086,6 +1112,7 @@ void TTSManager::CleanupExpiredCooldowns() {
 
 void TTSManager::HandleDmOrderFood(const std::wstring& msg, const std::wstring& uname)
 {
+    if (msg.length() <= 2) return;
     std::wstring msgWithoutPrefix = msg.substr(2);
     static std::mt19937 rng(std::random_device{}());
     std::uniform_int_distribution<int> dist(0, 60);

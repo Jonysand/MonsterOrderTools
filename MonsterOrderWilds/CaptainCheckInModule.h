@@ -13,7 +13,6 @@
 #include <ctime>
 #include <sstream>
 #include <iomanip>
-#include <unordered_set>
 
 struct CaptainDanmuEvent {
     std::string uid;
@@ -29,7 +28,6 @@ struct CheckinEvent {
     std::string uid;
     std::string username;
     int32_t continuousDays = 0;
-    int32_t cumulativeDays = 0;
     int32_t checkinDate = 0;
     int32_t lastCheckinDate = 0;
 };
@@ -48,7 +46,6 @@ struct UserProfile {
     std::vector<std::pair<int64_t, std::string>> danmuHistory;
     int32_t lastCheckinDate = 0;
     int32_t continuousDays = 0;
-    int32_t cumulativeDays = 0;
     int64_t lastDanmuTimestamp = 0;
     int64_t createdAt = 0;
     int32_t sameContentCount = 0;
@@ -65,7 +62,7 @@ public:
     void PushDanmuEvent(const CaptainDanmuEvent& event);
     void GenerateCheckinAnswerAsync(const CheckinEvent& event, AnswerCallback callback);
     AnswerResult GenerateCheckinAnswerSync(const CheckinEvent& event, UserProfile* profile = nullptr);
-    const UserProfile* GetUserProfile(const std::string& uid) const;
+    bool GetUserProfile(const std::string& uid, UserProfile& outProfile) const;
     std::vector<std::string> GetUserTopKeywords(const std::string& uid) const;
     void SetTriggerWords(const std::string& words);
     void SetEnabled(bool enabled);
@@ -85,7 +82,6 @@ private:
 
     bool ShouldLearn(const UserProfile& profile, const CaptainDanmuEvent& event);
     bool IsStopWord(const std::string& word) const;
-    void LoadStopWords(const std::string& filePath);
     bool ShouldSkipDuplicateContent(UserProfile& profile, const std::string& content);
     int64_t GetCurrentTimestamp() const;
     std::string GetModuleDictPath() const;
@@ -106,13 +102,4 @@ private:
 
     class JiebaContext;
     std::unique_ptr<JiebaContext> jiebaContext_;
-    std::unordered_set<std::string> stopWords_;
-
-#ifdef RUN_UNIT_TESTS
-    friend void TestLoadStopWords_Success();
-    friend void TestLoadStopWords_FileNotFound();
-    friend void TestIsStopWord_LoadedDict();
-    friend void TestIsStopWord_HardcodedFallback();
-    friend void TestIsStopWord_NotStopWord();
-#endif
 };

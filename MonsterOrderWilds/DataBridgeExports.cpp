@@ -5,6 +5,7 @@
 #include <mutex>
 
 #include "CaptainCheckInModule.h"
+#include "RetroactiveCheckInModule.h"
 #include "ProfileManager.h"
 
 extern "C" {
@@ -444,6 +445,11 @@ extern "C" {
                 return false;
             }
 
+            if (!RetroactiveCheckInModule::Inst()->Init()) {
+                LOG_ERROR(TEXT("CaptainCheckInModule_Initialize: RetroactiveCheckInModule::Init() failed"));
+                return false;
+            }
+
             LOG_INFO(TEXT("CaptainCheckInModule_Initialize: initialization sequence completed successfully"));
             return true;
         }
@@ -516,7 +522,7 @@ __declspec(dllexport) void __stdcall DataBridge_SetCheckinTTSPlayCallback(OnChec
     g_checkinTTSPlayUserData = userData;
 }
 
-extern "C" __declspec(dllexport) void __stdcall TTSManager_GetCurrentProviderName(char* outBuffer, int bufferSize)
+__declspec(dllexport) void __stdcall TTSManager_GetCurrentProviderName(char* outBuffer, int bufferSize)
 {
     try
     {
@@ -533,18 +539,5 @@ extern "C" __declspec(dllexport) void __stdcall TTSManager_GetCurrentProviderNam
         {
             outBuffer[0] = '\0';
         }
-    }
-}
-
-__declspec(dllexport) bool __stdcall ProfileManager_ExportCheckinRecords(const char* filePath)
-{
-    try
-    {
-        return ProfileManager::Inst()->ExportCheckinRecordsToFile(filePath);
-    }
-    catch (const std::exception& e)
-    {
-        LOG_ERROR(TEXT("ProfileManager_ExportCheckinRecords failed: %s"), e.what());
-        return false;
     }
 }

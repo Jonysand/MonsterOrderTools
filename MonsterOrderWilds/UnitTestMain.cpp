@@ -53,6 +53,7 @@ extern void RunProfileManagerTests();
 extern void RunAIChatProviderTests();
 extern void RunTTSProviderTests();
 extern void RunCaptainCheckInModuleTests();
+extern void RunRetroactiveCheckInModuleTests();
 extern void RunDeepSeekAIChatProviderTests();
 
 int RunTests()
@@ -63,13 +64,9 @@ int RunTests()
     TestLog("  MonsterOrderWilds Unit Tests");
     TestLog("========================================");
     TestLog("");
-
+    
     TestLog("Running ConfigManager tests...");
     RunAllConfigManagerTests();
-    TestLog("");
-
-    TestLog("Running ConfigManager Registry tests...");
-    RunAllConfigManagerRegistryTests();
     TestLog("");
 
     TestLog("Running ConfigManager Registry tests...");
@@ -127,7 +124,11 @@ int RunTests()
     TestLog("Running CaptainCheckInModule tests...");
     RunCaptainCheckInModuleTests();
     TestLog("");
-    
+
+    TestLog("Running RetroactiveCheckInModule tests...");
+    RunRetroactiveCheckInModuleTests();
+    TestLog("");
+
     TestLog("========================================");
     TestLog("  All tests completed!");
     TestLog("========================================");

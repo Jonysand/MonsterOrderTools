@@ -107,6 +107,3 @@ TODO.md
 # Installer build files
 installer/files/
 installer/output/
-
-# OpenCode
-.opencode/

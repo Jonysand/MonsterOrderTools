@@ -8,6 +8,9 @@
 #include <regex>
 #include <codecvt>
 #include <locale>
+#include <deque>
+#include <unordered_set>
+#include "LikeEvent.h"
 
 // 弹幕数据结构（从WebSocket接收）
 struct DanmuData
@@ -52,6 +55,8 @@ public:
 
     // 重载版本：接受已解析的json对象
     DanmuData ParseDanmuJson(const json& j) const;
+
+    LikeEvent ParseLikeJson(const json& j) const;
 
     // 生成播报文本
     std::string GenerateSpeakText(const std::string& userName, const std::string& monsterName) const;
@@ -118,9 +123,26 @@ public:
     void AddCaptainDanmuListener(const CaptainDanmuHandler& handler);
     void Init();
 
+    using LikeEventHandler = std::function<void(const LikeEvent&)>;
+    using LikeEventListenerToken = size_t;
+    LikeEventListenerToken AddLikeEventListener(const LikeEventHandler& handler);
+    void RemoveLikeEventListener(LikeEventListenerToken token);
+    void ClearLikeEventListeners();
+    void NotifyLikeEvent(const LikeEvent& event);
+
 private:
     std::vector<DanmuProcessedHandler> danmuProcessedListeners_;
     std::vector<CaptainDanmuHandler> captainDanmuListeners_;
+    std::unordered_map<LikeEventListenerToken, LikeEventHandler> likeEventListenerMap_;
+    LikeEventListenerToken nextLikeListenerToken_ = 1;
+    std::mutex likeListenersMutex_;
     void NotifyDanmuProcessed(const DanmuProcessResult& result);
     void NotifyCaptainDanmu(const CaptainDanmuEvent& event);
+
+    // msg_id去重缓存（LRU，最近100000条）
+    static constexpr size_t MSG_ID_CACHE_MAX_SIZE = 100000;
+    std::deque<std::string> msgIdCacheOrder_;
+    std::unordered_set<std::string> msgIdCacheSet_;
+    std::mutex msgIdCacheMutex_;
+    bool IsDuplicateMsgId(const std::string& msgId);
 };

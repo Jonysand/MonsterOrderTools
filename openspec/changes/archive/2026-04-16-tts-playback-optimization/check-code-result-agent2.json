@@ -1,0 +1,83 @@
+{
+  "agent_id": "agent2",
+  "dimension": "安全性",
+  "pass": false,
+  "issues": [
+    {
+      "severity": "high",
+      "file": "MonsterOrderWilds/TextToSpeech.cpp",
+      "line": "583-620",
+      "description": "HTTP回调捕获迭代器it，在回调执行时迭代器可能已失效（请求可能已被pop_front移除），存在迭代器失效后访问的风险",
+      "safety_concern": "线程安全-迭代器生命周期",
+      "evidence": "ttsProvider->RequestTTS(ttsReq, [this, it](const TTSResponse& response) { ... }); 捕获了list迭代器it，但当HTTP回调执行时，对应请求可能已被ProcessAsyncTTS的pop_front()移除"
+    },
+    {
+      "severity": "high",
+      "file": "MonsterOrderWilds/TextToSpeech.cpp",
+      "line": "712-725",
+      "description": "ProcessCachingState将req同时保留在asyncPendingQueue_并复制到readyToPlayQueue_，导致同一对象被两个状态机同时处理，可能引发状态竞争",
+      "safety_concern": "线程安全-状态机竞争",
+      "evidence": "req.state = AsyncTTSState::Ready; readyToPlayQueue_.push_back(req); 同一个AsyncTTSRequest对象同时存在于两个队列"
+    },
+    {
+      "severity": "medium",
+      "file": "MonsterOrderWilds/TextToSpeech.cpp",
+      "line": "583-620",
+      "description": "HTTP回调lambda中对it的检查逻辑不严密：先在第578行获取锁检查，但回调执行时(可能在Release锁之后)没有重新验证it是否仍指向正确元素",
+      "safety_concern": "线程安全-锁检查不原子",
+      "evidence": "回调中检查it == asyncPendingQueue_.end()，但未验证it是否仍指向原来的请求元素"
+    },
+    {
+      "severity": "medium",
+      "file": "MonsterOrderWilds/TextToSpeech.cpp",
+      "line": "596-597, 600",
+      "description": "audioData存在多次拷贝：response.audioData -> audioDataCopy -> params->data -> 写入文件，每次都是复制而非移动，且SaveCachedAudioAsync内部又有完整拷贝",
+      "safety_concern": "内存泄露/性能-多余拷贝",
+      "evidence": "auto audioDataCopy = response.audioData; ... SaveCachedAudioAsync(textUtf8, audioDataCopy, ...); SaveCachedAudioAsync内部又创建了data副本"
+    },
+    {
+      "severity": "medium",
+      "file": "MonsterOrderWilds/TextToSpeech.cpp",
+      "line": "583-620",
+      "description": "ThreadPool回调SaveCachedAudioAsync执行完后，HTTP回调中的callback被调用(success=true)，但此时音频数据可能还没真正写入缓存完成(因为WaitForThreadpoolWorkCallbacks是同步等待的)",
+      "safety_concern": "线程安全-状态同步",
+      "evidence": "SaveCachedAudioAsync内部WaitForThreadpoolWorkCallbacks是FALSE参数立即返回，callback在异步写入真正完成前被调用"
+    },
+    {
+      "severity": "low",
+      "file": "MonsterOrderWilds/TextToSpeech.cpp",
+      "line": "584-588",
+      "description": "迭代器检查存在边界情况：如果it指向的元素被移除但同等位置的元素被重新插入，it != end()检查会通过但实际指向错误元素",
+      "safety_concern": "线程安全-迭代器边界失效",
+      "evidence": "if (it == asyncPendingQueue_.end()) { return; } // 仅检查是否等于end，未检查是否仍指向原请求"
+    },
+    {
+      "severity": "low",
+      "file": "MonsterOrderWilds/TTSCacheManager.cpp",
+      "line": "246-270",
+      "description": "ThreadPoolParams在CreateThreadpoolWork成功后立即delete params，但如果CreateThreadpoolWork失败会导致内存泄漏",
+      "safety_concern": "内存泄露",
+      "evidence": "PTP_WORK work = CreateThreadpoolWork(...); ... delete params; 如果work创建失败，params永远不会被delete"
+    },
+    {
+      "severity": "low",
+      "file": "MonsterOrderWilds/TTSCacheManager.cpp",
+      "line": "273-275",
+      "description": "SaveCachedAudioAsync名字带有Async后缀但实际是同步阻塞的(WaitForThreadpoolWorkCallbacks + CloseThreadpoolWork)，调用者可能误解其行为",
+      "safety_concern": "API语义错误",
+      "evidence": "SubmitThreadpoolWork(work); WaitForThreadpoolWorkCallbacks(work, FALSE); CloseThreadpoolWork(work); 同步等待完成后才返回"
+    }
+  ],
+  "verified_items": [
+    "sapiMutex_正确保护了pVoice的访问(SpeakWithSapi)",
+    "asyncMutex_是递归锁，在ProcessAsyncTTS锁内调用子函数是安全的",
+    "audioPlayer的生命周期正确管理(构造函数创建，析构函数删除)",
+    "ttsProvider是unique_ptr，生命周期正确管理",
+    "pVoice正确Release和CoUninitialize",
+    "ThreadPoolParams在回调中被正确delete",
+    "callback作为function被正确移动到params中并在适当时机调用",
+    "activeRequestCount_是atomic，正确用于并发控制",
+    "readyToPlayQueue_在Tick和ProcessAsyncTTS中都有asyncMutex_保护"
+  ],
+  "summary": "安全性检查发现HIGH级别问题2个：1) HTTP回调中迭代器it捕获后可能失效；2) 同一请求同时存在于asyncPendingQueue_和readyToPlayQueue_导致状态机竞争。MEDIUM级别问题3个涉及音频数据多次拷贝和状态同步问题。递归锁使用合理，但回调中锁的获取模式存在边界case风险。ThreadPool资源管理基本正确但存在CreateThreadpoolWork失败时的泄漏风险。"
+}

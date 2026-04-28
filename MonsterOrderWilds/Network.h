@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "framework.h"
+#include <type_traits>
 
 #define HTTP_REQUEST_USER_AGENT TEXT("MonsterOrderWilds Request/0.1")
 #define WEBSOCKET_USER_AGENT TEXT("MonsterOrderWilds Websocket/0.1")
@@ -31,7 +32,7 @@ namespace ProtoUtils
         int32_t op = 0;
         int32_t seq = 0;
         std::string body = "";
-        static const uint16_t maxBody = 2048;
+        static const uint32_t maxBody = 65536;
 
         std::vector<uint8_t> pack() {
             // Calculate the total packet length
@@ -52,17 +53,18 @@ namespace ProtoUtils
         bool unpackHeader(uint8_t* buf) {
             // Unpack fields from the buffer
             packetLen = fromBigEndian<int32_t>(buf);
-            headerLen = fromBigEndian<int16_t>(buf + 4);
+            int16_t parsedHeaderLen = fromBigEndian<int16_t>(buf + 4);
+            if (parsedHeaderLen != 16) {
+                std::cerr << "Invalid header length" << std::endl;
+                return false;
+            }
+            headerLen = parsedHeaderLen;
             ver = fromBigEndian<int16_t>(buf + 6);
             op = fromBigEndian<int32_t>(buf + 8);
             seq = fromBigEndian<int32_t>(buf + 12);
             if (packetLen < 0 || packetLen > maxBody) {
                 std::cerr << "Invalid packet length: " << packetLen
                     << ", maxBody: " << maxBody << std::endl;
-                return false;
-            }
-            if (headerLen != this->headerLen) {
-                std::cerr << "Invalid header length" << std::endl;
                 return false;
             }
             int bodyLen = packetLen - headerLen;
@@ -83,14 +85,16 @@ namespace ProtoUtils
         // Convert a value to big-endian format
         template <typename T>
         T toBigEndian(T value) {
+            using U = typename std::make_unsigned<T>::type;
+            U uval = static_cast<U>(value);
             if constexpr (sizeof(T) == 2) {
-                return static_cast<T>((value >> 8) | (value << 8));
+                return static_cast<T>((uval >> 8) | (uval << 8));
             }
             else if constexpr (sizeof(T) == 4) {
-                return static_cast<T>(((value >> 24) & 0xFF) |
-                    ((value >> 8) & 0xFF00) |
-                    ((value << 8) & 0xFF0000) |
-                    ((value << 24) & 0xFF000000));
+                return static_cast<T>(((uval >> 24) & 0xFF) |
+                    ((uval >> 8) & 0xFF00) |
+                    ((uval << 8) & 0xFF0000) |
+                    ((uval << 24) & 0xFF000000));
             }
             else {
                 return value; // No conversion needed for other sizes

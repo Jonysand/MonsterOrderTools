@@ -1,0 +1,7 @@
+{
+  "agent_id": "agent1",
+  "check_type": "consistency",
+  "round": 5,
+  "pass_check": true,
+  "summary": "最终 PASS 检查通过（第三轮）。所有文档（proposal.md、design.md、tasks.md、spec.md tts-fallback）内容一致，字段名称、回滚顺序、API函数名、C#层修改点完全匹配，无不一致问题。文档状态满足验收标准。"
+}

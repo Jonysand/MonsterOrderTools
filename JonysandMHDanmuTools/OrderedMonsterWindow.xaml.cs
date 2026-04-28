@@ -10,7 +10,6 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
-using System.Windows.Media.Imaging;
 using System.Windows.Interop;
 using System.Runtime.InteropServices;
 using System.Windows.Threading;
@@ -37,6 +36,8 @@ namespace MonsterOrderWindows
         // 节流机制
         private const int THROTTLE_MS = 100;
         private DateTime _lastRefreshTime = DateTime.MinValue;
+        // PriorityQueue同步锁
+        private static readonly object _queueLock = new object();
         // 跑马灯状态管理
         private bool _isShowingDefault = true;
         private bool _currentAnimationIsLoop = true;
@@ -115,8 +116,8 @@ namespace MonsterOrderWindows
                 MainWindow.Background = bgBrush;
 
                 IntPtr hwnd = new WindowInteropHelper(this).Handle;
-                uint extendedStyle = GetWindowLong(hwnd, -20);
-                SetWindowLong(hwnd, -20, extendedStyle | 0x20u);
+                IntPtr extendedStyle = GetWindowLongPtr(hwnd, -20);
+                SetWindowLongPtr(hwnd, -20, new IntPtr(extendedStyle.ToInt64() | 0x20));
                 Topmost = true;
                 if (MainList.Items.Count > 0)
                     MainList.ScrollIntoView(MainList.Items[0]);
@@ -130,8 +131,8 @@ namespace MonsterOrderWindows
                 MainWindow.Background = bgBrush;
 
                 IntPtr hwnd = new WindowInteropHelper(this).Handle;
-                uint extendedStyle = GetWindowLong(hwnd, -20);
-                SetWindowLong(hwnd, -20, extendedStyle & ~0x20u);
+                IntPtr extendedStyle = GetWindowLongPtr(hwnd, -20);
+                SetWindowLongPtr(hwnd, -20, new IntPtr(extendedStyle.ToInt64() & ~0x20));
                 Topmost = false;
             }
         }
@@ -143,10 +144,10 @@ namespace MonsterOrderWindows
         }
 
         // 热键锁定窗口
-        [DllImport("user32", EntryPoint = "SetWindowLong")]
-        private static extern uint SetWindowLong(IntPtr hwnd, int nIndex, uint dwNewLong);
-        [DllImport("user32", EntryPoint = "GetWindowLong")]
-        private static extern uint GetWindowLong(IntPtr hwnd, int nIndex);
+        [DllImport("user32", EntryPoint = "SetWindowLongPtr")]
+        private static extern IntPtr SetWindowLongPtr(IntPtr hwnd, int nIndex, IntPtr dwNewLong);
+        [DllImport("user32", EntryPoint = "GetWindowLongPtr")]
+        private static extern IntPtr GetWindowLongPtr(IntPtr hwnd, int nIndex);
         public void OnHotKeyLock()
         {
             mIsLocked = !mIsLocked;
@@ -228,10 +229,25 @@ namespace MonsterOrderWindows
             if (selectedItem == null || selectedItem.DataContext == null)
                 return;
             MonsterOrderInfo orderInfo = selectedItem.DataContext as MonsterOrderInfo;
-            int index = _orderCollection.IndexOf(orderInfo);
-            if (index >= 0)
+            if (orderInfo != null && !string.IsNullOrEmpty(orderInfo.UserId))
             {
-                PriorityQueue.GetInst().Dequeue(index);
+                lock (_queueLock)
+                {
+                    var queue = PriorityQueue.GetInst().Queue;
+                    int queueIndex = -1;
+                    for (int i = 0; i < queue.Count; i++)
+                    {
+                        if (queue[i].UserId == orderInfo.UserId)
+                        {
+                            queueIndex = i;
+                            break;
+                        }
+                    }
+                    if (queueIndex >= 0)
+                    {
+                        PriorityQueue.GetInst().Dequeue(queueIndex);
+                    }
+                }
                 await Dispatcher.InvokeAsync(() => RefreshOrder());
             }
         }
@@ -255,42 +271,32 @@ namespace MonsterOrderWindows
 
         public async void RefreshOrder()
         {
-            ToolsMain.SendCommand("Log:RefreshOrder called");
             // 后台排序 + 数据准备，然后在UI线程更新列表
-            List<MonsterOrderInfo> sortedItems = null;
-            try
+            var sortedItems = await Task.Run(() =>
             {
-                sortedItems = await Task.Run(() =>
+                lock (_queueLock)
                 {
-                PriorityQueue.GetInst().SortQueue();
+                    PriorityQueue.GetInst().SortQueue();
 
-                // 同步到PriorityQueueProxy
-                PriorityQueueProxy.Instance.RefreshFromQueue(PriorityQueue.GetInst());
+                    // 同步到PriorityQueueProxy
+                    PriorityQueueProxy.Instance.RefreshFromQueue(PriorityQueue.GetInst());
 
-                var items = new List<MonsterOrderInfo>();
-                foreach (var node in PriorityQueue.GetInst().Queue)
-                {
-                    var tempData = new MonsterOrderInfo();
-                    tempData.AudienceName = node.UserName;
-                    tempData.MonsterName = node.MonsterName;
-                    tempData.GuardLevel = node.GuardLevel;
-                    tempData.TemperedLevel = node.TemperedLevel;
-                    string iconPath = MonsterData.GetInst().GetMatchedMonsterIconUrl(tempData.MonsterName);
-                    if (!string.IsNullOrEmpty(iconPath))
+                    var items = new List<MonsterOrderInfo>();
+                    foreach (var node in PriorityQueue.GetInst().Queue)
                     {
-                        tempData.MonsterIcon = MonsterIconLoader.LoadIcon(iconPath);
-                        if (tempData.MonsterIcon == null)
-                        {
-                            ToolsMain.SendCommand("Log:Failed to load icon for " + tempData.MonsterName + " path=" + iconPath);
-                        }
+                        var tempData = new MonsterOrderInfo();
+                        tempData.AudienceName = node.UserName;
+                        tempData.MonsterName = node.MonsterName;
+                        tempData.GuardLevel = node.GuardLevel;
+                        tempData.TemperedLevel = node.TemperedLevel;
+                        tempData.UserId = node.UserId;
+                        string iconUrl = MonsterData.GetInst().GetMatchedMonsterIconUrl(tempData.MonsterName);
+                        if (!string.IsNullOrEmpty(iconUrl))
+                            tempData.MonsterIcon = new Uri(iconUrl, UriKind.RelativeOrAbsolute);
+                        items.Add(tempData);
                     }
-                    else
-                    {
-                        ToolsMain.SendCommand("Log:Empty icon path for monster=" + tempData.MonsterName);
-                    }
-                    items.Add(tempData);
+                    return items;
                 }
-                return items;
             });
 
             await Dispatcher.InvokeAsync(() =>
@@ -300,13 +306,7 @@ namespace MonsterOrderWindows
                 {
                     _orderCollection.Add(item);
                 }
-                PriorityQueue.GetInst().SaveList();
             });
-            }
-            catch (Exception ex)
-            {
-                ToolsMain.SendCommand("Log:RefreshOrder exception: " + ex.Message);
-            }
         }
 
         // 拖拽排序 -------------------------------------
@@ -459,83 +459,15 @@ namespace MonsterOrderWindows
             _bubbles.Clear();
             BubbleCanvas.Children.Clear();
         }
-
-        // 文字滚动动画控制
-        private void OnScrollTextLoaded(object sender, RoutedEventArgs e)
-        {
-            var canvas = sender as Canvas;
-            if (canvas == null) return;
-
-            // 在布局完成后测量宽度
-            canvas.Dispatcher.BeginInvoke(new Action(() =>
-            {
-                if (canvas.Children.Count == 0) return;
-                var textBlock = canvas.Children[0] as TextBlock;
-                if (textBlock == null) return;
-
-                // 使用 FormattedText 精确计算文本渲染宽度
-                var formattedText = new FormattedText(
-                    textBlock.Text,
-                    System.Globalization.CultureInfo.CurrentCulture,
-                    FlowDirection.LeftToRight,
-                    new Typeface(textBlock.FontFamily, textBlock.FontStyle, textBlock.FontWeight, textBlock.FontStretch),
-                    textBlock.FontSize,
-                    textBlock.Foreground);
-                double textWidth = formattedText.WidthIncludingTrailingWhitespace;
-                double canvasWidth = canvas.ActualWidth > 0 ? canvas.ActualWidth : canvas.Width;
-
-                if (textWidth > canvasWidth && canvasWidth > 0)
-                {
-                    // 增加20像素余量确保完全显示
-                    double offset = textWidth - canvasWidth + 20;
-
-                    var animation = new DoubleAnimation
-                    {
-                        From = 0,
-                        To = -offset,
-                        Duration = TimeSpan.FromSeconds(Math.Max(2.0, offset / 25.0)),
-                        AutoReverse = true,
-                        RepeatBehavior = RepeatBehavior.Forever,
-                        EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseInOut }
-                    };
-
-                    var storyboard = new Storyboard();
-                    storyboard.Children.Add(animation);
-                    Storyboard.SetTarget(animation, textBlock);
-                    Storyboard.SetTargetProperty(animation, new PropertyPath(Canvas.LeftProperty));
-
-                    // 存储 Storyboard 以便暂停/恢复
-                    canvas.Tag = storyboard;
-                    storyboard.Begin();
-                }
-            }), DispatcherPriority.Background);
-        }
-
-        private void OnScrollTextMouseEnter(object sender, MouseEventArgs e)
-        {
-            var canvas = sender as Canvas;
-            if (canvas?.Tag is Storyboard storyboard)
-            {
-                storyboard.Pause();
-            }
-        }
-
-        private void OnScrollTextMouseLeave(object sender, MouseEventArgs e)
-        {
-            var canvas = sender as Canvas;
-            if (canvas?.Tag is Storyboard storyboard)
-            {
-                storyboard.Resume();
-            }
-        }
     }
 
     public class MonsterOrderInfo
     {
         public string AudienceName { set; get; }
         public string MonsterName { set; get; }
-        public BitmapImage MonsterIcon { set; get; }
+        public Uri MonsterIcon { set; get; }
         public int GuardLevel { set; get; }
+        public string UserId { set; get; }
 
         // 历战等级：0 非历战，1 历战，2 历战王
         public int TemperedLevel { set; get; }

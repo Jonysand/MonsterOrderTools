@@ -3,6 +3,7 @@
 #include "EventSystem.h"
 #include "ConfigFieldRegistry.h"
 #include <functional>
+#include <mutex>
 
 // 配置数据结构（纯数据，无逻辑）
 struct ConfigData
@@ -24,6 +25,7 @@ struct ConfigData
     std::string ttsEngine = "auto";
     std::string mimoApiKey = "";
     std::string mimoVoice = "mimo_default";
+    std::string mimoStyle = "";
     std::string mimoAudioFormat = "mp3";
 
     // MiniMax TTS 配置
@@ -57,8 +59,8 @@ public:
     bool SaveConfig(bool force = false);
     // 标记配置已修改
     void MarkDirty();
-    // 获取当前配置（只读引用）
-    const ConfigData& GetConfig() const;
+    // 获取当前配置（返回值拷贝，线程安全）
+    ConfigData GetConfig() const;
     // 更新配置（批量更新，触发一次变更事件）
     void UpdateConfig(const ConfigData& newData);
     // 更新单个字段
@@ -75,6 +77,7 @@ public:
     void SetTtsEngine(const std::string& value);
     void SetMimoApiKey(const std::string& value);
     void SetMimoVoice(const std::string& value);
+    void SetMimoStyle(const std::string& value);
     void SetMimoAudioFormat(const std::string& value);
     void SetWindowPosition(double x, double y);
     void SetTtsCacheDaysToKeep(int value);
@@ -101,11 +104,9 @@ private:
     std::string configDir_;
     std::string configFile_;
 
-    // 缓存（用于减少锁争用，读操作直接返回缓存）
-    mutable ConfigData cachedConfig_;
-
     // 线程安全
     mutable Lock lock_;
+    mutable std::mutex listenerLock_;
 
     // 配置变更事件
     std::vector<ConfigChangedHandler> configChangedListeners_;

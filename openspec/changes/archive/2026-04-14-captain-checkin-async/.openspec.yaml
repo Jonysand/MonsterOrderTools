@@ -1,0 +1,24 @@
+schema: spec-driven
+created: 2026-04-12
+
+artifacts:
+  - name: proposal
+    file: proposal.md
+    status: done
+  - name: design
+    file: design.md
+    status: done
+  - name: specs
+    path: specs/captain-checkin-async/spec.md
+    status: done
+  - name: tasks
+    file: tasks.md
+    status: done
+
+dependencies:
+  - artifact: specs
+    depends_on: [proposal]
+  - artifact: design
+    depends_on: [proposal]
+  - artifact: tasks
+    depends_on: [specs, design]

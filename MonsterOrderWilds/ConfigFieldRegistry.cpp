@@ -28,6 +28,8 @@ void ConfigFieldRegistry::RegisterAll()
         });
     REGISTER_FIELD("mimoApiKey", std::string, mimoApiKey, ConfigFieldType::String);
     REGISTER_FIELD("mimoVoice", std::string, mimoVoice, ConfigFieldType::String);
+    REGISTER_FIELD("mimoStyle", std::string, mimoStyle, ConfigFieldType::String);
+    REGISTER_FIELD("mimoAudioFormat", std::string, mimoAudioFormat, ConfigFieldType::String);
 
     REGISTER_FIELD_WITH_CALLBACK("onlyMedalOrder", bool, onlyMedalOrder, ConfigFieldType::Bool,
         [](ConfigData& cfg) {

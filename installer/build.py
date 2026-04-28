@@ -38,7 +38,7 @@ def print_step(step, total, message):
 
 def read_app_version():
     """从framework.h读取APP_VERSION"""
-    print_step(1, 7, "Reading version from framework.h...")
+    print_step(1, 6, "Reading version from framework.h...")
 
     if not FRAMEWORK_H.exists():
         print(f"[Error] {FRAMEWORK_H} not found!")
@@ -58,7 +58,7 @@ def read_app_version():
 
 def find_iscc():
     """查找Inno Setup编译器"""
-    print_step(2, 7, "Checking Inno Setup...")
+    print_step(2, 6, "Checking Inno Setup...")
 
     for path in ISCC_PATHS:
         if path.exists():
@@ -72,7 +72,7 @@ def find_iscc():
 
 def check_source_files():
     """检查源文件"""
-    print_step(3, 7, "Checking source files...")
+    print_step(3, 6, "Checking source files...")
 
     errors = []
     if not RELEASE_EXE.exists():
@@ -91,7 +91,7 @@ def check_source_files():
 
 def prepare_files():
     """准备打包文件"""
-    print_step(4, 7, "Preparing files...")
+    print_step(4, 6, "Preparing files...")
 
     # 清理并创建目录
     if FILES_DIR.exists():
@@ -106,14 +106,6 @@ def prepare_files():
 
     shutil.copy2(RELEASE_DLL, FILES_DIR / "MonsterOrderWildsGUI.dll")
     print("[OK] Copied MonsterOrderWildsGUI.dll")
-
-    # 复制图标资源包
-    icon_zip = CONFIGS_DIR / "monster_icons.zip"
-    if icon_zip.exists():
-        shutil.copy2(icon_zip, FILES_DIR / "monster_icons.zip")
-        print("[OK] Copied monster_icons.zip")
-    else:
-        print("[Warning] monster_icons.zip not found!")
 
     # 复制配置文件
     for config_file in [
@@ -192,7 +184,7 @@ def ensure_certificate():
 
 def sign_files():
     """签名程序文件"""
-    print_step(5, 7, "Signing program files...")
+    print_step(5, 6, "Signing program files...")
 
     # 确保证书存在
     cert_subject = ensure_certificate()
@@ -290,37 +282,9 @@ def update_iss_version(version):
         print(f"[OK] Version already set to v{version}")
 
 
-def build_uninstaller(iscc_path):
-    """构建卸载程序"""
-    print_step(5, 7, "Building uninstaller...")
-    
-    uninstaller_iss = INSTALLER_DIR / "MonsterOrderWilds-Uninstaller.iss"
-    if not uninstaller_iss.exists():
-        print(f"[Error] {uninstaller_iss} not found!")
-        sys.exit(1)
-    
-    result = subprocess.run(
-        [str(iscc_path), str(uninstaller_iss)],
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-    )
-    
-    print(result.stdout)
-    if result.stderr:
-        print(result.stderr)
-    
-    if result.returncode != 0:
-        print("[Error] Uninstaller build failed!")
-        sys.exit(1)
-    
-    print("[OK] Uninstaller built successfully")
-
-
 def build_installer(iscc_path, version):
     """构建安装包"""
-    print_step(6, 7, f"Building installer (v{version})...")
+    print_step(6, 6, f"Building installer (v{version})...")
 
     # 更新版本信息
     update_version_info(version)
@@ -346,8 +310,7 @@ def build_installer(iscc_path, version):
     print(f"\n{'=' * 50}")
     print("  Build completed successfully!")
     print(f"{'=' * 50}")
-    print(f"\nInstaller: {OUTPUT_DIR / f'MonsterOrderWilds-Setup-v{version}.exe'}")
-    print(f"Uninstaller: {OUTPUT_DIR / 'MonsterOrderWilds-Uninstaller.exe'}")
+    print(f"\nOutput: {OUTPUT_DIR / f'MonsterOrderWilds-Setup-v{version}.exe'}")
 
     # 打开输出目录
     os.startfile(OUTPUT_DIR)
@@ -373,10 +336,7 @@ def main():
     # 5. 签名
     sign_files()
 
-    # 6. 构建卸载程序
-    build_uninstaller(iscc)
-
-    # 7. 构建安装程序
+    # 6. 构建
     build_installer(iscc, version)
 
     input("\nPress Enter to exit...")

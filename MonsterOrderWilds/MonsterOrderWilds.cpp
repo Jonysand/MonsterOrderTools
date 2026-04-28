@@ -94,7 +94,7 @@ void MonsterOrderWilds::tickWPFCommand()
 	}
 	// LOG
 	if (strcmp(command[0].c_str(), "Log") == 0 && command.size() == 2)
-		LOG_INFO(TEXT("[GUI] %hs"), command[1].c_str());
+		LOG_INFO(TEXT("[GUI] %s"), command[1].c_str());
 	// 断开连接
 	if (strcmp(command[0].c_str(), "Disconnect") == 0)
 	{

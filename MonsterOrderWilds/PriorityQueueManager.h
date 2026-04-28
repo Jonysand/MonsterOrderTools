@@ -4,6 +4,8 @@
 #include <string>
 #include <unordered_set>
 #include <functional>
+#include <atomic>
+#include <mutex>
 
 // 队列节点数据结构（纯数据）
 struct QueueNodeData
@@ -24,7 +26,7 @@ struct QueueNodeData
         if (priority && other.priority)
         {
             if (guardLevel != other.guardLevel)
-                return guardLevel > other.guardLevel ? -1 : 1;
+                return guardLevel < other.guardLevel ? -1 : 1;
             return timeStamp < other.timeStamp ? -1 : 1;
         }
         return timeStamp < other.timeStamp ? -1 : 1;
@@ -42,14 +44,16 @@ class PriorityQueueManager
     DECLARE_SINGLETON(PriorityQueueManager)
 
 public:
-    // 入队
-    void Enqueue(const QueueNodeData& node);
+    // 入队（返回false表示用户已在队列中）
+    bool Enqueue(QueueNodeData node);
     // 出队（按索引）
     QueueNodeData Dequeue(int index);
     // 查看队首
     QueueNodeData Peek() const;
     // 检查用户是否在队列中
     bool Contains(const std::string& userId) const;
+    // 更新用户的优先状态
+    bool UpdateNodePriority(const std::string& userId);
     // 排序
     void SortQueue();
     // 清空队列
@@ -78,7 +82,7 @@ private:
 
     std::vector<QueueNodeData> queue_;
     std::unordered_set<std::string> userIds_;
-    bool dirty_ = false;
+    std::atomic<bool> dirty_{false};
     std::string saveDir_;
     std::string saveFileName_;
 

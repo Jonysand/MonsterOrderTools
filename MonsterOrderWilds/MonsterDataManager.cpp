@@ -7,16 +7,23 @@
 
 DEFINE_SINGLETON(MonsterDataManager)
 
-namespace
-{
-    std::string GetConfigDirectory()
-    {
-        wchar_t exePath[MAX_PATH];
-        GetModuleFileNameW(nullptr, exePath, MAX_PATH);
-        std::filesystem::path exeFullPath(exePath);
-        std::filesystem::path exeDir = exeFullPath.parent_path();
-        return (exeDir / "MonsterOrderWilds_configs").string();
+static std::wstring RegexEscape(const std::wstring& input) {
+    std::wstring result;
+    result.reserve(input.size() * 2);
+    for (wchar_t ch : input) {
+        switch (ch) {
+        case L'.': case L'+': case L'*': case L'?': case L'^': case L'$':
+        case L'{': case L'}': case L'(': case L')': case L'|': case L'[':
+        case L']': case L'\\':
+            result += L'\\';
+            result += ch;
+            break;
+        default:
+            result += ch;
+            break;
+        }
     }
+    return result;
 }
 
 bool MonsterDataManager::LoadJsonData(const std::string& configPath)
@@ -26,7 +33,7 @@ bool MonsterDataManager::LoadJsonData(const std::string& configPath)
         std::string path = configPath;
         if (path.empty())
         {
-            path = GetConfigDirectory() + "/monster_list.json";
+            path = "MonsterOrderWilds_configs/monster_list.json";
         }
 
         if (!std::filesystem::exists(path))
@@ -78,7 +85,7 @@ bool MonsterDataManager::LoadJsonData(const std::string& configPath)
                     std::wstring wnickname = Utf8ToWstring(nickname);
                     std::wstring wkey = Utf8ToWstring(key);
                     CompiledPattern cp;
-                    cp.pattern = std::wregex(wnickname);
+                    cp.pattern = std::wregex(RegexEscape(wnickname));
                     cp.monsterName = key;
                     compiledPatterns_.push_back(cp);
                 }

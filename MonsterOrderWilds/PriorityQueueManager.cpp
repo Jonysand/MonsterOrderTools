@@ -8,104 +8,110 @@
 
 DEFINE_SINGLETON(PriorityQueueManager)
 
-namespace
-{
-    std::string GetConfigDirectory()
-    {
-        wchar_t exePath[MAX_PATH];
-        GetModuleFileNameW(nullptr, exePath, MAX_PATH);
-        std::filesystem::path exeFullPath(exePath);
-        std::filesystem::path exeDir = exeFullPath.parent_path();
-        return (exeDir / "MonsterOrderWilds_configs").string();
-    }
-}
-
 PriorityQueueManager::PriorityQueueManager()
-    : saveDir_(GetConfigDirectory())
+    : saveDir_("MonsterOrderWilds_configs")
     , saveFileName_("OrderList.list")
     , lastSaveTime_(std::chrono::steady_clock::now())
 {
 }
 
-void PriorityQueueManager::Enqueue(const QueueNodeData& node)
+bool PriorityQueueManager::Enqueue(QueueNodeData node)
 {
-    lock_.lock();
-    queue_.push_back(node);
-    userIds_.insert(node.userId);
-    dirty_ = true;
-    lock_.unlock();
+    {
+        std::lock_guard<Lock> guard(lock_);
+        if (userIds_.count(node.userId))
+        {
+            return false;
+        }
+        queue_.push_back(node);
+        userIds_.insert(node.userId);
+        dirty_ = true;
+    }
     NotifyQueueChanged();
+    return true;
 }
 
 QueueNodeData PriorityQueueManager::Dequeue(int index)
 {
-    lock_.lock();
-    if (index < 0 || index >= static_cast<int>(queue_.size()))
+    QueueNodeData node;
     {
-        lock_.unlock();
-        throw std::out_of_range("PriorityQueueManager: queue index out of range");
+        std::lock_guard<Lock> guard(lock_);
+        if (index < 0 || index >= static_cast<int>(queue_.size()))
+        {
+            throw std::out_of_range("PriorityQueueManager: queue index out of range");
+        }
+        node = queue_[index];
+        queue_.erase(queue_.begin() + index);
+        userIds_.erase(node.userId);
+        dirty_ = true;
     }
-    QueueNodeData node = queue_[index];
-    queue_.erase(queue_.begin() + index);
-    userIds_.erase(node.userId);
-    dirty_ = true;
-    lock_.unlock();
     NotifyQueueChanged();
     return node;
 }
 
 QueueNodeData PriorityQueueManager::Peek() const
 {
-    lock_.lock();
+    std::lock_guard<Lock> guard(lock_);
     if (queue_.empty())
     {
-        lock_.unlock();
         throw std::runtime_error("PriorityQueueManager: queue is empty");
     }
-    QueueNodeData node = queue_[0];
-    lock_.unlock();
-    return node;
+    return queue_[0];
 }
 
 bool PriorityQueueManager::Contains(const std::string& userId) const
 {
-    lock_.lock();
-    bool result = userIds_.count(userId) > 0;
-    lock_.unlock();
-    return result;
+    std::lock_guard<Lock> guard(lock_);
+    return userIds_.count(userId) > 0;
+}
+
+bool PriorityQueueManager::UpdateNodePriority(const std::string& userId)
+{
+    {
+        std::lock_guard<Lock> guard(lock_);
+        for (auto& node : queue_)
+        {
+            if (node.userId == userId)
+            {
+                node.priority = true;
+                dirty_ = true;
+                break;
+            }
+        }
+    }
+    // Re-sort since priority changed
+    SortQueue();
+    NotifyQueueChanged();
+    return true;
 }
 
 void PriorityQueueManager::SortQueue()
 {
-    lock_.lock();
+    std::lock_guard<Lock> guard(lock_);
     std::sort(queue_.begin(), queue_.end());
-    lock_.unlock();
 }
 
 void PriorityQueueManager::Clear()
 {
-    lock_.lock();
-    queue_.clear();
-    userIds_.clear();
-    dirty_ = true;
-    lock_.unlock();
+    {
+        std::lock_guard<Lock> guard(lock_);
+        queue_.clear();
+        userIds_.clear();
+        dirty_ = true;
+    }
     NotifyQueueChanged();
 }
 
 int PriorityQueueManager::GetCount() const
 {
-    lock_.lock();
-    int count = static_cast<int>(queue_.size());
-    lock_.unlock();
-    return count;
+    std::lock_guard<Lock> guard(lock_);
+    return static_cast<int>(queue_.size());
 }
 
 std::vector<QueueNodeData> PriorityQueueManager::GetAllNodes() const
 {
-    lock_.lock();
-    auto copy = queue_;
-    lock_.unlock();
-    return copy;
+    std::lock_guard<Lock> guard(lock_);
+    return queue_;
 }
 
 bool PriorityQueueManager::LoadList(const std::string& configPath)
@@ -140,6 +146,8 @@ bool PriorityQueueManager::LoadList(const std::string& configPath)
         }
 
         json j = json::parse(content);
+
+        std::lock_guard<Lock> guard(lock_);
         queue_.clear();
         userIds_.clear();
 
@@ -187,17 +195,20 @@ bool PriorityQueueManager::SaveList(const std::string& configPath)
         }
 
         json j = json::array();
-        for (const auto& node : queue_)
         {
-            json item;
-            item["UserId"] = node.userId;
-            item["TimeStamp"] = node.timeStamp;
-            item["Priority"] = node.priority;
-            item["UserName"] = node.userName;
-            item["MonsterName"] = node.monsterName;
-            item["GuardLevel"] = node.guardLevel;
-            item["TemperedLevel"] = node.temperedLevel;
-            j.push_back(item);
+            std::lock_guard<Lock> guard(lock_);
+            for (const auto& node : queue_)
+            {
+                json item;
+                item["UserId"] = node.userId;
+                item["TimeStamp"] = node.timeStamp;
+                item["Priority"] = node.priority;
+                item["UserName"] = node.userName;
+                item["MonsterName"] = node.monsterName;
+                item["GuardLevel"] = node.guardLevel;
+                item["TemperedLevel"] = node.temperedLevel;
+                j.push_back(item);
+            }
         }
 
         std::string tempPath = path + ".tmp";

@@ -1,0 +1,54 @@
+{
+  "agent_id": "agent1",
+  "dimension": "功能完整性复检",
+  "round": 2,
+  "pass": true,
+  "issues": [],
+  "verified_items": [
+    {
+      "item": "Tick()中readyToPlayQueue_访问的锁保护",
+      "location": "TextToSpeech.cpp:71-72",
+      "status": "verified",
+      "evidence": "std::lock_guard<std::recursive_mutex> lock(asyncMutex_) 已正确添加"
+    },
+    {
+      "item": "ProcessCachingState中cachingCompleted重置",
+      "location": "TextToSpeech.cpp:725",
+      "status": "verified",
+      "evidence": "req.cachingCompleted = false; 已在设置state=Ready后添加"
+    },
+    {
+      "item": "锁使用一致性检查",
+      "locations": [
+        "TextToSpeech.cpp:72 (Tick)",
+        "TextToSpeech.cpp:377 (SpeakCheckinTTS)",
+        "TextToSpeech.cpp:481 (SpeakWithMimoAsync)",
+        "TextToSpeech.cpp:491 (ProcessAsyncTTS)",
+        "TextToSpeech.cpp:588 (HTTP回调)",
+        "TextToSpeech.cpp:604 (缓存回调)",
+        "TextToSpeech.cpp:632 (ProcessRequestingState)",
+        "TextToSpeech.cpp:661 (ProcessPlayingState)",
+        "TextToSpeech.cpp:717 (ProcessCachingState)",
+        "TextToSpeech.cpp:761 (CleanupCompletedRequests)"
+      ],
+      "status": "pass",
+      "evidence": "所有访问asyncPendingQueue_和readyToPlayQueue_的地方都使用了std::lock_guard<recursive_mutex>保护"
+    },
+    {
+      "item": "状态机流转正确性",
+      "status": "pass",
+      "evidence": "Pending->Requesting->Caching/Playing->Ready->Playing->Completed 流转路径正确"
+    },
+    {
+      "item": "数据竞争风险扫描",
+      "status": "pass",
+      "evidence": "所有队列访问和状态修改都有asyncMutex_锁保护，无数据竞争"
+    },
+    {
+      "item": "Build验证",
+      "status": "pass",
+      "evidence": "上一轮build成功，0个错误"
+    }
+  ],
+  "summary": "第2轮复检通过。上一轮发现的两个问题已正确修复：(1)Tick()中访问readyToPlayQueue_已添加std::lock_guard保护；(2)ProcessCachingState中cachingCompleted标志在转换到Ready状态后已重置。全面扫描未发现新问题：所有锁使用一致，状态机流转正确，无数据竞争风险。代码质量满足上线标准。"
+}

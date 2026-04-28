@@ -233,6 +233,9 @@ xcopy /y /q "$(ProjectDir)dict\*" "$(OutDir)dict\"</Command>
     <ClInclude Include="AudioPlayer.h" />
     <ClInclude Include="BliveManager.h" />
     <ClInclude Include="CaptainCheckInModule.h" />
+    <ClInclude Include="DateUtils.h" />
+    <ClInclude Include="LikeEvent.h" />
+    <ClInclude Include="RetroactiveCheckInModule.h" />
     <ClInclude Include="ConfigFieldRegistry.h" />
     <ClInclude Include="ConfigManager.h" />
     <ClInclude Include="CredentialsManager.h" />
@@ -267,6 +270,8 @@ xcopy /y /q "$(ProjectDir)dict\*" "$(OutDir)dict\"</Command>
     <ClCompile Include="AudioPlayer.cpp" />
     <ClCompile Include="BliveManager.cpp" />
     <ClCompile Include="CaptainCheckInModule.cpp" />
+    <ClCompile Include="DateUtils.cpp" />
+    <ClCompile Include="RetroactiveCheckInModule.cpp" />
     <ClCompile Include="ConfigFieldRegistry.cpp" />
     <ClCompile Include="ConfigManager.cpp" />
     <ClCompile Include="CredentialsManager.cpp" />
@@ -355,6 +360,10 @@ xcopy /y /q "$(ProjectDir)dict\*" "$(OutDir)dict\"</Command>
     </ClCompile>
     
     <ClCompile Include="CaptainCheckInModuleTests.cpp">
+      <Filter>UnitTests</Filter>
+      <ExcludedFromBuild Condition="'$(Configuration)'!='UnitTest'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="RetroactiveCheckInModuleTests.cpp">
       <Filter>UnitTests</Filter>
       <ExcludedFromBuild Condition="'$(Configuration)'!='UnitTest'">true</ExcludedFromBuild>
     </ClCompile>

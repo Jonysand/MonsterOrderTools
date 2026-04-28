@@ -1,0 +1,71 @@
+{
+  "agent_id": "agent3",
+  "dimension": "代码质量",
+  "pass": false,
+  "issues": [
+    {
+      "severity": "high",
+      "file": "TextToSpeech.cpp",
+      "line": "583-620",
+      "description": "lambda回调捕获迭代器it，HTTP回调执行时原始请求可能已被pop_front()销毁，导致悬空引用。代码注释line 576已预知此问题但未正确解决。",
+      "quality_concern": "悬空引用/生命周期管理",
+      "evidence": "ttsProvider->RequestTTS(ttsReq, [this, it](const TTSResponse& response) { ... it->audioData = response.audioData; ... it == asyncPendingQueue_.end()检查无法防止迭代器指向已销毁元素"
+    },
+    {
+      "severity": "high",
+      "file": "TextToSpeech.cpp",
+      "line": "71-90",
+      "description": "Tick()直接访问readyToPlayQueue_但无锁保护。ProcessCachingState在HTTP回调线程中push_back，与Tick()的pop_front形成数据竞争。",
+      "quality_concern": "线程安全/数据竞争",
+      "evidence": "readyToPlayQueue_.pop_front()和readyToPlayQueue_.push_back()之间无同步机制"
+    },
+    {
+      "severity": "high",
+      "file": "TextToSpeech.cpp",
+      "line": "583",
+      "description": "使用捕获的迭代器访问请求成员，在迭代器失效时导致未定义行为。检查it==asyncPendingQueue_.end()只验证是否到达末尾，无法验证元素是否仍有效。",
+      "quality_concern": "悬空引用/未定义行为",
+      "evidence": "if (it == asyncPendingQueue_.end()) return; // 元素可能已被销毁但iter未到end"
+    },
+    {
+      "severity": "medium",
+      "file": "TextToSpeech.cpp",
+      "line": "698",
+      "description": "播放超时时无条件调用audioPlayer->Stop()，可能中断其他正在播放的请求。",
+      "quality_concern": "副作用/状态破坏",
+      "evidence": "audioPlayer->Stop(); // 未检查是否有其他请求正在播放"
+    },
+    {
+      "severity": "medium",
+      "file": "TextToSpeech.cpp",
+      "line": "712-725",
+      "description": "ProcessCachingState中cachingCompleted标志只设置不重置，可能导致同一请求被多次push_back到readyToPlayQueue_。",
+      "quality_concern": "逻辑错误/状态一致性",
+      "evidence": "if (req.cachingCompleted) { req.state = AsyncTTSState::Ready; readyToPlayQueue_.push_back(req); }"
+    },
+    {
+      "severity": "medium",
+      "file": "TextToSpeech.cpp",
+      "line": "527-537",
+      "description": "activeRequestCount_控制并发数量，但HTTP回调执行缓慢时，新请求可能无法及时加入处理。",
+      "quality_concern": "性能/吞吐量",
+      "evidence": "while (activeRequestCount_ < MAX_CONCURRENT_TTS && !asyncPendingQueue_.empty())"
+    },
+    {
+      "severity": "medium",
+      "file": "TextToSpeech.cpp",
+      "line": "71-90",
+      "description": "Tick()播放成功后修改请求状态并放回asyncPendingQueue_，如果ProcessAsyncTTS同时在处理该请求，可能导致状态覆盖或重复处理。",
+      "quality_concern": "状态一致性/并发",
+      "evidence": "req.state = AsyncTTSState::Playing; asyncPendingQueue_.push_back(req);"
+    }
+  ],
+  "verified_items": [
+    "析构函数正确清理audioPlayer、pVoice、COM资源",
+    "HandleRequestFailure正确处理超时和重试逻辑",
+    "配置读取使用ConfigManager::Inst()->GetConfig()符合项目风格",
+    "SpeakWithSapi中正确转义XML特殊字符(<>&)",
+    "CleanupOldCache正确计算截止时间并删除过期缓存目录"
+  ],
+  "summary": "代码存在严重的悬空引用和数据竞争问题。最关键的是ProcessPendingRequest中的lambda回调捕获了可能已失效的迭代器，在HTTP回调执行时原始请求对象可能已被销毁。readyToPlayQueue_在Tick()和HTTP回调线程间无同步保护，可能导致数据竞争。建议使用shared_ptr管理请求生命周期，或在回调中通过稳定ID查找请求而非依赖捕获的迭代器。"
+}
