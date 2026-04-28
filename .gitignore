@@ -110,3 +110,6 @@ installer/output/
 
 # Python
 __pycache__/
+
+# Customized voice files
+CustomizedVoice/
