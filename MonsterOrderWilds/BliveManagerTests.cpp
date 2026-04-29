@@ -40,7 +40,7 @@ void TestDisconnectReason_EnumValues()
 
 void TestMaxReconnectAttempts_Value()
 {
-    assert(MAX_RECONNECT_ATTEMPTS == 5);
+    assert(MAX_RECONNECT_ATTEMPTS == 99999);
     std::cout << "[PASS] TestMaxReconnectAttempts_Value" << std::endl;
 }
 
@@ -233,12 +233,13 @@ void TestReconnectAttemptCount_Increment()
 {
     std::atomic<int> count{0};
     
-    for (int i = 0; i < MAX_RECONNECT_ATTEMPTS; ++i)
+    // 测试递增几次即可，不再测试到最大值（现在为无限重试）
+    for (int i = 0; i < 5; ++i)
     {
         count.store(count.load() + 1);
     }
     
-    assert(count.load() == MAX_RECONNECT_ATTEMPTS);
+    assert(count.load() == 5);
     std::cout << "[PASS] TestReconnectAttemptCount_Increment" << std::endl;
 }
 
@@ -266,26 +267,30 @@ void TestReconnectAttemptCount_ResetOnManualReconnect()
     std::cout << "[PASS] TestReconnectAttemptCount_ResetOnManualReconnect" << std::endl;
 }
 
-void TestReconnectAttemptCount_MaxExceeded()
+void TestReconnectAttemptCount_InfiniteRetry()
 {
-    std::atomic<int> count{4};
+    // 现在非主动断开时无限重试，不会到达上限
+    std::atomic<int> count{99998};
     
     count.store(count.load() + 1);
-    assert(count.load() == MAX_RECONNECT_ATTEMPTS);
-    assert(count.load() >= MAX_RECONNECT_ATTEMPTS);
+    // 即使达到原限制，也不会停止（非主动断开情况下）
+    assert(count.load() == 99999);
     
-    std::cout << "[PASS] TestReconnectAttemptCount_MaxExceeded" << std::endl;
+    std::cout << "[PASS] TestReconnectAttemptCount_InfiniteRetry" << std::endl;
 }
 
-void TestReconnectAttemptCount_ShouldStopAtMax()
+void TestReconnectAttemptCount_ShouldNotStop()
 {
-    std::atomic<int> count{MAX_RECONNECT_ATTEMPTS};
-    assert(count.load() >= MAX_RECONNECT_ATTEMPTS);
+    // 非主动断开时不应停止重试
+    std::atomic<int> count{99999};
+    std::atomic<DisconnectReason> reason{DisconnectReason::NetworkError};
     
-    bool shouldStop = count.load() >= MAX_RECONNECT_ATTEMPTS;
-    assert(shouldStop == true);
+    assert(reason.load() != DisconnectReason::None);
+    // 非主动断开，继续重试
+    bool shouldStop = reason.load() == DisconnectReason::None;
+    assert(shouldStop == false);
     
-    std::cout << "[PASS] TestReconnectAttemptCount_ShouldStopAtMax" << std::endl;
+    std::cout << "[PASS] TestReconnectAttemptCount_ShouldNotStop" << std::endl;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -390,7 +395,7 @@ void TestDisconnectReason_PreservedOnStateTransition()
 // 状态组合测试 - 完整的重连失败流程
 // ═══════════════════════════════════════════════════════════════════
 
-void TestFullReconnectFailureFlow()
+void TestInfiniteRetryFlow()
 {
     std::atomic<ConnectionState> state{ConnectionState::Connected};
     std::atomic<DisconnectReason> reason{DisconnectReason::HeartbeatTimeout};
@@ -401,29 +406,25 @@ void TestFullReconnectFailureFlow()
     assert(state.load() == ConnectionState::Reconnecting);
     assert(reason.load() == DisconnectReason::HeartbeatTimeout);
     
-    // 尝试重连5次
-    for (int i = 0; i < MAX_RECONNECT_ATTEMPTS; ++i)
+    // 尝试重连多次（模拟无限重试）
+    for (int i = 0; i < 100; ++i)
     {
         attemptCount.store(attemptCount.load() + 1);
         assert(attemptCount.load() == i + 1);
     }
     
-    // 达到最大次数，转为 ReconnectFailed
-    assert(attemptCount.load() >= MAX_RECONNECT_ATTEMPTS);
-    state.store(ConnectionState::ReconnectFailed);
+    // 非主动断开，不会进入 ReconnectFailed，而是继续重试
+    assert(reason.load() != DisconnectReason::None);
+    assert(state.load() == ConnectionState::Reconnecting);
     
-    assert(state.load() == ConnectionState::ReconnectFailed);
-    assert(attemptCount.load() == MAX_RECONNECT_ATTEMPTS);
-    assert(reason.load() == DisconnectReason::HeartbeatTimeout);
-    
-    std::cout << "[PASS] TestFullReconnectFailureFlow" << std::endl;
+    std::cout << "[PASS] TestInfiniteRetryFlow" << std::endl;
 }
 
 void TestManualReconnectAfterFailure()
 {
     std::atomic<ConnectionState> state{ConnectionState::ReconnectFailed};
     std::atomic<DisconnectReason> reason{DisconnectReason::NetworkError};
-    std::atomic<int> attemptCount{MAX_RECONNECT_ATTEMPTS};
+    std::atomic<int> attemptCount{99999};
     
     // 用户点击重连按钮
     state.store(ConnectionState::Connecting);
@@ -609,8 +610,8 @@ int main()
     TestReconnectAttemptCount_Increment();
     TestReconnectAttemptCount_ResetOnDisconnect();
     TestReconnectAttemptCount_ResetOnManualReconnect();
-    TestReconnectAttemptCount_MaxExceeded();
-    TestReconnectAttemptCount_ShouldStopAtMax();
+    TestReconnectAttemptCount_InfiniteRetry();
+    TestReconnectAttemptCount_ShouldNotStop();
     std::cout << std::endl;
     
     std::cout << "[--- 断连原因测试 ---]" << std::endl;
@@ -623,7 +624,7 @@ int main()
     std::cout << std::endl;
     
     std::cout << "[--- 组合流程测试 ---]" << std::endl;
-    TestFullReconnectFailureFlow();
+    TestInfiniteRetryFlow();
     TestManualReconnectAfterFailure();
     TestActiveDisconnectClearsRetryCount();
     TestCancelDuringConnecting();

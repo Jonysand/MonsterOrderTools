@@ -114,13 +114,13 @@ void BliveManager::Start(const std::string& IdCode)
     
     if (currentState == ConnectionState::Reconnecting || currentState == ConnectionState::ReconnectFailed)
     {
-        int currentAttempt = reconnectAttemptCount.load();
-        if (currentAttempt >= MAX_RECONNECT_ATTEMPTS)
+        // 用户主动断开（reason == None）不重连，其余情况无限重试
+        if (disconnectReason.load() == DisconnectReason::None)
         {
-            LOG_ERROR(TEXT("Max reconnect attempts reached"));
-            SetConnectionState(ConnectionState::ReconnectFailed, disconnectReason.load());
+            LOG_INFO(TEXT("Active disconnect, skipping reconnection"));
             return;
         }
+        int currentAttempt = reconnectAttemptCount.load();
         reconnectAttemptCount.store(currentAttempt + 1);
     }
     else

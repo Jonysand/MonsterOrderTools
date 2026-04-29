@@ -102,6 +102,7 @@ bool ProfileManager::Init() {
         "username TEXT NOT NULL,"
         "last_checkin_date INTEGER DEFAULT 0,"
         "continuous_days INTEGER DEFAULT 0,"
+        "cumulative_days INTEGER DEFAULT 0,"
         "last_danmu_timestamp INTEGER DEFAULT 0,"
         "created_at INTEGER DEFAULT 0,"
         "updated_at INTEGER DEFAULT 0,"
@@ -265,7 +266,7 @@ bool ProfileManager::LoadProfileFromDb(const std::string& uid, UserProfileData& 
     if (!storage_) return false;
 
     sqlite3* db = (sqlite3*)storage_;
-    const char* sql = "SELECT uid, username, last_checkin_date, continuous_days, last_danmu_timestamp, created_at, updated_at, keywords_json, danmu_history_json FROM user_profiles WHERE uid = ?";
+    const char* sql = "SELECT uid, username, last_checkin_date, continuous_days, cumulative_days, last_danmu_timestamp, created_at, updated_at, keywords_json, danmu_history_json FROM user_profiles WHERE uid = ?";
 
     sqlite3_stmt* stmt = nullptr;
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
@@ -281,16 +282,17 @@ bool ProfileManager::LoadProfileFromDb(const std::string& uid, UserProfileData& 
         outProfile.username = rawUsername ? rawUsername : "";
         outProfile.lastCheckinDate = sqlite3_column_int(stmt, 2);
         outProfile.continuousDays = sqlite3_column_int(stmt, 3);
-        outProfile.lastDanmuTimestamp = sqlite3_column_int64(stmt, 4);
-        outProfile.createdAt = sqlite3_column_int64(stmt, 5);
-        outProfile.updatedAt = sqlite3_column_int64(stmt, 6);
+        outProfile.cumulativeDays = sqlite3_column_int(stmt, 4);
+        outProfile.lastDanmuTimestamp = sqlite3_column_int64(stmt, 5);
+        outProfile.createdAt = sqlite3_column_int64(stmt, 6);
+        outProfile.updatedAt = sqlite3_column_int64(stmt, 7);
 
-        const char* keywordsJson = (const char*)sqlite3_column_text(stmt, 7);
+        const char* keywordsJson = (const char*)sqlite3_column_text(stmt, 8);
         if (keywordsJson) {
             outProfile.keywords = JsonToKeywords(keywordsJson);
         }
 
-        const char* danmuHistoryJson = (const char*)sqlite3_column_text(stmt, 8);
+        const char* danmuHistoryJson = (const char*)sqlite3_column_text(stmt, 9);
         if (danmuHistoryJson) {
             outProfile.danmuHistory = JsonToDanmuHistory(danmuHistoryJson);
         }
@@ -308,7 +310,7 @@ void ProfileManager::SaveProfileToDb(const UserProfileData& profile) {
 
     sqlite3* db = (sqlite3*)storage_;
     sqlite3_stmt* stmt = nullptr;
-    const char* sql = "INSERT OR REPLACE INTO user_profiles (uid, username, last_checkin_date, continuous_days, last_danmu_timestamp, created_at, updated_at, keywords_json, danmu_history_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    const char* sql = "INSERT OR REPLACE INTO user_profiles (uid, username, last_checkin_date, continuous_days, cumulative_days, last_danmu_timestamp, created_at, updated_at, keywords_json, danmu_history_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
         LOG_ERROR(TEXT("ProfileManager: Failed to prepare insert statement: %hs"), sqlite3_errmsg(db));
@@ -319,11 +321,12 @@ void ProfileManager::SaveProfileToDb(const UserProfileData& profile) {
     sqlite3_bind_text(stmt, 2, profile.username.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_int(stmt, 3, profile.lastCheckinDate);
     sqlite3_bind_int(stmt, 4, profile.continuousDays);
-    sqlite3_bind_int64(stmt, 5, profile.lastDanmuTimestamp);
-    sqlite3_bind_int64(stmt, 6, profile.createdAt);
-    sqlite3_bind_int64(stmt, 7, GetCurrentTimestamp());
-    sqlite3_bind_text(stmt, 8, KeywordsToJson(profile.keywords).c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 9, DanmuHistoryToJson(profile.danmuHistory).c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 5, profile.cumulativeDays);
+    sqlite3_bind_int64(stmt, 6, profile.lastDanmuTimestamp);
+    sqlite3_bind_int64(stmt, 7, profile.createdAt);
+    sqlite3_bind_int64(stmt, 8, GetCurrentTimestamp());
+    sqlite3_bind_text(stmt, 9, KeywordsToJson(profile.keywords).c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 10, DanmuHistoryToJson(profile.danmuHistory).c_str(), -1, SQLITE_TRANSIENT);
     
     if (sqlite3_step(stmt) != SQLITE_DONE) {
         LOG_ERROR(TEXT("ProfileManager: Failed to execute insert: %hs"), sqlite3_errmsg(db));
@@ -473,6 +476,17 @@ void ProfileManager::RecordCheckin(const std::string& uid, const std::string& us
         profile.createdAt = GetCurrentTimestamp();
         profile.updatedAt = GetCurrentTimestamp();
     }
+    
+    // 累计天数：非重复打卡时递增
+    int32_t oldLastCheckinDate = profile.lastCheckinDate;
+    if (oldLastCheckinDate != checkinDate) {
+        if (profile.cumulativeDays > 0) {
+            profile.cumulativeDays += 1;
+        } else {
+            profile.cumulativeDays = 1;
+        }
+    }
+    
     profile.lastCheckinDate = checkinDate;
     profile.continuousDays = continuousDays;
 
@@ -523,9 +537,9 @@ void ProfileManager::RecordCheckin(const std::string& uid, const std::string& us
     LOG_INFO(TEXT("ProfileManager: Recorded checkin for uid=%hs, days=%d"), uid.c_str(), continuousDays);
 }
 
-void ProfileManager::RecordCheckinAsync(const std::string& uid, const std::string& username, int32_t checkinDate, int32_t continuousDays) {
+void ProfileManager::RecordCheckinAsync(const std::string& uid, const std::string& username, int32_t checkinDate, int32_t continuousDays, int32_t cumulativeDays) {
     auto* self = this;
-    std::thread([self, uid, username, checkinDate, continuousDays]() {
+    std::thread([self, uid, username, checkinDate, continuousDays, cumulativeDays]() {
         UserProfileData profile;
         int64_t timestamp = GetCurrentTimestamp();
         {
@@ -542,6 +556,7 @@ void ProfileManager::RecordCheckinAsync(const std::string& uid, const std::strin
         }
         profile.lastCheckinDate = checkinDate;
         profile.continuousDays = continuousDays;
+        profile.cumulativeDays = cumulativeDays;
 
         bool dbSuccess = true;
         if (self->storage_) {
@@ -688,6 +703,43 @@ int32_t ProfileManager::CalculateContinuousDays(const std::string& uid, int32_t 
     }
 
     return 1;
+}
+
+int32_t ProfileManager::CalculateContinuousDaysFromRecords(const std::string& uid) {
+    if (!storage_) return 1;
+
+    sqlite3* db = (sqlite3*)storage_;
+    sqlite3_stmt* stmt = nullptr;
+
+    // 查询用户的所有打卡记录，按日期降序排列
+    const char* sql = "SELECT checkin_date FROM checkin_records WHERE uid = ? ORDER BY checkin_date DESC";
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        return 1;
+    }
+
+    sqlite3_bind_text(stmt, 1, uid.c_str(), -1, SQLITE_TRANSIENT);
+
+    std::vector<int32_t> dates;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        dates.push_back(sqlite3_column_int(stmt, 0));
+    }
+    sqlite3_finalize(stmt);
+
+    if (dates.empty()) {
+        return 1;
+    }
+
+    // 从最新日期开始往前遍历，计算连续天数
+    int32_t continuousDays = 1;
+    for (size_t i = 1; i < dates.size(); ++i) {
+        if (DateUtils::IsNextCalendarDay(dates[i], dates[i - 1])) {
+            continuousDays++;
+        } else {
+            break;
+        }
+    }
+
+    return continuousDays;
 }
 
 void ProfileManager::AddKeyword(const std::string& uid, const std::string& keyword) {
@@ -1200,11 +1252,17 @@ bool ProfileManager::ExecuteRetroactiveCheckin(const std::string& uid, const std
     }
     sqlite3_finalize(stmt);
 
-    // 3. 更新用户 profile
+    // 3. 更新用户 profile（补签后从 checkin_records 重新计算连续天数）
     UserProfileData profile;
     if (LoadProfileFromDb(uid, profile)) {
-        int32_t newContinuousDays = CalculateContinuousDays(uid, targetDate);
+        int32_t newContinuousDays = CalculateContinuousDaysFromRecords(uid);
         profile.continuousDays = newContinuousDays;
+        // 补签时累计天数 +1
+        if (profile.cumulativeDays > 0) {
+            profile.cumulativeDays += 1;
+        } else {
+            profile.cumulativeDays = 1;
+        }
         if (targetDate > profile.lastCheckinDate) {
             profile.lastCheckinDate = targetDate;
         }

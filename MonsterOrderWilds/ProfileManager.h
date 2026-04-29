@@ -18,6 +18,7 @@ struct UserProfileData {
     std::string username;
     int32_t lastCheckinDate = 0;
     int32_t continuousDays = 0;
+    int32_t cumulativeDays = 0;
     int64_t lastDanmuTimestamp = 0;
     int64_t createdAt = 0;
     int64_t updatedAt = 0;
@@ -57,7 +58,7 @@ public:
     void DeleteProfile(const std::string& uid);
 
     void RecordCheckin(const std::string& uid, const std::string& username, int32_t checkinDate);
-    void RecordCheckinAsync(const std::string& uid, const std::string& username, int32_t checkinDate, int32_t continuousDays);
+    void RecordCheckinAsync(const std::string& uid, const std::string& username, int32_t checkinDate, int32_t continuousDays, int32_t cumulativeDays);
     int32_t CalculateContinuousDays(const std::string& uid, int32_t checkinDate);
 
     void AddKeyword(const std::string& uid, const std::string& keyword);
@@ -86,6 +87,9 @@ public:
 
     // 原子性执行补签操作：扣卡 + 插记录 + 更新 profile，全部在一个事务中
     bool ExecuteRetroactiveCheckin(const std::string& uid, const std::string& username, int32_t targetDate, int32_t& outNewCardCount);
+
+    // 从 checkin_records 表中重新计算用户的连续打卡天数（支持补签后正确计算）
+    int32_t CalculateContinuousDaysFromRecords(const std::string& uid);
 
     // 获取原始数据库句柄（用于测试清理等场景）
     void* GetStorage() const { return storage_; }

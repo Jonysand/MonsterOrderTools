@@ -300,7 +300,8 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
         if (shouldCheckin && profile.lastCheckinDate == event.sendDate) {
             LOG_DEBUG(TEXT("[CaptainCheckInModule] Repeated checkin detected for uid=%hs, date=%d"), event.uid.c_str(), event.sendDate);
             int32_t continuousDays = ProfileManager::Inst()->CalculateContinuousDays(event.uid, event.sendDate);
-            std::string repeatedAnswer = event.username + "今日已打卡，连续" + std::to_string(continuousDays) + "天";
+            int32_t cumulativeDays = profile.cumulativeDays > 0 ? profile.cumulativeDays : continuousDays;
+            std::string repeatedAnswer = event.username + "今日已打卡，连续" + std::to_string(continuousDays) + "天，累计" + std::to_string(cumulativeDays) + "天";
 
             std::wstring contentCopy = Utf8ToWstring(repeatedAnswer);
             RECORD_HISTORY(contentCopy.c_str());
@@ -324,6 +325,16 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
             int32_t checkinDate = event.sendDate;
             int32_t continuousDays = ProfileManager::Inst()->CalculateContinuousDays(event.uid, checkinDate);
             int32_t previousCheckinDate = profile.lastCheckinDate;
+            
+            // 计算累计天数
+            int32_t cumulativeDays = profile.cumulativeDays;
+            if (previousCheckinDate != checkinDate) {
+                if (cumulativeDays > 0) {
+                    cumulativeDays += 1;
+                } else {
+                    cumulativeDays = 1;
+                }
+            }
 
             // 检查是否已在处理首次打卡中（含超时清理）
             bool alreadyPending = false;
@@ -349,13 +360,14 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
             // 首次打卡：延迟保存到数据库，直到AI回复和TTS成功
             {
                 std::lock_guard<std::mutex> lock(pendingCheckinLock_);
-                pendingCheckinData_[event.uid] = {event.username, checkinDate, continuousDays, GetCurrentTimestamp()};
+                pendingCheckinData_[event.uid] = {event.username, checkinDate, continuousDays, cumulativeDays, GetCurrentTimestamp()};
             }
 
             CheckinEvent checkinEvt;
             checkinEvt.uid = event.uid;
             checkinEvt.username = event.username;
             checkinEvt.continuousDays = continuousDays;
+            checkinEvt.cumulativeDays = cumulativeDays;
             checkinEvt.checkinDate = checkinDate;
             checkinEvt.lastCheckinDate = previousCheckinDate;
 
@@ -379,10 +391,11 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
                         if (it != profiles_.end()) {
                             it->second.lastCheckinDate = data.checkinDate;
                             it->second.continuousDays = data.continuousDays;
+                            it->second.cumulativeDays = data.cumulativeDays;
                             SaveProfileAsync(it->second);
                         }
                     }
-                    ProfileManager::Inst()->RecordCheckinAsync(uid, data.username, data.checkinDate, data.continuousDays);
+                    ProfileManager::Inst()->RecordCheckinAsync(uid, data.username, data.checkinDate, data.continuousDays, data.cumulativeDays);
                     LOG_INFO(TEXT("[CaptainCheckInModule] Checkin record saved after TTS success for uid=%hs"), uid.c_str());
                 } else if (found && !success) {
                     LOG_WARNING(TEXT("[CaptainCheckInModule] Checkin TTS/AI failed for uid=%hs, record not saved"), uid.c_str());
@@ -671,7 +684,7 @@ std::string CaptainCheckInModule::BuildPrompt(const CheckinEvent& event, const U
     }
 
     std::ostringstream oss;
-    oss << "用户" << event.username << "是一位舰长，连续第" << event.continuousDays << "天打卡" << lastCheckinInfo << "。\n"
+    oss << "用户" << event.username << "是一位舰长，连续第" << event.continuousDays << "天打卡，累计打卡" << event.cumulativeDays << "天" << lastCheckinInfo << "。\n"
         << "他的发言习惯包含：" << keywords << "\n"
         << "最近发言：" << recentMessages << "\n"
         << "请在回复中明确提到用户" << event.username << "的姓名，用轻松友好且有点皮的语气回复他的打卡，控制在20字以内。\n"
@@ -680,14 +693,9 @@ std::string CaptainCheckInModule::BuildPrompt(const CheckinEvent& event, const U
 }
 
 std::string CaptainCheckInModule::GetFallbackAnswer(const CheckinEvent& event) {
-    if (event.continuousDays <= 1) {
-        return event.username + "打卡成功！";
-    }
-    else {
-        std::ostringstream oss;
-        oss << event.username << "连续第" << event.continuousDays << "天打卡！";
-        return oss.str();
-    }
+    std::ostringstream oss;
+    oss << event.username << "连续第" << event.continuousDays << "天打卡！累计" << event.cumulativeDays << "天";
+    return oss.str();
 }
 
 std::string CaptainCheckInModule::GenerateAIAnswer(const CheckinEvent& event, const UserProfile* profile) {

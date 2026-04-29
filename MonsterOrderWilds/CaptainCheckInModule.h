@@ -28,6 +28,7 @@ struct CheckinEvent {
     std::string uid;
     std::string username;
     int32_t continuousDays = 0;
+    int32_t cumulativeDays = 0;
     int32_t checkinDate = 0;
     int32_t lastCheckinDate = 0;
 };
@@ -46,6 +47,7 @@ struct UserProfile {
     std::vector<std::pair<int64_t, std::string>> danmuHistory;
     int32_t lastCheckinDate = 0;
     int32_t continuousDays = 0;
+    int32_t cumulativeDays = 0;
     int64_t lastDanmuTimestamp = 0;
     int64_t createdAt = 0;
     int32_t sameContentCount = 0;
@@ -91,6 +93,7 @@ private:
         std::string username;
         int32_t checkinDate = 0;
         int32_t continuousDays = 0;
+        int32_t cumulativeDays = 0;
         int64_t startTime = 0;
     };
     std::map<std::string, PendingCheckinData> pendingCheckinData_;
