@@ -171,6 +171,8 @@ void TTSManager::HandleSpeekDm(const json& data)
         return;
     if (ConfigManager::Inst()->GetConfig().onlySpeekGuardLevel != 0 && (guard_level == 0 || guard_level > ConfigManager::Inst()->GetConfig().onlySpeekGuardLevel))
         return;
+    if (!ConfigManager::Inst()->GetConfig().enableVoice)
+        return;
     if (msg.rfind(TEXT("点餐"), 0) == 0) {
         // 以"点餐"开头
         HandleDmOrderFood(msg, utf8_to_wstring(uname));
