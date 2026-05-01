@@ -358,35 +358,44 @@ namespace MonsterOrderWindows
 
         private async void SaveSettingsButton_Click(object sender, RoutedEventArgs e)
         {
-            SaveSettingsButton.IsEnabled = false;
-            SaveSettingsButton.Content = "保存中...";
+            try
+            {
+                SaveSettingsButton.IsEnabled = false;
+                SaveSettingsButton.Content = "保存中...";
 
-            await Task.Run(() =>
-            {
-                ToolsMain.GetConfigService().SaveConfig();
-            });
+                await Task.Run(() =>
+                {
+                    ToolsMain.GetConfigService().SaveConfig();
+                });
 
-            SaveSettingsButton.Content = "保存设置";
-            SaveSettingsButton.IsEnabled = true;
+                SaveSettingsButton.Content = "保存设置";
+                SaveSettingsButton.IsEnabled = true;
 
-            var tip = new System.Windows.Controls.ToolTip
+                var tip = new System.Windows.Controls.ToolTip
+                {
+                    Content = "保存设置成功",
+                    PlacementTarget = SaveSettingsButton,
+                    Placement = System.Windows.Controls.Primitives.PlacementMode.Top,
+                    StaysOpen = false,
+                    IsOpen = true
+                };
+                var timer = new System.Windows.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromSeconds(1.5)
+                };
+                timer.Tick += (s, args) =>
+                {
+                    tip.IsOpen = false;
+                    timer.Stop();
+                };
+                timer.Start();
+            }
+            catch (Exception ex)
             {
-                Content = "保存设置成功",
-                PlacementTarget = SaveSettingsButton,
-                Placement = System.Windows.Controls.Primitives.PlacementMode.Top,
-                StaysOpen = false,
-                IsOpen = true
-            };
-            var timer = new System.Windows.Threading.DispatcherTimer
-            {
-                Interval = TimeSpan.FromSeconds(1.5)
-            };
-            timer.Tick += (s, args) =>
-            {
-                tip.IsOpen = false;
-                timer.Stop();
-            };
-            timer.Start();
+                SaveSettingsButton.Content = "保存设置";
+                SaveSettingsButton.IsEnabled = true;
+                System.Diagnostics.Debug.WriteLine($"[SaveSettingsButton_Click] Exception: {ex.Message}");
+            }
         }
 
         private void TTSEngineComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)

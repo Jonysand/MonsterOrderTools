@@ -47,7 +47,8 @@ inline const char* DisconnectReasonToString(DisconnectReason reason) {
 
 
 static constexpr int MAX_RECONNECT_ATTEMPTS = 99999;
-static constexpr uint64_t RECONNECT_DELAY_MS = 0;
+static constexpr uint64_t RECONNECT_BASE_DELAY_MS = 1000;
+static constexpr uint64_t RECONNECT_MAX_DELAY_MS = 60000;
 static constexpr uint64_t WS_HEARTBEAT_RECONNECT_DELAY_MS = 2000;
 static constexpr uint64_t INITIAL_HEARTBEAT_DELAY_MS = 5000;
 
@@ -101,6 +102,8 @@ private:
     void HandleSmsReply(const std::string& msg);
     // 调度重连（防止重复调度）
     void ScheduleReconnect(uint64_t delayMs);
+    // 计算指数退避延迟
+    uint64_t CalculateReconnectDelay() const;
 private:
     // Async request wrapper for callback-based async operations
     struct AsyncRequest {

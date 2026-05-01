@@ -244,6 +244,21 @@ namespace Network
         }
     }
 
+    static void InvokeErrorCallbackAsync(std::shared_ptr<HttpsAsyncUtils::HttpsAsyncContext> ctx, bool closeConnect = false) {
+        std::thread([ctx, closeConnect]() {
+            if (ctx->callback) {
+                try {
+                    ctx->callback(false, "", ctx->error.load());
+                } catch (...) {
+                    LOG_ERROR(TEXT("[Network] HttpsRequest callback exception"));
+                }
+            }
+            if (closeConnect && ctx->hConnect) {
+                WinHttpCloseHandle(ctx->hConnect);
+            }
+        }).detach();
+    }
+
     void MakeHttpsRequestAsync(
         const TString& host,
         const INTERNET_PORT& port,
@@ -262,15 +277,7 @@ namespace Network
         HINTERNET hSession = HttpsAsyncUtils::GetSharedSession();
         if (!hSession) {
             ctx->error.store(GetLastError());
-            std::thread([ctx]() {
-                if (ctx->callback) {
-                    try {
-                        ctx->callback(false, "", ctx->error.load());
-                    } catch (...) {
-                        LOG_ERROR(TEXT("[Network] HttpsRequest callback exception (session init failed)"));
-                    }
-                }
-            }).detach();
+            InvokeErrorCallbackAsync(ctx);
             return;
         }
 
@@ -278,15 +285,7 @@ namespace Network
         ctx->hConnect = WinHttpConnect(hSession, host.c_str(), realPort, 0);
         if (!ctx->hConnect) {
             ctx->error.store(GetLastError());
-            std::thread([ctx]() {
-                if (ctx->callback) {
-                    try {
-                        ctx->callback(false, "", ctx->error.load());
-                    } catch (...) {
-                        LOG_ERROR(TEXT("[Network] HttpsRequest callback exception (connect failed)"));
-                    }
-                }
-            }).detach();
+            InvokeErrorCallbackAsync(ctx);
             return;
         }
 
@@ -295,16 +294,7 @@ namespace Network
         ctx->hRequest = WinHttpOpenRequest(ctx->hConnect, method.c_str(), path.c_str(), NULL, WINHTTP_NO_REFERER, szAccept, FLAG);
         if (!ctx->hRequest) {
             ctx->error.store(GetLastError());
-            std::thread([ctx]() {
-                if (ctx->callback) {
-                    try {
-                        ctx->callback(false, "", ctx->error.load());
-                    } catch (...) {
-                        LOG_ERROR(TEXT("[Network] HttpsRequest callback exception (request init failed)"));
-                    }
-                }
-                WinHttpCloseHandle(ctx->hConnect);
-            }).detach();
+            InvokeErrorCallbackAsync(ctx, true);
             return;
         }
 

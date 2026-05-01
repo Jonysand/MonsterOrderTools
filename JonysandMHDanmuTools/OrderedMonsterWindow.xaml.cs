@@ -217,38 +217,45 @@ namespace MonsterOrderWindows
         // 点击以完成订单
         private async void OnClickOrder(object sender, MouseButtonEventArgs e)
         {
-            if (mIsLocked)
-                return;
-            if (e.ChangedButton != MouseButton.Left)
-                return;
-            Point pos = e.GetPosition(MainList);
-            HitTestResult result = VisualTreeHelper.HitTest(MainList, pos);
-            if (result == null)
-                return;
-            ListViewItem selectedItem = Utils.FindVisualParent<ListViewItem>(result.VisualHit);
-            if (selectedItem == null || selectedItem.DataContext == null)
-                return;
-            MonsterOrderInfo orderInfo = selectedItem.DataContext as MonsterOrderInfo;
-            if (orderInfo != null && !string.IsNullOrEmpty(orderInfo.UserId))
+            try
             {
-                lock (_queueLock)
+                if (mIsLocked)
+                    return;
+                if (e.ChangedButton != MouseButton.Left)
+                    return;
+                Point pos = e.GetPosition(MainList);
+                HitTestResult result = VisualTreeHelper.HitTest(MainList, pos);
+                if (result == null)
+                    return;
+                ListViewItem selectedItem = Utils.FindVisualParent<ListViewItem>(result.VisualHit);
+                if (selectedItem == null || selectedItem.DataContext == null)
+                    return;
+                MonsterOrderInfo orderInfo = selectedItem.DataContext as MonsterOrderInfo;
+                if (orderInfo != null && !string.IsNullOrEmpty(orderInfo.UserId))
                 {
-                    var queue = PriorityQueue.GetInst().Queue;
-                    int queueIndex = -1;
-                    for (int i = 0; i < queue.Count; i++)
+                    lock (_queueLock)
                     {
-                        if (queue[i].UserId == orderInfo.UserId)
+                        var queue = PriorityQueue.GetInst().Queue;
+                        int queueIndex = -1;
+                        for (int i = 0; i < queue.Count; i++)
                         {
-                            queueIndex = i;
-                            break;
+                            if (queue[i].UserId == orderInfo.UserId)
+                            {
+                                queueIndex = i;
+                                break;
+                            }
+                        }
+                        if (queueIndex >= 0)
+                        {
+                            PriorityQueue.GetInst().Dequeue(queueIndex);
                         }
                     }
-                    if (queueIndex >= 0)
-                    {
-                        PriorityQueue.GetInst().Dequeue(queueIndex);
-                    }
+                    await RefreshOrderAsync();
                 }
-                await Dispatcher.InvokeAsync(() => RefreshOrder());
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[OnClickOrder] Exception: {ex.Message}");
             }
         }
 
@@ -269,44 +276,57 @@ namespace MonsterOrderWindows
             }
         }
 
+        public async Task RefreshOrderAsync()
+        {
+            try
+            {
+                // 后台排序 + 数据准备，然后在UI线程更新列表
+                var sortedItems = await Task.Run(() =>
+                {
+                    lock (_queueLock)
+                    {
+                        PriorityQueue.GetInst().SortQueue();
+
+                        // 同步到PriorityQueueProxy
+                        PriorityQueueProxy.Instance.RefreshFromQueue(PriorityQueue.GetInst());
+
+                        var items = new List<MonsterOrderInfo>();
+                        foreach (var node in PriorityQueue.GetInst().Queue)
+                        {
+                            var tempData = new MonsterOrderInfo();
+                            tempData.AudienceName = node.UserName;
+                            tempData.MonsterName = node.MonsterName;
+                            tempData.GuardLevel = node.GuardLevel;
+                            tempData.TemperedLevel = node.TemperedLevel;
+                            tempData.UserId = node.UserId;
+                            string iconUrl = MonsterData.GetInst().GetMatchedMonsterIconUrl(tempData.MonsterName);
+                            if (!string.IsNullOrEmpty(iconUrl))
+                                tempData.MonsterIcon = new Uri(iconUrl, UriKind.RelativeOrAbsolute);
+                            items.Add(tempData);
+                        }
+                        return items;
+                    }
+                });
+
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    _orderCollection.Clear();
+                    foreach (var item in sortedItems)
+                    {
+                        _orderCollection.Add(item);
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[RefreshOrderAsync] Exception: {ex.Message}");
+            }
+        }
+
+        [Obsolete("Use RefreshOrderAsync instead")]
         public async void RefreshOrder()
         {
-            // 后台排序 + 数据准备，然后在UI线程更新列表
-            var sortedItems = await Task.Run(() =>
-            {
-                lock (_queueLock)
-                {
-                    PriorityQueue.GetInst().SortQueue();
-
-                    // 同步到PriorityQueueProxy
-                    PriorityQueueProxy.Instance.RefreshFromQueue(PriorityQueue.GetInst());
-
-                    var items = new List<MonsterOrderInfo>();
-                    foreach (var node in PriorityQueue.GetInst().Queue)
-                    {
-                        var tempData = new MonsterOrderInfo();
-                        tempData.AudienceName = node.UserName;
-                        tempData.MonsterName = node.MonsterName;
-                        tempData.GuardLevel = node.GuardLevel;
-                        tempData.TemperedLevel = node.TemperedLevel;
-                        tempData.UserId = node.UserId;
-                        string iconUrl = MonsterData.GetInst().GetMatchedMonsterIconUrl(tempData.MonsterName);
-                        if (!string.IsNullOrEmpty(iconUrl))
-                            tempData.MonsterIcon = new Uri(iconUrl, UriKind.RelativeOrAbsolute);
-                        items.Add(tempData);
-                    }
-                    return items;
-                }
-            });
-
-            await Dispatcher.InvokeAsync(() =>
-            {
-                _orderCollection.Clear();
-                foreach (var item in sortedItems)
-                {
-                    _orderCollection.Add(item);
-                }
-            });
+            await RefreshOrderAsync();
         }
 
         // 拖拽排序 -------------------------------------

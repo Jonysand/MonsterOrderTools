@@ -99,6 +99,13 @@ void BliveManager::ScheduleReconnect(uint64_t delayMs)
     delayedTasks.push_back({ [this]() { reconnectScheduled_.store(false); Start(); }, delayMs });
 }
 
+uint64_t BliveManager::CalculateReconnectDelay() const
+{
+    int attempt = reconnectAttemptCount.load();
+    uint64_t delay = RECONNECT_BASE_DELAY_MS * (1ULL << (std::min)(attempt, 6));
+    return (std::min)(delay, RECONNECT_MAX_DELAY_MS);
+}
+
 void BliveManager::Start(const std::string& IdCode)
 {
     if (!IdCode.empty())
@@ -282,7 +289,7 @@ BliveManager::~BliveManager()
 
 void BliveManager::OnReceiveStartResponse(const std::string& response)
 {
-    LOG_INFO(TEXT("OnStartResponse: %s"), ProtoUtils::Decode(response).c_str());
+    LOG_DEBUG(TEXT("OnStartResponse: %s"), ProtoUtils::Decode(response).c_str());
     DWORD code = -1;
     json jsonResponse;
 	try {
@@ -292,7 +299,7 @@ void BliveManager::OnReceiveStartResponse(const std::string& response)
     }
     catch (const json::exception& e) {
 		try { LOG_ERROR(TEXT("JSON error: %s"), ProtoUtils::Decode(e.what()).c_str()); } catch (...) {}
-        ScheduleReconnect(RECONNECT_DELAY_MS);
+        ScheduleReconnect(CalculateReconnectDelay());
         return;
 	}
     try {
@@ -328,7 +335,7 @@ void BliveManager::OnReceiveStartResponse(const std::string& response)
                 if (!success) {
                     LOG_ERROR(TEXT("WebSocket connection failed with error: %d"), error);
                     SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::NetworkError);
-                    ScheduleReconnect(RECONNECT_DELAY_MS);
+                    ScheduleReconnect(CalculateReconnectDelay());
                 }
             }
         );
@@ -345,13 +352,13 @@ void BliveManager::OnReceiveStartResponse(const std::string& response)
     default:
         LOG_ERROR(TEXT("Error OnStartResponse: %s"), ProtoUtils::Decode(response).c_str());
         SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::NetworkError);
-        ScheduleReconnect(RECONNECT_DELAY_MS);
+        ScheduleReconnect(CalculateReconnectDelay());
         break;
     }
     } catch (const json::exception& e) {
         try { LOG_ERROR(TEXT("JSON access error in OnReceiveStartResponse: %s"), ProtoUtils::Decode(e.what()).c_str()); } catch (...) {}
         SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::NetworkError);
-        ScheduleReconnect(RECONNECT_DELAY_MS);
+        ScheduleReconnect(CalculateReconnectDelay());
     }
 }
 
@@ -440,14 +447,14 @@ void BliveManager::OnReceiveAppHeartbeatResponse(const std::string& response)
         default:
             SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::HeartbeatTimeout);
             LOG_ERROR(TEXT("Error OnReceiveAppHeartbeatResponse: %s"), ProtoUtils::Decode(response).c_str());
-            ScheduleReconnect(RECONNECT_DELAY_MS);
+            ScheduleReconnect(CalculateReconnectDelay());
             break;
         }
     }
     catch (const json::exception& e) {
         try { LOG_ERROR(TEXT("JSON error in OnReceiveAppHeartbeatResponse: %s"), ProtoUtils::Decode(e.what()).c_str()); } catch (...) {}
         SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::HeartbeatTimeout);
-        ScheduleReconnect(RECONNECT_DELAY_MS);
+        ScheduleReconnect(CalculateReconnectDelay());
     }
 }
 
@@ -500,7 +507,7 @@ void BliveManager::HandleWSMessage()
         switch (op)
         {
         case OP_HEARTBEAT:
-            LOG_ERROR(TEXT("Receive OP_HEARTBEAT from server websocket"));
+            LOG_DEBUG(TEXT("Receive OP_HEARTBEAT from server websocket"));
             break;
         case OP_HEARTBEAT_REPLY:
             reconnectAttemptCount.store(0);
@@ -513,7 +520,7 @@ void BliveManager::HandleWSMessage()
             HandleSmsReply(packet.body);
             break;
         case OP_AUTH:
-            LOG_ERROR(TEXT("Receive OP_AUTH from server websocket"));
+            LOG_DEBUG(TEXT("Receive OP_AUTH from server websocket"));
             break;
         case OP_AUTH_REPLY:
             LOG_DEBUG(TEXT("OP_AUTH_REPLY"));
@@ -524,8 +531,8 @@ void BliveManager::HandleWSMessage()
             break;
         default:
             SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::NetworkError);
-            LOG_ERROR(TEXT("Receive UNKNOWN from server websocket: %s"), ProtoUtils::Decode(packet.body).c_str());
-            ScheduleReconnect(RECONNECT_DELAY_MS);
+            LOG_DEBUG(TEXT("Receive UNKNOWN from server websocket: %s"), ProtoUtils::Decode(packet.body).c_str());
+            ScheduleReconnect(CalculateReconnectDelay());
             break;
         }
         ++count;
@@ -536,7 +543,7 @@ void BliveManager::HandleSmsReply(const std::string& msg)
 {
     try {
         TString decoded = ProtoUtils::Decode(msg);
-        LOG_INFO(TEXT("OP_SEND_SMS_REPLY: %s"), decoded.c_str());
+        LOG_DEBUG(TEXT("OP_SEND_SMS_REPLY: %s"), decoded.c_str());
 
         json jsonResponse;
         try {
@@ -581,7 +588,7 @@ void BliveManager::HandleSmsReply(const std::string& msg)
             }
             if (shouldReconnect) {
                 SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::ServerClose);
-                ScheduleReconnect(RECONNECT_DELAY_MS);
+                ScheduleReconnect(CalculateReconnectDelay());
             }
         }
 

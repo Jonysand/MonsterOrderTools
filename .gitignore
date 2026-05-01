@@ -123,3 +123,4 @@ nul
 # Dot files and directories (hidden files)
 .*
 !.gitignore
+*ocr*
