@@ -6,6 +6,7 @@
 #include "TextToSpeech.h"
 #include "DataBridgeExports.h"
 #include "DateUtils.h"
+#include "WriteQueue.h"
 #include <ctime>
 #include <sstream>
 #include <algorithm>
@@ -168,26 +169,34 @@ void RetroactiveCheckInModule::ProcessLike(const LikeEvent& event) {
     int32_t date = event.date > 0 ? event.date : GetCurrentDate();
     if (date == 0) return;
 
-    int32_t totalLikes = 0;
-    if (!ProfileManager::Inst()->AddDailyLike(event.uid, date, event.likeCount, totalLikes)) {
-        LOG_ERROR(TEXT("RetroactiveCheckInModule: Failed to add daily like for uid=%hs"), event.uid.c_str());
-        return;
-    }
+    auto* self = this;
+    WriteQueue::Inst()->Enqueue(WriteTask{
+        .type = WriteTaskType::LIKE,
+        .uid = event.uid,
+        .username = event.username,
+        .execute = [self, event, date](ProfileManager* pm) -> bool {
+            int32_t totalLikes = 0;
+            if (!pm->AddDailyLike(event.uid, date, event.likeCount, totalLikes)) {
+                return false;
+            }
 
-    LOG_DEBUG(TEXT("RetroactiveCheckInModule: uid=%hs date=%d total_likes=%d"),
-        event.uid.c_str(), date, totalLikes);
+            LOG_INFO(TEXT("RetroactiveCheckInModule: Like stored uid=%hs date=%d like_count=%d total_likes=%d"),
+                event.uid.c_str(), date, event.likeCount, totalLikes);
 
-    if (totalLikes >= MONTHLY_FIRST_LIKES_REQUIRED) {
-        if (CheckRule2_MonthlyFirst(event.uid, date, totalLikes)) {
-            std::string reply = event.username + "，恭喜！今日点赞突破1000，获得1张补签卡！";
-            SendReply(event.username, reply);
+            if (totalLikes >= MONTHLY_FIRST_LIKES_REQUIRED) {
+                if (self->CheckRule2_MonthlyFirst(event.uid, date, totalLikes)) {
+                    std::string reply = event.username + "，恭喜！今日点赞突破1000，获得1张补签卡！";
+                    self->SendReply(event.username, reply);
+                }
+            }
+
+            if (self->CheckRule1_StreakReward(event.uid, date)) {
+                std::string reply = event.username + "，恭喜！连续" + std::to_string(STREAK_DAYS_REQUIRED) + "天点赞，获得1张补签卡！";
+                self->SendReply(event.username, reply);
+            }
+            return true;
         }
-    }
-
-    if (CheckRule1_StreakReward(event.uid, date)) {
-        std::string reply = event.username + "，恭喜！连续" + std::to_string(STREAK_DAYS_REQUIRED) + "天点赞，获得1张补签卡！";
-        SendReply(event.username, reply);
-    }
+    });
 }
 
 bool RetroactiveCheckInModule::CheckRule1_StreakReward(const std::string& uid, int32_t date) {

@@ -304,6 +304,7 @@ xcopy /y /q "$(ProjectDir)dict\*" "$(OutDir)dict\"</Command>
       <ExcludedFromBuild Condition="'$(Configuration)'!='UnitTest'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="WriteLog.cpp" />
+    <ClCompile Include="WriteQueue.cpp" />
     <ClCompile Include="..\external\miniz\miniz_all.cpp" />
     <ClCompile Include="ConfigManagerTests.cpp">
       <Filter>UnitTests</Filter>

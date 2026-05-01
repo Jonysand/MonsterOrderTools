@@ -6,6 +6,7 @@
 #endif
 #include "Network.h"
 #include "WriteLog.h"
+#include "WriteQueue.h"
 #include "CredentialsManager.h"
 
 #define WIDGETID_IDINPUT	1001
@@ -52,6 +53,8 @@ UINT MonsterOrderWilds::HandleHwndMsg(HWND hWnd, UINT message, WPARAM wParam, LP
 	}
 	case WM_DESTROY:
 	{
+		// 刷新写入队列
+		WriteQueue::Inst()->Flush();
 		// 关闭弹幕服务器
 		BliveManager::Inst()->Disconnect();
 		BliveManager::Inst()->Destroy();
@@ -112,6 +115,7 @@ void MonsterOrderWilds::tickWPFCommand()
 	// 退出主程序
 	if (strcmp(command[0].c_str(), "Exit") == 0)
 	{
+		WriteQueue::Inst()->Flush();
 		BliveManager::Inst()->Disconnect();
 		BliveManager::Inst()->Destroy();
 		PostQuitMessage(0);

@@ -150,6 +150,9 @@
     <ClCompile Include="WriteLog.cpp">
       <Filter>Core</Filter>
     </ClCompile>
+    <ClCompile Include="WriteQueue.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
     <ClCompile Include="BliveManager.cpp">
       <Filter>Core</Filter>
     </ClCompile>

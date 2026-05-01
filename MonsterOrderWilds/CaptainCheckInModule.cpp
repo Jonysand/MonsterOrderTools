@@ -11,6 +11,7 @@
 #include "TTSCacheManager.h"
 #include "DanmuProcessor.h"
 #include "DataBridgeExports.h"
+#include "WriteQueue.h"
 #include "cppjieba/Jieba.hpp"
 #include <set>
 #include <mutex>
@@ -387,7 +388,14 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
                             SaveProfileAsync(it->second);
                         }
                     }
-                    ProfileManager::Inst()->RecordCheckinAsync(uid, data.username, data.checkinDate, data.continuousDays, data.cumulativeDays);
+                    WriteQueue::Inst()->Enqueue(WriteTask{
+                        .type = WriteTaskType::CHECKIN,
+                        .uid = uid,
+                        .username = data.username,
+                        .execute = [uid, username = data.username, checkinDate = data.checkinDate, continuousDays = data.continuousDays, cumulativeDays = data.cumulativeDays](ProfileManager* pm) -> bool {
+                            return pm->RecordCheckinSync(uid, username, checkinDate, continuousDays, cumulativeDays);
+                        }
+                    });
                     LOG_INFO(TEXT("[CaptainCheckInModule] Checkin record saved after TTS success for uid=%hs"), uid.c_str());
                 } else if (found && !success) {
                     LOG_WARNING(TEXT("[CaptainCheckInModule] Checkin TTS/AI failed for uid=%hs, record not saved"), uid.c_str());

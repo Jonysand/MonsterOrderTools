@@ -224,8 +224,22 @@ bool ProfileManager::AddDailyLike(const std::string& uid, int32_t likeDate, int3
 
     sqlite3* db = (sqlite3*)storage_;
 
-    // 使用事务保证原子性
-    if (sqlite3_exec(db, "BEGIN IMMEDIATE", nullptr, nullptr, nullptr) != SQLITE_OK) {
+    // 使用事务保证原子性，失败时重试（数据库可能被打卡/profile写入持锁）
+    constexpr int MAX_RETRIES = 3;
+    constexpr int RETRY_DELAY_MS = 50;
+    bool beginOk = false;
+    for (int attempt = 0; attempt < MAX_RETRIES; ++attempt) {
+        if (sqlite3_exec(db, "BEGIN IMMEDIATE", nullptr, nullptr, nullptr) == SQLITE_OK) {
+            beginOk = true;
+            break;
+        }
+        LOG_WARNING(TEXT("ProfileManager: AddDailyLike BEGIN IMMEDIATE failed (attempt %d/%d): %hs"),
+            attempt + 1, MAX_RETRIES, sqlite3_errmsg(db));
+        std::this_thread::sleep_for(std::chrono::milliseconds(RETRY_DELAY_MS));
+    }
+    if (!beginOk) {
+        LOG_ERROR(TEXT("ProfileManager: AddDailyLike BEGIN IMMEDIATE failed after %d retries, like dropped for uid=%hs date=%d count=%d: %hs"),
+            MAX_RETRIES, uid.c_str(), likeDate, likeCount, sqlite3_errmsg(db));
         return false;
     }
 
@@ -257,6 +271,7 @@ bool ProfileManager::AddDailyLike(const std::string& uid, int32_t likeDate, int3
                     sqlite3_finalize(stmt);
                     if (sqlite3_exec(db, "COMMIT", nullptr, nullptr, nullptr) != SQLITE_OK) {
                         LOG_ERROR(TEXT("ProfileManager: AddDailyLike COMMIT failed: %hs"), sqlite3_errmsg(db));
+                        sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
                         return false;
                     }
                     return true;
@@ -272,6 +287,7 @@ bool ProfileManager::AddDailyLike(const std::string& uid, int32_t likeDate, int3
                         sqlite3_finalize(stmt);
                         if (sqlite3_exec(db, "COMMIT", nullptr, nullptr, nullptr) != SQLITE_OK) {
                             LOG_ERROR(TEXT("ProfileManager: AddDailyLike COMMIT failed: %hs"), sqlite3_errmsg(db));
+                            sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
                             return false;
                         }
                         return true;
@@ -559,69 +575,74 @@ void ProfileManager::RecordCheckin(const std::string& uid, const std::string& us
 void ProfileManager::RecordCheckinAsync(const std::string& uid, const std::string& username, int32_t checkinDate, int32_t continuousDays, int32_t cumulativeDays) {
     auto* self = this;
     std::thread([self, uid, username, checkinDate, continuousDays, cumulativeDays]() {
-        UserProfileData profile;
-        int64_t timestamp = GetCurrentTimestamp();
-        {
-            std::lock_guard<std::recursive_mutex> lock(self->profilesLock_);
-            auto it = self->profiles_.find(uid);
-            if (it != self->profiles_.end()) {
-                profile = it->second;
-            } else {
-                profile.uid = uid;
-                profile.username = username;
-                profile.createdAt = timestamp;
-                profile.updatedAt = timestamp;
-            }
-        }
-        profile.lastCheckinDate = checkinDate;
-        profile.continuousDays = continuousDays;
-        profile.cumulativeDays = cumulativeDays;
+        self->RecordCheckinSync(uid, username, checkinDate, continuousDays, cumulativeDays);
+    }).detach();
+}
 
-        bool dbSuccess = true;
-        if (self->storage_) {
-            sqlite3* db = (sqlite3*)self->storage_;
-
-            if (!InsertCheckinRecordWithRetry(db, uid, checkinDate, timestamp, username)) {
-                LOG_ERROR(TEXT("ProfileManager: Checkin record INSERT failed for uid=%hs, username=%hs, date=%d, days=%d"),
-                    uid.c_str(), username.c_str(), checkinDate, continuousDays);
-                dbSuccess = false;
-            }
-
-            if (dbSuccess) {
-                for (int32_t retry = 0; retry < CHECKIN_RETRY_MAX; ++retry) {
-                    self->SaveProfileToDb(profile);
-                    {
-                        std::lock_guard<std::recursive_mutex> lock(self->profilesLock_);
-                        self->profiles_[uid] = profile;
-                        self->EvictOldestProfileIfNeeded();
-                    }
-                    {
-                        std::lock_guard<std::recursive_mutex> lock(self->profilesLock_);
-                        auto it = self->profiles_.find(uid);
-                        if (it != self->profiles_.end() && it->second.lastCheckinDate == checkinDate) {
-                            break;
-                        }
-                    }
-                    LOG_WARNING(TEXT("ProfileManager: SaveProfileToDb verification failed (attempt %d/%d), retrying..."),
-                        retry + 1, CHECKIN_RETRY_MAX);
-                    if (retry < CHECKIN_RETRY_MAX - 1) {
-                        std::this_thread::sleep_for(std::chrono::milliseconds(CHECKIN_RETRY_DELAY_MS));
-                    }
-                }
-            }
+bool ProfileManager::RecordCheckinSync(const std::string& uid, const std::string& username, int32_t checkinDate, int32_t continuousDays, int32_t cumulativeDays) {
+    UserProfileData profile;
+    int64_t timestamp = GetCurrentTimestamp();
+    {
+        std::lock_guard<std::recursive_mutex> lock(profilesLock_);
+        auto it = profiles_.find(uid);
+        if (it != profiles_.end()) {
+            profile = it->second;
         } else {
-            LOG_ERROR(TEXT("ProfileManager: storage_ is null, cannot save checkin record for uid=%hs"), uid.c_str());
+            profile.uid = uid;
+            profile.username = username;
+            profile.createdAt = timestamp;
+            profile.updatedAt = timestamp;
+        }
+    }
+    profile.lastCheckinDate = checkinDate;
+    profile.continuousDays = continuousDays;
+    profile.cumulativeDays = cumulativeDays;
+
+    bool dbSuccess = true;
+    if (storage_) {
+        sqlite3* db = (sqlite3*)storage_;
+
+        if (!InsertCheckinRecordWithRetry(db, uid, checkinDate, timestamp, username)) {
+            LOG_ERROR(TEXT("ProfileManager: Checkin record INSERT failed for uid=%hs, username=%hs, date=%d, days=%d"),
+                uid.c_str(), username.c_str(), checkinDate, continuousDays);
             dbSuccess = false;
         }
 
         if (dbSuccess) {
-            LOG_INFO(TEXT("ProfileManager: Recorded checkin async for uid=%hs, username=%hs, days=%d, date=%d"),
-                uid.c_str(), username.c_str(), continuousDays, checkinDate);
-        } else {
-            LOG_ERROR(TEXT("ProfileManager: Failed to record checkin for uid=%hs, username=%hs, days=%d, date=%d"),
-                uid.c_str(), username.c_str(), continuousDays, checkinDate);
+            for (int32_t retry = 0; retry < CHECKIN_RETRY_MAX; ++retry) {
+                SaveProfileToDb(profile);
+                {
+                    std::lock_guard<std::recursive_mutex> lock(profilesLock_);
+                    profiles_[uid] = profile;
+                    EvictOldestProfileIfNeeded();
+                }
+                {
+                    std::lock_guard<std::recursive_mutex> lock(profilesLock_);
+                    auto it = profiles_.find(uid);
+                    if (it != profiles_.end() && it->second.lastCheckinDate == checkinDate) {
+                        break;
+                    }
+                }
+                LOG_WARNING(TEXT("ProfileManager: SaveProfileToDb verification failed (attempt %d/%d), retrying..."),
+                    retry + 1, CHECKIN_RETRY_MAX);
+                if (retry < CHECKIN_RETRY_MAX - 1) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(CHECKIN_RETRY_DELAY_MS));
+                }
+            }
         }
-    }).detach();
+    } else {
+        LOG_ERROR(TEXT("ProfileManager: storage_ is null, cannot save checkin record for uid=%hs"), uid.c_str());
+        dbSuccess = false;
+    }
+
+    if (dbSuccess) {
+        LOG_INFO(TEXT("ProfileManager: Recorded checkin sync for uid=%hs, username=%hs, days=%d, date=%d"),
+            uid.c_str(), username.c_str(), continuousDays, checkinDate);
+    } else {
+        LOG_ERROR(TEXT("ProfileManager: Failed to record checkin for uid=%hs, username=%hs, days=%d, date=%d"),
+            uid.c_str(), username.c_str(), continuousDays, checkinDate);
+    }
+    return dbSuccess;
 }
 
 
