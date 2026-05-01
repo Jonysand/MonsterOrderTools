@@ -359,27 +359,25 @@ void RetroactiveCheckInModule::HandleQueryCommand(const DanmuProcessor::CaptainD
     }
 
     std::ostringstream oss;
-    oss << event.username << "，你当前持有" << cards.cardCount << "张补签卡。";
+    oss << event.username << "，补签卡" << cards.cardCount << "张";
 
     int32_t remainingStreak = STREAK_DAYS_REQUIRED - streak.currentStreak;
     if (remainingStreak <= 0) {
-        oss << "连续点赞" << STREAK_DAYS_REQUIRED << "天奖励：已满足条件，下次点赞即可领取！";
+        oss << "\n连续点赞" << STREAK_DAYS_REQUIRED << "天：已满足，下次领取";
     } else {
-        oss << "连续点赞" << STREAK_DAYS_REQUIRED << "天奖励：已连续点赞" << streak.currentStreak << "天，再点赞"
-            << remainingStreak << "天可获得1张。";
+        oss << "\n连续点赞" << STREAK_DAYS_REQUIRED << "天：已" << streak.currentStreak << "天，差" << remainingStreak << "天";
     }
 
     int32_t claimedMonth = cards.monthlyFirstClaimed / 100;
     if (claimedMonth == currentMonth && cards.monthlyFirstClaimed > 0) {
-        oss << "本月首次点赞1000奖励：本月已领取。";
+        oss << "\n月度点赞1000：已领取";
     } else {
         int32_t currentLikes = dailyLike.totalLikes;
         int32_t remainingLikes = MONTHLY_FIRST_LIKES_REQUIRED - currentLikes;
         if (remainingLikes <= 0) {
-            oss << "本月首次点赞1000奖励：已满足条件，立刻可获得1张！";
+            oss << "\n月度点赞1000：已满足，可领取";
         } else {
-            oss << "本月首次点赞1000奖励：今日已点赞" << currentLikes << "/"
-                << MONTHLY_FIRST_LIKES_REQUIRED << "，还需" << remainingLikes << "个。";
+            oss << "\n月度点赞1000：" << currentLikes << "/" << MONTHLY_FIRST_LIKES_REQUIRED << "，差" << remainingLikes;
         }
     }
 
