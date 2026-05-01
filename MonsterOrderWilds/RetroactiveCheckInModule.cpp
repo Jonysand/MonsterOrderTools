@@ -129,11 +129,11 @@ int32_t RetroactiveCheckInModule::GetCurrentDate() const {
     return DateUtils::GetCurrentDate();
 }
 
-void RetroactiveCheckInModule::SendReply(const std::string& username, const std::string& text) {
+void RetroactiveCheckInModule::SendReply(const std::string& username, const std::string& text, bool enableTTS) {
     std::wstring wtext = Utf8ToWstring(text);
     RECORD_HISTORY(wtext.c_str());
 
-    if (!ConfigManager::Inst()->GetConfig().enableVoice) {
+    if (!enableTTS || !ConfigManager::Inst()->GetConfig().enableVoice) {
         std::wstring usernameW = Utf8ToWstring(username);
         if (g_aiReplyCallback) {
             g_aiReplyCallback(usernameW.c_str(), wtext.c_str(), g_aiReplyUserData);
@@ -345,7 +345,7 @@ void RetroactiveCheckInModule::HandleQueryCommand(const DanmuProcessor::CaptainD
     bool hasDailyLike = ProfileManager::Inst()->GetDailyLike(event.uid, currentDate, dailyLike);
 
     if (!hasCards && !hasStreak && !hasDailyLike) {
-        SendReply(event.username, event.username + "，系统错误，请稍后再试。");
+        SendReply(event.username, event.username + "，系统错误，请稍后再试。", false);
         return;
     }
 
@@ -374,7 +374,7 @@ void RetroactiveCheckInModule::HandleQueryCommand(const DanmuProcessor::CaptainD
         }
     }
 
-    SendReply(event.username, oss.str());
+    SendReply(event.username, oss.str(), false);
 }
 
 bool RetroactiveCheckInModule::ExecuteRetroactive(const std::string& uid, const std::string& username, int32_t targetDate) {

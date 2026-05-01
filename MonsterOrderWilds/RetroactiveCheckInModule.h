@@ -37,7 +37,7 @@ private:
 
     bool ExecuteRetroactive(const std::string& uid, const std::string& username, int32_t targetDate);
 
-    void SendReply(const std::string& username, const std::string& text);
+    void SendReply(const std::string& username, const std::string& text, bool enableTTS = true);
 
     int32_t GetCurrentDate() const;
 
