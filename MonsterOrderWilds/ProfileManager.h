@@ -60,6 +60,7 @@ public:
     void RecordCheckin(const std::string& uid, const std::string& username, int32_t checkinDate);
     void RecordCheckinAsync(const std::string& uid, const std::string& username, int32_t checkinDate, int32_t continuousDays, int32_t cumulativeDays);
     int32_t CalculateContinuousDays(const std::string& uid, int32_t checkinDate);
+    int32_t CalculateCumulativeDays(const std::string& uid, int32_t checkinDate);
 
     void AddKeyword(const std::string& uid, const std::string& keyword);
     void AddDanmuHistory(const std::string& uid, int64_t timestamp, const std::string& content);

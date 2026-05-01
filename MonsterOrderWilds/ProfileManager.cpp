@@ -504,14 +504,7 @@ void ProfileManager::RecordCheckin(const std::string& uid, const std::string& us
     }
     
     // 累计天数：非重复打卡时递增
-    int32_t oldLastCheckinDate = profile.lastCheckinDate;
-    if (oldLastCheckinDate != checkinDate) {
-        if (profile.cumulativeDays > 0) {
-            profile.cumulativeDays += 1;
-        } else {
-            profile.cumulativeDays = 1;
-        }
-    }
+    profile.cumulativeDays = CalculateCumulativeDays(uid, checkinDate);
     
     profile.lastCheckinDate = checkinDate;
     profile.continuousDays = continuousDays;
@@ -729,6 +722,28 @@ int32_t ProfileManager::CalculateContinuousDays(const std::string& uid, int32_t 
     }
 
     return 1;
+}
+
+int32_t ProfileManager::CalculateCumulativeDays(const std::string& uid, int32_t checkinDate) {
+    std::lock_guard<std::recursive_mutex> lock(profilesLock_);
+
+    UserProfileData profile;
+    auto it = profiles_.find(uid);
+    if (it != profiles_.end()) {
+        profile = it->second;
+    } else {
+        return 1;
+    }
+
+    // 累计天数：非重复打卡时递增
+    if (profile.lastCheckinDate != checkinDate) {
+        if (profile.cumulativeDays > 0) {
+            return profile.cumulativeDays + 1;
+        } else {
+            return 1;
+        }
+    }
+    return profile.cumulativeDays > 0 ? profile.cumulativeDays : 1;
 }
 
 int32_t ProfileManager::CalculateContinuousDaysFromRecords(const std::string& uid) {

@@ -326,16 +326,7 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
             int32_t checkinDate = event.sendDate;
             int32_t continuousDays = ProfileManager::Inst()->CalculateContinuousDays(event.uid, checkinDate);
             int32_t previousCheckinDate = profile.lastCheckinDate;
-            
-            // 计算累计天数
-            int32_t cumulativeDays = profile.cumulativeDays;
-            if (previousCheckinDate != checkinDate) {
-                if (cumulativeDays > 0) {
-                    cumulativeDays += 1;
-                } else {
-                    cumulativeDays = 1;
-                }
-            }
+            int32_t cumulativeDays = ProfileManager::Inst()->CalculateCumulativeDays(event.uid, checkinDate);
 
             // 检查是否已在处理首次打卡中（含超时清理）
             bool alreadyPending = false;
