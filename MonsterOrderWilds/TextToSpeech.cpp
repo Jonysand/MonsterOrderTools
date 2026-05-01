@@ -5,6 +5,7 @@
 #include "TTSProvider.h"
 #include "WriteLog.h"
 #include "StringUtils.h"
+#include "CaptainCheckInModule.h"
 
 #pragma warning(disable: 4996)
 
@@ -174,6 +175,10 @@ void TTSManager::HandleSpeekDm(const json& data)
         // 以"点餐"开头
         HandleDmOrderFood(msg, utf8_to_wstring(uname));
     }
+    std::string msgUtf8 = WstringToUtf8(msg);
+    if (CaptainCheckInModule::Inst()->IsCheckinMessage(msgUtf8)) {
+        return;
+    }
 #if !ONLY_ORDER_MONSTER
     else if (GetActiveEngineType() == TTSEngineType::Manbo) {
         std::string voiceFile = LocalVoiceManager::Inst()->MatchVoice(msg);
@@ -193,11 +198,9 @@ void TTSManager::HandleSpeekDm(const json& data)
             LOG_DEBUG(TEXT("HandleSpeekDm: Local voice queued for: %s"), msg.c_str());
             return;
         }
+        // Manbo 引擎但未匹配到本地语音，继续加入 NormalMsgQueue 使用 TTS 播报
     }
 #endif
-    else if (msg == TEXT("签到") || msg == TEXT("打卡")) {
-    }
-    else
     {
         std::lock_guard<std::mutex> lock(queueMutex_);
         NormalMsgQueue.push_back(msgTString);
@@ -564,7 +567,7 @@ void CALLBACK TTSManager::SapiSpeakCallback(WPARAM wParam, LPARAM lParam)
 void TTSManager::RefreshTTSProvider()
 {
     const auto& config = ConfigManager::Inst()->GetConfig();
-    LOG_INFO(TEXT("Refreshing TTS provider, engine: %s"), config.ttsEngine.c_str());
+    LOG_INFO(TEXT("Refreshing TTS provider, engine: %hs"), config.ttsEngine.c_str());
     std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
     ttsProvider = TTSProviderFactory::Create(
         GetMIMO_API_KEY(),
@@ -876,7 +879,7 @@ void TTSManager::ProcessRequestingStateInternal(AsyncTTSRequest& req)
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - req.startTime).count();
 
     if (elapsed >= API_TIMEOUT_SECONDS) {
-        LOG_WARNING(TEXT("TTS Async: API request timeout (%d seconds)"), elapsed);
+        LOG_WARNING(TEXT("TTS Async: API request timeout (%lld seconds)"), (long long)elapsed);
         // 不在这里标记失败，因为HTTP回调可能还在处理中
         // 等到下次Tick，如果audioData有数据会转为Playing，没有才会真正失败
         // 为了避免无限等待，最多等待2个额外的超时周期

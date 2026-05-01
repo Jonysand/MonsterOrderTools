@@ -118,7 +118,7 @@ bool CaptainCheckInModule::Init() {
     LOG_INFO(TEXT("CaptainCheckInModule::Init"));
 
     const auto config = ConfigManager::Inst()->GetConfig();
-    triggerWordsStr_ = config.checkinTriggerWords;
+    SetTriggerWords(config.checkinTriggerWords);
 
     aiProviderJson_ = GetAI_PROVIDER();
 
@@ -144,6 +144,7 @@ bool CaptainCheckInModule::Init() {
             CaptainDanmuEvent convertedEvent;
             convertedEvent.uid = event.uid;
             convertedEvent.guardLevel = event.guardLevel;
+            convertedEvent.hasMedal = event.hasMedal;
             convertedEvent.username = event.username;
             convertedEvent.content = event.content;
             convertedEvent.serverTimestamp = event.serverTimestamp;
@@ -183,7 +184,7 @@ void CaptainCheckInModule::SetTriggerWords(const std::string& words) {
             word += c;
         }
     }
-    LOG_INFO(TEXT("CaptainCheckInModule trigger words updated: %s"), words.c_str());
+    LOG_INFO(TEXT("CaptainCheckInModule trigger words updated: %hs"), words.c_str());
 }
 
 void CaptainCheckInModule::SetEnabled(bool enabled) {
@@ -207,7 +208,7 @@ bool CaptainCheckInModule::IsCheckinMessage(const std::string& content) const {
         }
     }
     catch (const std::exception& e) {
-        LOG_ERROR(TEXT("IsCheckinMessage error: %s"), e.what());
+        LOG_ERROR(TEXT("IsCheckinMessage error: %hs"), e.what());
     }
     return false;
 }
@@ -253,7 +254,7 @@ bool CaptainCheckInModule::ShouldSkipDuplicateContent(UserProfile& profile, cons
 void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
     if (!enabled_) return;
 
-    LOG_DEBUG(TEXT("[CaptainCheckInModule] PushDanmuEvent: username=%s, uid=%hs, guardLevel=%d, hasMedal=%d, content=%s"),
+    LOG_DEBUG(TEXT("[CaptainCheckInModule] PushDanmuEvent: username=%hs, uid=%hs, guardLevel=%d, hasMedal=%d, content=%hs"),
         event.username.c_str(), event.uid.c_str(), event.guardLevel, event.hasMedal, event.content.c_str());
 
     bool shouldCheckin = IsCheckinMessage(event.content);

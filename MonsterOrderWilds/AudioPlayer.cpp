@@ -59,7 +59,7 @@ bool AudioPlayer::Play(const std::vector<uint8_t>& audioData, const std::string&
     }
 
     LOG_INFO(TEXT("AudioPlayer: Writing %d bytes to temp file"), (int)audioData.size());
-    std::wstring filePath = WriteToTempFile(audioData, format);
+    std::wstring filePath = WriteToTempFile(audioData, "");
     if (filePath.empty()) {
         LOG_ERROR(TEXT("AudioPlayer: WriteToTempFile failed"));
         return false;
@@ -132,8 +132,8 @@ bool AudioPlayer::PlayFile(const std::wstring& filePath)
     }
 
     if (!openSucceeded) {
-        LOG_WARNING(TEXT("AudioPlayer: Failed to open audio file, treating as completed"));
-        return true;
+        LOG_WARNING(TEXT("AudioPlayer: Failed to open audio file"));
+        return false;
     }
 
     // 设置音量 (配置范围 0-200, MCI 音量范围 0-1000) - must be set BEFORE play
@@ -256,6 +256,7 @@ bool AudioPlayer::IsPlaybackComplete() const
             lock.lock();
             playing = false;
             lock.unlock();
+            mciSendStringW(L"close mimo_audio_alias", NULL, 0, NULL);
             return true;
         }
         return false;

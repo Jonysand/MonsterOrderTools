@@ -81,7 +81,7 @@ DanmuProcessResult DanmuProcessor::ProcessDanmu(const DanmuData& danmu)
             capEvent.sendDate = 0;
         }
 
-        LOG_DEBUG(TEXT("[DanmuProcessor] Notifying CaptainDanmu: username=%s, guardLevel=%d, hasMedal=%d, content=%s"),
+        LOG_DEBUG(TEXT("[DanmuProcessor] Notifying CaptainDanmu: username=%hs, guardLevel=%d, hasMedal=%d, content=%hs"),
             capEvent.username.c_str(), capEvent.guardLevel, capEvent.hasMedal, capEvent.content.c_str());
 
         NotifyCaptainDanmu(capEvent);

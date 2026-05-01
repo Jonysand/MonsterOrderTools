@@ -186,6 +186,32 @@ bool ProfileManager::Init() {
         return false;
     }
 
+    // 数据库迁移：检查并添加 cumulative_days 列
+    const char* checkColumnSql = "PRAGMA table_info(user_profiles)";
+    sqlite3_stmt* columnStmt = nullptr;
+    bool hasCumulativeDays = false;
+    if (sqlite3_prepare_v2(db, checkColumnSql, -1, &columnStmt, nullptr) == SQLITE_OK) {
+        while (sqlite3_step(columnStmt) == SQLITE_ROW) {
+            const char* colName = (const char*)sqlite3_column_text(columnStmt, 1);
+            if (colName && strcmp(colName, "cumulative_days") == 0) {
+                hasCumulativeDays = true;
+                break;
+            }
+        }
+        sqlite3_finalize(columnStmt);
+    }
+    if (!hasCumulativeDays) {
+        const char* alterSql = "ALTER TABLE user_profiles ADD COLUMN cumulative_days INTEGER DEFAULT 0";
+        result = sqlite3_exec(db, alterSql, nullptr, nullptr, &errMsg);
+        if (result != SQLITE_OK) {
+            LOG_WARNING(TEXT("ProfileManager: Failed to add cumulative_days column: %hs"), errMsg);
+            sqlite3_free(errMsg);
+            errMsg = nullptr;
+        } else {
+            LOG_INFO(TEXT("ProfileManager: Added cumulative_days column to user_profiles"));
+        }
+    }
+
     storage_ = (void*)db;
 
     LOG_INFO(TEXT("ProfileManager::Init success"));
