@@ -50,13 +50,13 @@ void MiniMaxTTSProvider::RequestTTS(const TTSRequest& request, TTSCallback callb
         headers,
         body,
         true,
-        [this, callback](bool success, const std::string& resp, DWORD error) {
+        [self = shared_from_this(), callback](bool success, const std::string& resp, DWORD error) {
             if (!success || error != 0) {
-                lastError_ = "HTTP request failed: " + GetWinHttpErrorString(error);
-                available_ = false;
+                self->lastError_ = "HTTP request failed: " + GetWinHttpErrorString(error);
+                self->available_ = false;
                 TTSResponse resp;
                 resp.success = false;
-                resp.errorMsg = lastError_;
+                resp.errorMsg = self->lastError_;
                 try {
                     callback(resp);
                 } catch (...) {
@@ -64,10 +64,10 @@ void MiniMaxTTSProvider::RequestTTS(const TTSRequest& request, TTSCallback callb
                 return;
             }
 
-            auto ttsResp = ParseResponse(resp);
-            available_ = ttsResp.success && !ttsResp.audioData.empty();
-            if (!available_) {
-                lastError_ = ttsResp.errorMsg;
+            auto ttsResp = self->ParseResponse(resp);
+            self->available_ = ttsResp.success && !ttsResp.audioData.empty();
+            if (!self->available_) {
+                self->lastError_ = ttsResp.errorMsg;
             }
             try {
                 callback(ttsResp);

@@ -52,13 +52,13 @@ void XiaomiTTSProvider::RequestTTS(const TTSRequest& request, TTSCallback callba
         headers,
         body,
         true,
-        [this, callback](bool success, const std::string& resp, DWORD error) {
+        [self = shared_from_this(), callback](bool success, const std::string& resp, DWORD error) {
             if (!success || error != 0) {
-                lastError_ = "HTTP request failed: " + GetWinHttpErrorString(error);
-                available_ = false;
+                self->lastError_ = "HTTP request failed: " + GetWinHttpErrorString(error);
+                self->available_ = false;
                 TTSResponse ttsResp;
                 ttsResp.success = false;
-                ttsResp.errorMsg = lastError_;
+                ttsResp.errorMsg = self->lastError_;
                 try {
                     callback(ttsResp);
                 } catch (...) {
@@ -66,10 +66,10 @@ void XiaomiTTSProvider::RequestTTS(const TTSRequest& request, TTSCallback callba
                 return;
             }
 
-            auto ttsResp = ParseResponse(resp, 200);
-            available_ = ttsResp.success;
+            auto ttsResp = self->ParseResponse(resp, 200);
+            self->available_ = ttsResp.success;
             if (!ttsResp.success) {
-                lastError_ = ttsResp.errorMsg;
+                self->lastError_ = ttsResp.errorMsg;
             }
             try {
                 callback({ ttsResp.audioData, ttsResp.success, ttsResp.errorMsg });

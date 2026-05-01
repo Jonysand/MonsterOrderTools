@@ -110,13 +110,13 @@ void ManboTTSProvider::DownloadAudio(const std::string& audioUrl, TTSCallback ca
         "",
         "",
         useHttps,
-        [this, callback](bool success, const std::string& resp, DWORD error) {
+        [self = shared_from_this(), callback](bool success, const std::string& resp, DWORD error) {
             if (!success || error != 0) {
-                lastError_ = "Audio download failed";
-                available_ = false;
+                self->lastError_ = "Audio download failed";
+                self->available_ = false;
                 TTSResponse response;
                 response.success = false;
-                response.errorMsg = lastError_;
+                response.errorMsg = self->lastError_;
                 try {
                     callback(response);
                 } catch (...) {}
@@ -144,26 +144,26 @@ void ManboTTSProvider::RequestTTS(const TTSRequest& request, TTSCallback callbac
         "",
         "",
         true,
-        [this, callback](bool success, const std::string& resp, DWORD error) {
+        [self = shared_from_this(), callback](bool success, const std::string& resp, DWORD error) {
             if (!success || error != 0) {
-                lastError_ = "HTTP request failed";
-                available_ = false;
+                self->lastError_ = "HTTP request failed";
+                self->available_ = false;
                 TTSResponse response;
                 response.success = false;
-                response.errorMsg = lastError_;
+                response.errorMsg = self->lastError_;
                 try {
                     callback(response);
                 } catch (...) {}
                 return;
             }
             
-            auto apiResp = ParseApiResponse(resp);
+            auto apiResp = self->ParseApiResponse(resp);
             if (!apiResp.success) {
-                lastError_ = apiResp.errorMsg;
-                available_ = false;
+                self->lastError_ = apiResp.errorMsg;
+                self->available_ = false;
                 TTSResponse response;
                 response.success = false;
-                response.errorMsg = lastError_;
+                response.errorMsg = self->lastError_;
                 try {
                     callback(response);
                 } catch (...) {}
@@ -171,6 +171,6 @@ void ManboTTSProvider::RequestTTS(const TTSRequest& request, TTSCallback callbac
             }
             
             std::string audioUrl = apiResp.errorMsg;
-            DownloadAudio(audioUrl, callback);
+            self->DownloadAudio(audioUrl, callback);
         });
 }

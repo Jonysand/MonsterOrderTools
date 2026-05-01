@@ -157,7 +157,7 @@ private:
 	std::mutex queueMutex_;  // 保护 NormalMsgQueue, GiftMsgQueue, HistoryLogMsgQueue 等队列
 
 	// TTS提供者
-	std::unique_ptr<ITTSProvider> ttsProvider;
+	std::shared_ptr<ITTSProvider> ttsProvider;
 	// 音频播放器
 	AudioPlayer* audioPlayer{ NULL };
 

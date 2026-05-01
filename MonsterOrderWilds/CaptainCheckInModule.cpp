@@ -137,6 +137,8 @@ bool CaptainCheckInModule::Init() {
         LOG_ERROR(TEXT("CaptainCheckInModule::Init: JiebaContext creation failed, keyword extraction disabled"));
     }
 
+    LoadStopWords(stopWords);
+
     inited_ = true;
     LOG_INFO(TEXT("CaptainCheckInModule::Init done"));
 
@@ -494,7 +496,36 @@ void CaptainCheckInModule::ExtractKeywords(UserProfile& profile, const std::stri
         [](const KeywordRecord& a, const KeywordRecord& b) { return a.frequency > b.frequency; });
 }
 
+void CaptainCheckInModule::LoadStopWords(const std::string& filePath) {
+    std::ifstream file(filePath);
+    if (!file.is_open()) {
+        LOG_ERROR(TEXT("CaptainCheckInModule::LoadStopWords: failed to open %hs"), filePath.c_str());
+        return;
+    }
+
+    std::string line;
+    while (std::getline(file, line)) {
+        size_t start = 0;
+        while (start < line.size() && (line[start] == ' ' || line[start] == '\t' || line[start] == '\r' || line[start] == '\n')) {
+            ++start;
+        }
+        size_t end = line.size();
+        while (end > start && (line[end - 1] == ' ' || line[end - 1] == '\t' || line[end - 1] == '\r' || line[end - 1] == '\n')) {
+            --end;
+        }
+        std::string word = line.substr(start, end - start);
+        if (!word.empty()) {
+            stopWords_.insert(word);
+        }
+    }
+
+    LOG_INFO(TEXT("CaptainCheckInModule::LoadStopWords: loaded %zu words from %hs"), stopWords_.size(), filePath.c_str());
+}
+
 bool CaptainCheckInModule::IsStopWord(const std::string& word) const {
+    if (!stopWords_.empty()) {
+        return stopWords_.find(word) != stopWords_.end();
+    }
     return STOP_WORDS.find(word) != STOP_WORDS.end();
 }
 

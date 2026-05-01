@@ -10,6 +10,7 @@
 #include <functional>
 #include <regex>
 #include <algorithm>
+#include <set>
 #include <ctime>
 #include <sstream>
 #include <iomanip>
@@ -83,6 +84,7 @@ private:
     void LoadProfileAsync(const std::string& uid, std::function<void(UserProfile)> callback);
 
     bool ShouldLearn(const UserProfile& profile, const CaptainDanmuEvent& event);
+    void LoadStopWords(const std::string& filePath);
     bool IsStopWord(const std::string& word) const;
     bool ShouldSkipDuplicateContent(UserProfile& profile, const std::string& content);
     int64_t GetCurrentTimestamp() const;
@@ -103,6 +105,7 @@ private:
     static JiebaContext* CreateJiebaContextSafe(const std::string& jiebaDict, const std::string& hmmModel, const std::string& userDict, const std::string& idfPath, const std::string& stopWords);
 
     std::map<std::string, UserProfile> profiles_;
+    std::set<std::string> stopWords_;
     std::vector<std::wstring> triggerWords_;
     std::string triggerWordsStr_;
     mutable std::mutex profilesLock_;

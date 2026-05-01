@@ -13,7 +13,7 @@ private:
     std::string lastError_;
 };
 
-class XiaomiTTSProvider : public ITTSProvider {
+class XiaomiTTSProvider : public ITTSProvider, public std::enable_shared_from_this<XiaomiTTSProvider> {
 public:
     XiaomiTTSProvider(const std::string& apiKey);
     std::string GetProviderName() const override;
@@ -32,7 +32,7 @@ private:
     bool available_;
 };
 
-class MiniMaxTTSProvider : public ITTSProvider {
+class MiniMaxTTSProvider : public ITTSProvider, public std::enable_shared_from_this<MiniMaxTTSProvider> {
 public:
     MiniMaxTTSProvider(const std::string& apiKey);
     std::string GetProviderName() const override;
@@ -51,7 +51,7 @@ private:
     bool available_;
 };
 
-class ManboTTSProvider : public ITTSProvider {
+class ManboTTSProvider : public ITTSProvider, public std::enable_shared_from_this<ManboTTSProvider> {
 public:
     ManboTTSProvider();
     std::string GetProviderName() const override;
