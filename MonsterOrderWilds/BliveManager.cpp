@@ -543,7 +543,7 @@ void BliveManager::HandleSmsReply(const std::string& msg)
 {
     try {
         TString decoded = ProtoUtils::Decode(msg);
-        LOG_DEBUG(TEXT("OP_SEND_SMS_REPLY: %s"), decoded.c_str());
+        LOG_INFO(TEXT("OP_SEND_SMS_REPLY: %s"), decoded.c_str());
 
         json jsonResponse;
         try {
@@ -554,6 +554,7 @@ void BliveManager::HandleSmsReply(const std::string& msg)
             return;
         }
         const std::string& cmd = jsonResponse["cmd"].get<std::string>();
+        LOG_INFO(TEXT("[HandleSmsReply] cmd: %hs"), cmd.c_str());
 #if !ONLY_ORDER_MONSTER
         // --- TTS 播报 / 点赞（lite模式下跳过）---
         if (cmd == "LIVE_OPEN_PLATFORM_DM")
