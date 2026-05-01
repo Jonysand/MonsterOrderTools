@@ -139,7 +139,16 @@ void RetroactiveCheckInModule::SendReply(const std::string& username, const std:
             g_aiReplyCallback(usernameW.c_str(), wtext.c_str(), g_aiReplyUserData);
         }
     } else {
-        TTSManager::Inst()->SpeakCheckinTTS(wtext, username);
+        TTSManager::Inst()->SpeakCheckinTTS(wtext, username, [username, wtext](bool success, const std::string& errorMsg) {
+            if (!success) {
+                LOG_ERROR(TEXT("RetroactiveCheckInModule: TTS failed for [%hs], fallback to bubble: %hs"),
+                    username.c_str(), errorMsg.c_str());
+                std::wstring usernameW = Utf8ToWstring(username);
+                if (g_aiReplyCallback) {
+                    g_aiReplyCallback(usernameW.c_str(), wtext.c_str(), g_aiReplyUserData);
+                }
+            }
+        });
     }
 }
 
