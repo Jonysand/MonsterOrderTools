@@ -45,7 +45,7 @@ namespace MonsterOrderWindows
         private List<AIBubbleControl> _bubbles = new List<AIBubbleControl>();
         private List<DispatcherTimer> _bubbleTimers = new List<DispatcherTimer>();
         private const int MAX_BUBBLES = 5;
-        private const int BUBBLE_INTERVAL_MS = 8000;
+        private const int BUBBLE_INTERVAL_MS = 15000;
         private const double BUBBLE_MARGIN = 8;
 
         public OrderedMonsterWindow()
