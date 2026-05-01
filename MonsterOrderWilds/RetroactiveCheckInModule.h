@@ -23,6 +23,9 @@ public:
 
     void SetTriggerWords(const std::string& words);
 
+    bool IsRetroactiveMessage(const std::string& content) const;
+    bool IsQueryMessage(const std::string& content) const;
+
 private:
     void ProcessLike(const LikeEvent& event);
 
@@ -36,8 +39,6 @@ private:
 
     void SendReply(const std::string& username, const std::string& text);
 
-    bool IsRetroactiveMessage(const std::string& content) const;
-    bool IsQueryMessage(const std::string& content) const;
     int32_t GetCurrentDate() const;
 
     // 按用户分片锁，避免全局串行化

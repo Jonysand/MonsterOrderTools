@@ -6,6 +6,7 @@
 #include "WriteLog.h"
 #include "StringUtils.h"
 #include "CaptainCheckInModule.h"
+#include "RetroactiveCheckInModule.h"
 
 #pragma warning(disable: 4996)
 
@@ -179,6 +180,10 @@ void TTSManager::HandleSpeekDm(const json& data)
     }
     std::string msgUtf8 = WstringToUtf8(msg);
     if (CaptainCheckInModule::Inst()->IsCheckinMessage(msgUtf8)) {
+        return;
+    }
+    if (RetroactiveCheckInModule::Inst()->IsRetroactiveMessage(msgUtf8) ||
+        RetroactiveCheckInModule::Inst()->IsQueryMessage(msgUtf8)) {
         return;
     }
 #if !ONLY_ORDER_MONSTER
