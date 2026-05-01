@@ -125,8 +125,16 @@ def prepare_files(is_lite=False):
             print(f"[Warning] {src} not found!")
 
     if is_lite:
-        print("[Info] Lite mode: skipping dict and config files")
+        print("[Info] Lite mode: skipping local_voices.zip, dict and config files")
     else:
+        # 复制本地音频文件
+        local_voices_src = CONFIGS_DIR / "local_voices.zip"
+        if local_voices_src.exists():
+            shutil.copy2(local_voices_src, FILES_DIR / "local_voices.zip")
+            print("[OK] Copied local_voices.zip")
+        else:
+            print("[Warning] local_voices.zip not found!")
+
         # 复制配置文件
         for config_file in [
             "弹幕习惯词黑白名单配置.txt",

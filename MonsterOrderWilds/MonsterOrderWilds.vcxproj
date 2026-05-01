@@ -235,6 +235,7 @@ xcopy /y /q "$(ProjectDir)dict\*" "$(OutDir)dict\"</Command>
     <ClInclude Include="CaptainCheckInModule.h" />
     <ClInclude Include="DateUtils.h" />
     <ClInclude Include="LikeEvent.h" />
+    <ClInclude Include="LocalVoiceManager.h" />
     <ClInclude Include="RetroactiveCheckInModule.h" />
     <ClInclude Include="ConfigFieldRegistry.h" />
     <ClInclude Include="ConfigManager.h" />
@@ -268,6 +269,7 @@ xcopy /y /q "$(ProjectDir)dict\*" "$(OutDir)dict\"</Command>
   <ItemGroup>
     <ClCompile Include="AIChatProviderFactory.cpp" />
     <ClCompile Include="AudioPlayer.cpp" />
+    <ClCompile Include="LocalVoiceManager.cpp" />
     <ClCompile Include="BliveManager.cpp" />
     <ClCompile Include="CaptainCheckInModule.cpp" />
     <ClCompile Include="DateUtils.cpp" />
@@ -302,6 +304,7 @@ xcopy /y /q "$(ProjectDir)dict\*" "$(OutDir)dict\"</Command>
       <ExcludedFromBuild Condition="'$(Configuration)'!='UnitTest'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="WriteLog.cpp" />
+    <ClCompile Include="..\external\miniz\miniz_all.cpp" />
     <ClCompile Include="ConfigManagerTests.cpp">
       <Filter>UnitTests</Filter>
       <ExcludedFromBuild Condition="'$(Configuration)'!='UnitTest'">true</ExcludedFromBuild>
@@ -364,6 +367,10 @@ xcopy /y /q "$(ProjectDir)dict\*" "$(OutDir)dict\"</Command>
       <ExcludedFromBuild Condition="'$(Configuration)'!='UnitTest'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="RetroactiveCheckInModuleTests.cpp">
+      <Filter>UnitTests</Filter>
+      <ExcludedFromBuild Condition="'$(Configuration)'!='UnitTest'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="LocalVoiceManagerTests.cpp">
       <Filter>UnitTests</Filter>
       <ExcludedFromBuild Condition="'$(Configuration)'!='UnitTest'">true</ExcludedFromBuild>
     </ClCompile>

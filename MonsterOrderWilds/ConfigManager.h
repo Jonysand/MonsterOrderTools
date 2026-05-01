@@ -90,13 +90,14 @@ public:
     // 配置变更事件
     using ConfigChangedHandler = std::function<void(const ConfigData&)>;
     void AddConfigChangedListener(const ConfigChangedHandler& handler);
-private:
-    ConfigManager() = default;
-    ~ConfigManager() = default;
 
     // 配置文件路径
     std::string GetConfigPath() const;
     std::string GetConfigDirectory() const;
+
+private:
+    ConfigManager() = default;
+    ~ConfigManager() = default;
 
     // 数据
     ConfigData config_;

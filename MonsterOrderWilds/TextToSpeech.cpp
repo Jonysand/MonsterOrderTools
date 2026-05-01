@@ -174,6 +174,27 @@ void TTSManager::HandleSpeekDm(const json& data)
         // 以"点餐"开头
         HandleDmOrderFood(msg, utf8_to_wstring(uname));
     }
+#if !ONLY_ORDER_MONSTER
+    else if (GetActiveEngineType() == TTSEngineType::Manbo) {
+        std::string voiceFile = LocalVoiceManager::Inst()->MatchVoice(msg);
+        if (!voiceFile.empty()) {
+            auto reqPtr = std::make_shared<AsyncTTSRequest>();
+            reqPtr->text = msg;
+            reqPtr->engineType = TTSEngineType::LocalVoice;
+            reqPtr->state = AsyncTTSState::Pending;
+            reqPtr->startTime = std::chrono::steady_clock::now();
+            reqPtr->responseFormat = "mp3";
+            reqPtr->voice = voiceFile;
+            
+            {
+                std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
+                asyncPendingQueue_.push_back(reqPtr);
+            }
+            LOG_DEBUG(TEXT("HandleSpeekDm: Local voice queued for: %s"), msg.c_str());
+            return;
+        }
+    }
+#endif
     else if (msg == TEXT("签到") || msg == TEXT("打卡")) {
     }
     else
@@ -670,6 +691,26 @@ void TTSManager::ProcessPendingRequestInternal(std::list<std::shared_ptr<AsyncTT
 {
     auto& reqPtr = *it;
     AsyncTTSRequest& req = *reqPtr;
+
+    // 处理本地音频请求
+    if (req.engineType == TTSEngineType::LocalVoice) {
+        LOG_INFO(TEXT("TTS Async: Processing LocalVoice request"));
+        std::vector<uint8_t> audioData;
+        if (!req.voice.empty() && LocalVoiceManager::Inst()->LoadVoiceData(
+                req.voice, audioData)) {
+            req.audioData = std::move(audioData);
+            req.state = AsyncTTSState::Playing;
+            LOG_INFO(TEXT("TTS Async: Local voice loaded, state -> Playing"));
+        } else {
+            req.state = AsyncTTSState::Failed;
+            req.errorMessage = "Failed to load local voice";
+            LOG_ERROR(TEXT("TTS Async: Failed to load local voice for: %s"), req.text.c_str());
+            if (req.callback) {
+                req.callback(false, req.errorMessage);
+            }
+        }
+        return;
+    }
 
     // 处理 SAPI 请求（异步播放 + SPEVENT 回调）
     if (req.engineType == TTSEngineType::SAPI) {

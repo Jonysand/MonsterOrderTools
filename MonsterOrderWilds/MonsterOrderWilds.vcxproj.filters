@@ -57,6 +57,9 @@
     <ClInclude Include="LikeEvent.h">
       <Filter>DataProcessing</Filter>
     </ClInclude>
+    <ClInclude Include="LocalVoiceManager.h">
+      <Filter>DataProcessing</Filter>
+    </ClInclude>
     <ClInclude Include="RetroactiveCheckInModule.h">
       <Filter>DataProcessing</Filter>
     </ClInclude>
@@ -183,6 +186,9 @@
     <ClCompile Include="AudioPlayer.cpp">
       <Filter>Core</Filter>
     </ClCompile>
+    <ClCompile Include="LocalVoiceManager.cpp">
+      <Filter>DataProcessing</Filter>
+    </ClCompile>
 
     <ClCompile Include="ManboTTSProvider.cpp">
       <Filter>DataProcessing</Filter>
@@ -295,10 +301,17 @@
       <Filter>UnitTests</Filter>
       <ExcludedFromBuild Condition="'$(Configuration)'!='UnitTest'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="LocalVoiceManagerTests.cpp">
+      <Filter>UnitTests</Filter>
+      <ExcludedFromBuild Condition="'$(Configuration)'=='Release'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="UnitTestMain.cpp">
       <Filter>UnitTests</Filter>
     </ClCompile>
     <ClCompile Include="..\external\sqlite3.cpp">
+      <Filter>External</Filter>
+    </ClCompile>
+    <ClCompile Include="..\external\miniz\miniz_all.cpp">
       <Filter>External</Filter>
     </ClCompile>
   </ItemGroup>

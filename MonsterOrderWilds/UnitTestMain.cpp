@@ -55,6 +55,7 @@ extern void RunTTSProviderTests();
 extern void RunCaptainCheckInModuleTests();
 extern void RunRetroactiveCheckInModuleTests();
 extern void RunDeepSeekAIChatProviderTests();
+extern void RunLocalVoiceManagerTests();
 
 int RunTests()
 {
@@ -127,6 +128,10 @@ int RunTests()
 
     TestLog("Running RetroactiveCheckInModule tests...");
     RunRetroactiveCheckInModuleTests();
+    TestLog("");
+
+    TestLog("Running LocalVoiceManager tests...");
+    RunLocalVoiceManagerTests();
     TestLog("");
 
     TestLog("========================================");

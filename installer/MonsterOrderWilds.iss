@@ -45,6 +45,7 @@ Source: "files\monster_list.json"; DestDir: "{app}\MonsterOrderWilds_configs"; F
 Source: "files\monster_icons.zip"; DestDir: "{app}\MonsterOrderWilds_configs"; Flags: ignoreversion; Components: main
 Source: "files\credentials.dat"; DestDir: "{app}\MonsterOrderWilds_configs"; Flags: ignoreversion; Components: main
 #ifndef ONLY_ORDER_MONSTER
+Source: "files\local_voices.zip"; DestDir: "{app}\MonsterOrderWilds_configs"; Flags: ignoreversion; Components: main
 ; cppjieba 分词字典文件
 Source: "..\MonsterOrderWilds\dict\jieba.dict.utf8"; DestDir: "{app}\dict"; Flags: ignoreversion; Components: main
 Source: "..\MonsterOrderWilds\dict\hmm_model.utf8"; DestDir: "{app}\dict"; Flags: ignoreversion; Components: main

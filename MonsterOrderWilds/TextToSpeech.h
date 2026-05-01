@@ -7,6 +7,7 @@
 #include "TTSProvider.h"
 #include "AudioPlayer.h"
 #include "TTSCacheManager.h"
+#include "LocalVoiceManager.h"
 
 struct ISpVoice;
 
@@ -27,7 +28,8 @@ enum class TTSEngineType
 	MiniMax,
 	Manbo,
 	MiMo,
-	SAPI
+	SAPI,
+	LocalVoice
 };
 
 // 异步TTS请求结构
