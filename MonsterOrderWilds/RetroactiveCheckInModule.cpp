@@ -133,12 +133,12 @@ void RetroactiveCheckInModule::SendReply(const std::string& username, const std:
     std::wstring wtext = Utf8ToWstring(text);
     RECORD_HISTORY(wtext.c_str());
 
-    std::wstring usernameW = Utf8ToWstring(username);
-    if (g_aiReplyCallback) {
-        g_aiReplyCallback(usernameW.c_str(), wtext.c_str(), g_aiReplyUserData);
-    }
-
-    if (ConfigManager::Inst()->GetConfig().enableVoice) {
+    if (!ConfigManager::Inst()->GetConfig().enableVoice) {
+        std::wstring usernameW = Utf8ToWstring(username);
+        if (g_aiReplyCallback) {
+            g_aiReplyCallback(usernameW.c_str(), wtext.c_str(), g_aiReplyUserData);
+        }
+    } else {
         TTSManager::Inst()->SpeakCheckinTTS(wtext, username);
     }
 }
