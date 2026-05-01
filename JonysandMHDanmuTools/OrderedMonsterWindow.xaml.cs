@@ -10,6 +10,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
 using System.Windows.Interop;
 using System.Runtime.InteropServices;
 using System.Windows.Threading;
@@ -299,9 +300,9 @@ namespace MonsterOrderWindows
                             tempData.GuardLevel = node.GuardLevel;
                             tempData.TemperedLevel = node.TemperedLevel;
                             tempData.UserId = node.UserId;
-                            string iconUrl = MonsterData.GetInst().GetMatchedMonsterIconUrl(tempData.MonsterName);
-                            if (!string.IsNullOrEmpty(iconUrl))
-                                tempData.MonsterIcon = new Uri(iconUrl, UriKind.RelativeOrAbsolute);
+                            string iconPath = MonsterData.GetInst().GetMatchedMonsterIconUrl(tempData.MonsterName);
+                            if (!string.IsNullOrEmpty(iconPath))
+                                tempData.MonsterIcon = MonsterIconLoader.LoadIcon(iconPath);
                             items.Add(tempData);
                         }
                         return items;
@@ -485,7 +486,7 @@ namespace MonsterOrderWindows
     {
         public string AudienceName { set; get; }
         public string MonsterName { set; get; }
-        public Uri MonsterIcon { set; get; }
+        public BitmapImage MonsterIcon { set; get; }
         public int GuardLevel { set; get; }
         public string UserId { set; get; }
 

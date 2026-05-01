@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Windows;
@@ -79,6 +80,8 @@ namespace MonsterOrderWindows
             {
                 DanmuManager.GetInst();
                 MonsterData.GetInst().LoadJsonData();
+                string configDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "MonsterOrderWilds_configs");
+                MonsterIconLoader.Initialize(configDir);
             }
             catch (Exception e)
             {
