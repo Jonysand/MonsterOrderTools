@@ -56,9 +56,22 @@ namespace WriteLog
 		__try {
 			if (!g_fp) {
 				const TCHAR* currentDir = GetExeDirectory();
+
+				// Build Logs directory path
+				TCHAR logsDir[MAX_PATH] = { 0 };
+				_tcscpy_s(logsDir, currentDir);
+				_tcscat_s(logsDir, TEXT("Logs\\"));
+
+				// Create Logs directory if it doesn't exist
+				CreateDirectory(logsDir, NULL);
+
+				// Get current date
+				SYSTEMTIME st;
+				GetLocalTime(&st);
+
+				// Build file name: YYYY-MM-DD.txt
 				TCHAR logPath[MAX_PATH] = { 0 };
-				_tcscpy_s(logPath, currentDir);
-				_tcscat_s(logPath, TEXT("log.txt"));
+				_stprintf_s(logPath, TEXT("%s%04d-%02d-%02d.txt"), logsDir, st.wYear, st.wMonth, st.wDay);
 
 				// Open the file in binary mode to ensure UTF-8 BOM is written
 				_tfopen_s(&g_fp, logPath, TEXT("ab"));
