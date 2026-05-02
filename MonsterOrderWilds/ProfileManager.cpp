@@ -745,6 +745,27 @@ int32_t ProfileManager::CalculateContinuousDays(const std::string& uid, int32_t 
     return 1;
 }
 
+int32_t ProfileManager::GetCumulativeDaysFromRecords(const std::string& uid) {
+    if (!storage_) return 0;
+
+    sqlite3* db = (sqlite3*)storage_;
+    sqlite3_stmt* stmt = nullptr;
+
+    const char* sql = "SELECT COUNT(DISTINCT checkin_date) FROM checkin_records WHERE uid = ?";
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        LOG_WARNING(TEXT("ProfileManager: Failed to prepare cumulative days count query: %hs"), sqlite3_errmsg(db));
+        return 0;
+    }
+
+    sqlite3_bind_text(stmt, 1, uid.c_str(), -1, SQLITE_TRANSIENT);
+    int32_t count = 0;
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        count = sqlite3_column_int(stmt, 0);
+    }
+    sqlite3_finalize(stmt);
+    return count;
+}
+
 int32_t ProfileManager::CalculateCumulativeDays(const std::string& uid, int32_t checkinDate) {
     std::lock_guard<std::recursive_mutex> lock(profilesLock_);
 
@@ -754,6 +775,23 @@ int32_t ProfileManager::CalculateCumulativeDays(const std::string& uid, int32_t 
         profile = it->second;
     } else {
         return 1;
+    }
+
+    // 补偿措施：当连续天数大于累计天数时，认为累计天数被错误覆盖，从数据库重新计算
+    if (profile.cumulativeDays <= 0 || profile.continuousDays > profile.cumulativeDays) {
+        int32_t actualCumulativeDays = GetCumulativeDaysFromRecords(uid);
+        if (actualCumulativeDays > 0) {
+            profile.cumulativeDays = actualCumulativeDays;
+            profiles_[uid] = profile;
+            // 立即持久化修复后的数据到数据库
+            SaveProfileToDb(profile);
+            LOG_INFO(TEXT("ProfileManager: Compensated cumulativeDays for uid=%hs, continuous=%d, restored to %d, saved to DB"), uid.c_str(), profile.continuousDays, actualCumulativeDays);
+
+            if (profile.lastCheckinDate != checkinDate) {
+                return actualCumulativeDays + 1;
+            }
+            return actualCumulativeDays;
+        }
     }
 
     // 累计天数：非重复打卡时递增

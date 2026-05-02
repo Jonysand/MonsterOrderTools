@@ -304,7 +304,11 @@ void CaptainCheckInModule::PushDanmuEvent(const CaptainDanmuEvent& event) {
         if (shouldCheckin && profile.lastCheckinDate == event.sendDate) {
             LOG_DEBUG(TEXT("[CaptainCheckInModule] Repeated checkin detected for uid=%hs, date=%d"), event.uid.c_str(), event.sendDate);
             int32_t continuousDays = ProfileManager::Inst()->CalculateContinuousDays(event.uid, event.sendDate);
-            int32_t cumulativeDays = profile.cumulativeDays > 0 ? profile.cumulativeDays : continuousDays;
+            int32_t cumulativeDays = ProfileManager::Inst()->CalculateCumulativeDays(event.uid, event.sendDate);
+            // 如果触发了补偿，更新内存中的 profile
+            if (profile.cumulativeDays != cumulativeDays && cumulativeDays > 0) {
+                profile.cumulativeDays = cumulativeDays;
+            }
             std::string repeatedAnswer = event.username + "今日已打卡，连续" + std::to_string(continuousDays) + "天，累计" + std::to_string(cumulativeDays) + "天";
 
             std::wstring contentCopy = Utf8ToWstring(repeatedAnswer);
@@ -561,6 +565,7 @@ void CaptainCheckInModule::SaveProfileToDb(const UserProfile& profile) {
     dbProfile.username = profile.username;
     dbProfile.lastCheckinDate = profile.lastCheckinDate;
     dbProfile.continuousDays = profile.continuousDays;
+    dbProfile.cumulativeDays = profile.cumulativeDays;
     dbProfile.lastDanmuTimestamp = profile.lastDanmuTimestamp;
     dbProfile.createdAt = profile.createdAt;
     dbProfile.keywords = profile.keywords;
@@ -576,6 +581,7 @@ void CaptainCheckInModule::SaveProfileAsync(const UserProfile& profile) {
         dbProfile.username = profileCopy.username;
         dbProfile.lastCheckinDate = profileCopy.lastCheckinDate;
         dbProfile.continuousDays = profileCopy.continuousDays;
+        dbProfile.cumulativeDays = profileCopy.cumulativeDays;
         dbProfile.lastDanmuTimestamp = profileCopy.lastDanmuTimestamp;
         dbProfile.createdAt = profileCopy.createdAt;
         dbProfile.keywords = profileCopy.keywords;
@@ -593,6 +599,7 @@ void CaptainCheckInModule::LoadProfileAsync(const std::string& uid, std::functio
             profile.username = dbProfile.username;
             profile.lastCheckinDate = dbProfile.lastCheckinDate;
             profile.continuousDays = dbProfile.continuousDays;
+            profile.cumulativeDays = dbProfile.cumulativeDays;
             profile.lastDanmuTimestamp = dbProfile.lastDanmuTimestamp;
             profile.createdAt = dbProfile.createdAt;
             profile.keywords = dbProfile.keywords;

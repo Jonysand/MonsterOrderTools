@@ -105,6 +105,7 @@ private:
     bool LoadProfileFromDb(const std::string& uid, UserProfileData& outProfile);
     void SaveProfileToDb(const UserProfileData& profile);
     bool GetLastCheckinRecordFromDb(const std::string& uid, int32_t& outLastDate, int32_t& outContinuousDays);
+    int32_t GetCumulativeDaysFromRecords(const std::string& uid);
     void EvictOldestProfileIfNeeded();
 
     std::string dbPath_;
