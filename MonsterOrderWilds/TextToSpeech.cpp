@@ -718,7 +718,13 @@ void TTSManager::ProcessPendingRequestInternal(std::list<std::shared_ptr<AsyncTT
     }
 
     // 处理 SAPI 请求（异步播放 + SPEVENT 回调）
-    if (req.engineType == TTSEngineType::SAPI) {
+    // 当当前 Provider 为 SAPI 时（如降级后），强制走 SAPI 分支，避免同步回调覆盖状态导致重复播报
+    const bool isSapiProvider = ttsProvider && ttsProvider->GetProviderName() == "sapi";
+    if (req.engineType == TTSEngineType::SAPI || isSapiProvider) {
+        if (req.engineType != TTSEngineType::SAPI) {
+            req.engineType = TTSEngineType::SAPI;
+            LOG_INFO(TEXT("TTS Async: Provider is SAPI, routing request to SAPI branch"));
+        }
         LOG_INFO(TEXT("TTS Async: Processing SAPI request"));
         if (req.isCheckinTTS && !req.checkinUsername.empty()) {
             std::wstring usernameW = Utf8ToWstring(req.checkinUsername);

@@ -177,6 +177,17 @@ std::unique_ptr<ITTSProvider> TTSProviderFactory::Create(
 3. `ttsEngine = "mimo"`: 强制使用 Xiaomi/MiMo，如果 API Key 为空则降级到 SAPI
 4. `ttsEngine = "auto"` (默认): 优先 Manbo（无需 API key），失败后回滚到 MiMo，最后降级到 SAPI
 
+### Requirement: SAPI 降级路径状态机一致性
+
+当 TTS 请求因失败降级到 SapiTTSProvider 时，必须确保请求通过 SAPI 直接播放路径处理，避免同步回调与异步状态机冲突导致重复播报。
+
+#### Scenario: 降级到 SAPI 后正常完成
+- **WHEN** 当前实际 Provider 为 SapiTTSProvider（如降级后或运行时切换）
+- **AND** 待处理请求的 engineType 不是 SAPI（如 Auto、MiMo、Manbo）
+- **THEN** 请求被正确路由到 SAPI 播放路径，状态机正常推进
+- **AND** 不会因同步回调覆盖状态而触发超时重试
+- **AND** 同一条弹幕仅被播报一次
+
 ## 使用示例
 
 ```cpp
