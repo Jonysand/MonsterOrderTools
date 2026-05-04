@@ -30,12 +30,12 @@ public:
 
 ## Provider 实现
 
-### DeepSeekAIChatProvider
+### MiniMaxAIChatProvider
 
 **API 端点**:
-- **Endpoint**: `api.deepseek.com`
+- **Endpoint**: `api.minimaxi.com`
 - **Port**: 443
-- **Path**: `/v1/chat/completions`
+- **Path**: `/v1/text/chatcompletion_v2`
 - **Method**: POST
 
 **请求头**:
@@ -47,7 +47,7 @@ Authorization: Bearer {CHAT_AI_API_KEY}
 **请求体**:
 ```json
 {
-  "model": "deepseek-chat",
+  "model": "M2-her",
   "messages": [
     {"role": "user", "content": "{prompt}"}
   ]
@@ -71,20 +71,20 @@ Authorization: Bearer {CHAT_AI_API_KEY}
 **实现代码**:
 
 ```cpp
-class DeepSeekAIChatProvider : public IAIChatProvider {
+class MiniMaxAIChatProvider : public IAIChatProvider {
 public:
-    DeepSeekAIChatProvider(const std::string& apiKey)
+    MiniMaxAIChatProvider(const std::string& apiKey)
         : apiKey_(apiKey), available_(false) {}
     
-    std::string GetProviderName() const override { return "deepseek"; }
+    std::string GetProviderName() const override { return "minimax"; }
     
-    bool IsAvailable() const override { return !apiKey_.empty(); }
+    bool IsAvailable() const override { return available_; }
     
     std::string GetLastError() const override { return lastError_; }
     
     bool CallAPI(const std::string& prompt, std::string& outResponse) override {
         std::string body = R"({
-            "model": "deepseek-chat",
+            "model": "M2-her",
             "messages": [{"role": "user", "content": ")" + prompt + R"("}]
         })";
         
@@ -98,9 +98,9 @@ public:
         std::string response;
         
         Network::MakeHttpsRequestAsync(
-            utf8_to_wstring("api.deepseek.com"),
+            utf8_to_wstring("api.minimaxi.com"),
             443,
-            utf8_to_wstring("/v1/chat/completions"),
+            utf8_to_wstring("/v1/text/chatcompletion_v2"),
             TEXT("POST"),
             headersStr,
             body,
@@ -154,15 +154,15 @@ std::unique_ptr<IAIChatProvider> AIChatProviderFactory::Create(
     try {
         json cred = json::parse(credentialJson);
         
-        std::string provider = cred.value("chat_provider", "deepseek");
+        std::string provider = cred.value("chat_provider", "minimax");
         std::string apiKey = cred.value("chat_api_key", "");
         
         if (apiKey.empty()) {
             return nullptr;
         }
         
-        if (provider == "deepseek") {
-            return std::make_unique<DeepSeekAIChatProvider>(apiKey);
+        if (provider == "minimax") {
+            return std::make_unique<MiniMaxAIChatProvider>(apiKey);
         }
         
         // 预留其他 Provider
@@ -212,4 +212,4 @@ bool CaptainCheckInModule::GenerateAIAnswer(
 | 文件 | 职责 |
 |------|------|
 | `MonsterOrderWilds/AIChatProvider.h` | `IAIChatProvider` 接口和 `AIChatProviderFactory` |
-| `MonsterOrderWilds/DeepSeekAIChatProvider.cpp` | DeepSeek API 实现（使用 `Network::MakeHttpsRequestAsync`） |
+| `MonsterOrderWilds/MiniMaxAIChatProvider.cpp` | MiniMax API 实现（使用 `Network::MakeHttpsRequestAsync`） |

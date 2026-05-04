@@ -101,17 +101,20 @@ namespace MonsterOrderWindows
 
             // 小米MiMo TTS配置
 
-            // 设置TTS引擎选择（顺序：自动/Manbo/小米MiMo/Windows SAPI）
+            // 设置TTS引擎选择（顺序：自动/Manbo/MiniMax/小米MiMo/Windows SAPI）
             switch (config.TTS_ENGINE)
             {
                 case "manbo":
                     TTSEngineComboBox.SelectedIndex = 1;
                     break;
-                case "mimo":
+                case "minimax":
                     TTSEngineComboBox.SelectedIndex = 2;
                     break;
-                case "sapi":
+                case "mimo":
                     TTSEngineComboBox.SelectedIndex = 3;
+                    break;
+                case "sapi":
+                    TTSEngineComboBox.SelectedIndex = 4;
                     break;
                 default:
                     TTSEngineComboBox.SelectedIndex = 0; // auto
@@ -143,6 +146,19 @@ namespace MonsterOrderWindows
                 }
             }
 
+            // 设置 MiniMax 音色（使用Tag属性）
+            for (int i = 0; i < MiniMaxVoiceComboBox.Items.Count; i++)
+            {
+                var item = MiniMaxVoiceComboBox.Items[i] as System.Windows.Controls.ComboBoxItem;
+                if (item != null && item.Tag?.ToString() == config.MINIMAX_VOICE_ID)
+                {
+                    MiniMaxVoiceComboBox.SelectedIndex = i;
+                    break;
+                }
+            }
+
+            // 设置 MiniMax 语速
+            MiniMaxSpeedSlider.Value = config.MINIMAX_SPEED;
             }
         }
 
@@ -409,6 +425,7 @@ namespace MonsterOrderWindows
                 string displayName = providerName switch
                 {
                     "manbo" => "Manbo",
+                    "minimax" => "MiniMax",
                     "xiaomi" => "小米MiMo",
                     "sapi" => "Windows SAPI",
                     _ => providerName
@@ -449,6 +466,25 @@ namespace MonsterOrderWindows
                 return;
             string style = selectedItem.Tag?.ToString() ?? "";
             GlobalEventListener.Invoke("ConfigChanged", $"MIMO_STYLE:{style}");
+        }
+
+        private void MiniMaxVoiceComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            if (_isInitializing) return;
+            var comboBox = sender as System.Windows.Controls.ComboBox;
+            if (comboBox == null || comboBox.SelectedItem == null)
+                return;
+            var selectedItem = comboBox.SelectedItem as System.Windows.Controls.ComboBoxItem;
+            if (selectedItem == null)
+                return;
+            string voiceId = selectedItem.Tag?.ToString() ?? "female-tianmei";
+            GlobalEventListener.Invoke("ConfigChanged", $"MINIMAX_VOICE_ID:{voiceId}");
+        }
+
+        private void MiniMaxSpeedSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (_isInitializing) return;
+            GlobalEventListener.Invoke("ConfigChanged", $"MINIMAX_SPEED:{e.NewValue}");
         }
 
         private void LockWindowButton_Click(object sender, RoutedEventArgs e)

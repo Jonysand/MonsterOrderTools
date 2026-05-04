@@ -93,6 +93,8 @@
     <ClCompile Include="TTSProviderFactory.cpp" />
     <ClCompile Include="SapiTTSProviderStub.cpp" />
     <ClCompile Include="XiaomiTTSProvider.cpp" />
+    <ClCompile Include="MiniMaxTTSProvider.cpp" />
+    <ClCompile Include="MiniMaxAIChatProvider.cpp" />
     <ClCompile Include="DeepSeekAIChatProvider.cpp" />
     <ClCompile Include="StringProcessor.cpp" />
     <ClCompile Include="WriteLog.cpp" />

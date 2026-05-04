@@ -217,6 +217,8 @@ namespace MonsterOrderWindows
                     }
                 },
                 ["TTS_ENGINE"] = (k, v) => _Config.Config.TTS_ENGINE = v,
+                ["MINIMAX_VOICE_ID"] = (k, v) => _Config.Config.MINIMAX_VOICE_ID = v,
+                ["MINIMAX_SPEED"] = (k, v) => { if (float.TryParse(v, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float val)) _Config.Config.MINIMAX_SPEED = val; },
                 ["MIMO_VOICE"] = (k, v) => _Config.Config.MIMO_VOICE = v,
                 ["MIMO_STYLE"] = (k, v) => _Config.Config.MIMO_STYLE = v,
                 ["MIMO_API_KEY"] = (k, v) => _Config.Config.MIMO_API_KEY = v,

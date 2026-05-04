@@ -49,17 +49,25 @@ Manbo Provider 应正确集成到现有的 TTS 引擎选择和工厂模式中。
 
 #### Scenario: Auto 模式下 Manbo 优先
 - **WHEN** ttsEngine 为 "auto"
-- **THEN** TTSProviderFactory 优先创建 ManboTTSProvider 实例（auto 优先级：manbo -> mimo -> sapi）
+- **THEN** TTSProviderFactory 优先创建 ManboTTSProvider 实例（auto 优先级：manbo -> minimax -> mimo -> sapi）
+
+#### Scenario: Auto 模式下 minimax 有 key 时选择 minimax
+- **WHEN** ttsEngine 为 "auto" 且 minimax API key 已配置
+- **THEN** 优先选择 Manbo（Manbo 无需 API key，始终优先）
 
 ### Requirement: Provider 降级策略
 当当前 Provider 请求失败达到最大重试次数时，应自动降级到下一个可用的 Provider。
 
+#### Scenario: Manbo 失败降级到 MiniMax
+- **WHEN** Manbo TTS 请求失败且重试次数用尽，且配置了 minimax API key
+- **THEN** 自动切换到 MiniMax Provider 并重试当前请求
+
 #### Scenario: Manbo 失败降级到 MiMo
-- **WHEN** Manbo TTS 请求失败且重试次数用尽，且配置了 mimo API key
+- **WHEN** Manbo TTS 请求失败且重试次数用尽，未配置 minimax API key 但配置了 mimo API key
 - **THEN** 自动切换到 MiMo Provider 并重试当前请求
 
 #### Scenario: 所有 API Provider 失败降级到 SAPI
-- **WHEN** Manbo/MiMo 均失败且无法继续降级
+- **WHEN** Manbo/MiniMax/MiMo 均失败且无法继续降级
 - **THEN** 最终回退到 SapiTTSProvider（本地语音合成）
 
 #### Scenario: 降级后重置重试次数

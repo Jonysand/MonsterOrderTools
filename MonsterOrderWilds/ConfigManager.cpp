@@ -137,6 +137,12 @@ bool ConfigManager::LoadConfig()
             try { if (j.contains("MIMO_AUDIO_FORMAT")) config_.mimoAudioFormat = j["MIMO_AUDIO_FORMAT"].get<std::string>(); }
             catch (const std::exception& e) { LOG_DEBUG(TEXT("ConfigManager: MIMO_AUDIO_FORMAT wrong type, using default: %s"), e.what()); }
 
+            // MiniMax TTS 配置
+            try { if (j.contains("MINIMAX_VOICE_ID")) config_.minimaxVoiceId = j["MINIMAX_VOICE_ID"].get<std::string>(); }
+            catch (const std::exception& e) { LOG_DEBUG(TEXT("ConfigManager: MINIMAX_VOICE_ID wrong type, using default: %s"), e.what()); }
+            try { if (j.contains("MINIMAX_SPEED")) config_.minimaxSpeed = j["MINIMAX_SPEED"].get<float>(); }
+            catch (const std::exception& e) { LOG_DEBUG(TEXT("ConfigManager: MINIMAX_SPEED wrong type, using default: %s"), e.what()); }
+
             try { if (j.contains("TTS_CACHE_DAYS_TO_KEEP")) config_.ttsCacheDaysToKeep = j["TTS_CACHE_DAYS_TO_KEEP"].get<int>(); }
             catch (const std::exception& e) { LOG_DEBUG(TEXT("ConfigManager: TTS_CACHE_DAYS_TO_KEEP wrong type, using default: %s"), e.what()); }
 
@@ -202,6 +208,10 @@ bool ConfigManager::SaveConfig(bool force)
         j["MIMO_VOICE"] = config_.mimoVoice;
         j["MIMO_STYLE"] = config_.mimoStyle;
         j["MIMO_AUDIO_FORMAT"] = config_.mimoAudioFormat;
+
+        // MiniMax TTS 配置
+        j["MINIMAX_VOICE_ID"] = config_.minimaxVoiceId;
+        j["MINIMAX_SPEED"] = config_.minimaxSpeed;
 
         j["TTS_CACHE_DAYS_TO_KEEP"] = config_.ttsCacheDaysToKeep;
 

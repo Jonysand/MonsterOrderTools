@@ -140,6 +140,88 @@ void TestXiaomiTTSProvider_ParseResponse_Error()
     std::cout << "[PASS] TestXiaomiTTSProvider_ParseResponse_Error" << std::endl;
 }
 
+void TestMiniMaxTTSProvider_BuildRequest()
+{
+    MiniMaxTTSProvider minimax("test_api_key");
+    assert(minimax.GetProviderName() == "minimax");
+    assert(minimax.IsAvailable() == true);
+
+    // Note: BuildRequestBody now reads from ConfigManager, not TTSRequest
+    // This test is disabled until we have ConfigManager mocking
+    std::cout << "[SKIP] TestMiniMaxTTSProvider_BuildRequest - reads from ConfigManager" << std::endl;
+}
+
+void TestMiniMaxTTSProvider_BuildRequestHeaders()
+{
+    MiniMaxTTSProvider minimax("my_api_key");
+    std::string headers = minimax.BuildRequestHeaders("my_api_key");
+    
+    assert(headers.find("Content-Type: application/json") != std::string::npos);
+    assert(headers.find("Authorization: Bearer my_api_key") != std::string::npos);
+    
+    std::cout << "[PASS] TestMiniMaxTTSProvider_BuildRequestHeaders" << std::endl;
+}
+
+void TestMiniMaxTTSProvider_ParseResponse_Success()
+{
+    MiniMaxTTSProvider minimax("test_key");
+    std::string responseBody = "{\"data\":{\"audio\":\"4849\",\"status\":2}}";
+    
+    auto resp = minimax.ParseResponse(responseBody);
+    assert(resp.success == true);
+    assert(resp.audioData.size() == 2);
+    
+    std::cout << "[PASS] TestMiniMaxTTSProvider_ParseResponse_Success" << std::endl;
+}
+
+void TestMiniMaxTTSProvider_HexToBytes()
+{
+    MiniMaxTTSProvider minimax("test_key");
+    
+    // "4849" hex = 'H'(0x48) 'I'(0x49)
+    auto result = minimax.HexToBytes("4849");
+    assert(result.size() == 2);
+    assert(result[0] == 0x48);
+    assert(result[1] == 0x49);
+    
+    // "616263" hex = 'a'(0x61) 'b'(0x62) 'c'(0x63)
+    result = minimax.HexToBytes("616263");
+    assert(result.size() == 3);
+    assert(result[0] == 0x61);
+    assert(result[1] == 0x62);
+    assert(result[2] == 0x63);
+    
+    std::cout << "[PASS] TestMiniMaxTTSProvider_HexToBytes" << std::endl;
+}
+
+void TestMiniMaxTTSProvider_ParseResponse_WithHexAudio()
+{
+    MiniMaxTTSProvider minimax("test_key");
+    // "4849" is hex encoded "HI"
+    std::string responseBody = "{\"data\":{\"audio\":\"4849\",\"status\":2}}";
+    
+    auto resp = minimax.ParseResponse(responseBody);
+    assert(resp.success == true);
+    // Hex "4849" = bytes [0x48, 0x49] = 'H', 'I'
+    assert(resp.audioData.size() == 2);
+    assert(resp.audioData[0] == 0x48);  // 'H'
+    assert(resp.audioData[1] == 0x49);  // 'I'
+    
+    std::cout << "[PASS] TestMiniMaxTTSProvider_ParseResponse_WithHexAudio" << std::endl;
+}
+
+void TestMiniMaxTTSProvider_ParseResponse_Error()
+{
+    MiniMaxTTSProvider minimax("test_key");
+    std::string responseBody = "{\"error\":{\"message\":\"invalid api key\"}}";
+    
+    auto resp = minimax.ParseResponse(responseBody);
+    assert(resp.success == false);
+    assert(!resp.errorMsg.empty());
+    
+    std::cout << "[PASS] TestMiniMaxTTSProvider_ParseResponse_Error" << std::endl;
+}
+
 void TestManboTTSProvider_BuildRequestUrl()
 {
     ManboTTSProvider manbo;
@@ -204,6 +286,7 @@ void TestTTSProviderFactory_Create_ManboExplicit()
 {
     auto provider = TTSProviderFactory::Create(
         "mimo_key",
+        "minimax_key",
         "manbo");
     assert(provider != nullptr);
     assert(provider->GetProviderName() == "manbo");
@@ -214,6 +297,7 @@ void TestTTSProviderFactory_Create_Auto_ManboFirst()
 {
     auto provider = TTSProviderFactory::Create(
         "mimo_key",
+        "minimax_key",
         "auto");
     assert(provider != nullptr);
     assert(provider->GetProviderName() == "manbo");
@@ -223,6 +307,7 @@ void TestTTSProviderFactory_Create_Auto_ManboFirst()
 void TestTTSProviderFactory_Create_Auto_ManboFallback()
 {
     auto provider = TTSProviderFactory::Create(
+        "",
         "",
         "auto");
     assert(provider != nullptr);
@@ -234,6 +319,7 @@ void TestTTSProviderFactory_Create_MiMoExplicit()
 {
     auto provider = TTSProviderFactory::Create(
         "mimo_key",
+        "minimax_key",
         "mimo");
     assert(provider != nullptr);
     assert(provider->GetProviderName() == "xiaomi");
@@ -244,6 +330,7 @@ void TestTTSProviderFactory_Create_SapiExplicit()
 {
     auto provider = TTSProviderFactory::Create(
         "mimo_key",
+        "minimax_key",
         "sapi");
     assert(provider != nullptr);
     assert(provider->GetProviderName() == "sapi");
@@ -263,6 +350,12 @@ void RunTTSProviderTests()
     TestXiaomiTTSProvider_BuildRequestHeaders();
     TestXiaomiTTSProvider_ParseResponse_Success();
     TestXiaomiTTSProvider_ParseResponse_Error();
+    TestMiniMaxTTSProvider_BuildRequest();
+    TestMiniMaxTTSProvider_BuildRequestHeaders();
+    TestMiniMaxTTSProvider_ParseResponse_Success();
+    TestMiniMaxTTSProvider_HexToBytes();
+    TestMiniMaxTTSProvider_ParseResponse_WithHexAudio();
+    TestMiniMaxTTSProvider_ParseResponse_Error();
     TestManboTTSProvider_BuildRequestUrl();
     TestManboTTSProvider_ParseApiResponse_Success();
     TestManboTTSProvider_ParseApiResponse_Error();

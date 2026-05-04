@@ -66,6 +66,9 @@ void ConfigFieldRegistry::RegisterAll()
 
     REGISTER_FIELD("penetratingModeOpacity", int, penetratingModeOpacity, ConfigFieldType::Int);
 
+    REGISTER_FIELD("minimaxVoiceId", std::string, minimaxVoiceId, ConfigFieldType::String);
+    REGISTER_FIELD("minimaxSpeed", float, minimaxSpeed, ConfigFieldType::Float);
+
     REGISTER_FIELD("topPosX", double, topPosX, ConfigFieldType::Double);
     REGISTER_FIELD("topPosY", double, topPosY, ConfigFieldType::Double);
 

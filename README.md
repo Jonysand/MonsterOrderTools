@@ -6,18 +6,6 @@
 
 所有变更详见 [openspec/changes/archive/](openspec/changes/archive/)
 
-## [v25] - 2026-05-04
-
-### Removed
-- **移除 MiniMax 支持**: 彻底移除 MiniMax TTS Provider 和 MiniMax AI Chat Provider
-  - 删除 `MiniMaxTTSProvider.cpp/h`、`MiniMaxAIChatProvider.cpp/h`
-  - TTS 降级链从 `manbo → minimax → mimo → sapi` 简化为 `manbo → mimo → sapi`
-  - AI Chat 默认 provider 从 `minimax` 改为 `deepseek`
-  - 移除 MiniMax 相关配置字段：`minimaxVoiceId`、`minimaxSpeed`、`MINIMAX_API_KEY`
-  - 移除 MiniMax UI 控件：引擎选择、音色选择（58种）、语速调节
-  - 清理 C++ 和 C# 两层配置注册表、DataBridge 代理、ConfigWindow 事件处理
-  - 更新 openspec 文档，移除所有 MiniMax 相关规格说明
-
 ## [v24] - 2026-04-28
 
 ### Added

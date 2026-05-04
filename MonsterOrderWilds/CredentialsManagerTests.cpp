@@ -70,7 +70,7 @@ void TestAI_PROVIDER_InvalidJson() {
 }
 
 void TestAI_PROVIDER_EmptyFields() {
-    std::string jsonWithEmptyFields = R"({"chat_provider":"deepseek","chat_api_key":"","tts_provider":"xiaomi","tts_api_key":""})";
+    std::string jsonWithEmptyFields = R"({"chat_provider":"minimax","chat_api_key":"","tts_provider":"xiaomi","tts_api_key":""})";
     bool canParse = true;
     try {
         auto j = json::parse(jsonWithEmptyFields);

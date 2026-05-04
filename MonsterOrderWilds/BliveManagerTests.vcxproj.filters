@@ -36,6 +36,12 @@
     <ClCompile Include="XiaomiTTSProvider.cpp">
       <Filter>UnitTests</Filter>
     </ClCompile>
+    <ClCompile Include="MiniMaxTTSProvider.cpp">
+      <Filter>UnitTests</Filter>
+    </ClCompile>
+    <ClCompile Include="MiniMaxAIChatProvider.cpp">
+      <Filter>UnitTests</Filter>
+    </ClCompile>
     <ClCompile Include="DeepSeekAIChatProvider.cpp">
       <Filter>UnitTests</Filter>
     </ClCompile>
