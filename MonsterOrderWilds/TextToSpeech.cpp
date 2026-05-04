@@ -42,6 +42,7 @@ TTSManager::TTSManager()
 
 
     const auto& config = ConfigManager::Inst()->GetConfig();
+    userSelectedEngineName_ = config.ttsEngine;
     ttsProvider = TTSProviderFactory::Create(
         GetMIMO_API_KEY(),
         config.ttsEngine);
@@ -572,6 +573,9 @@ void TTSManager::RefreshTTSProvider()
     const auto& config = ConfigManager::Inst()->GetConfig();
     LOG_INFO(TEXT("Refreshing TTS provider, engine: %hs"), config.ttsEngine.c_str());
     std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
+    userSelectedEngineName_ = config.ttsEngine;
+    isFallback = false;
+    consecutiveFailures = 0;
     ttsProvider = TTSProviderFactory::Create(
         GetMIMO_API_KEY(),
         config.ttsEngine);
@@ -982,6 +986,12 @@ bool TTSManager::TrySwitchToNextProvider()
 {
     if (!ttsProvider) return false;
 
+    // 手动选择引擎时不永久切换 provider，由 TryRecovery 在下次请求时自动恢复
+    if (IsManualEngineMode()) {
+        LOG_INFO(TEXT("TTS: Manual engine mode (%hs), skipping provider switch"), userSelectedEngineName_.c_str());
+        return false;
+    }
+
     std::string currentName = ttsProvider->GetProviderName();
     std::string nextEngine;
 
@@ -1037,7 +1047,8 @@ bool TTSManager::HandleRequestFailureInternal(AsyncTTSRequest& req)
     consecutiveFailures++;
     lastFailureTime = std::chrono::steady_clock::now();
 
-    if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+    // 手动模式下重试耗尽后立即触发 fallback（不等连续失败累积），确保下一条弹幕走恢复流程
+    if (IsManualEngineMode() || consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
         TriggerFallback();
     }
 
@@ -1115,6 +1126,26 @@ void TTSManager::TryRecovery()
     }
 
     LOG_INFO(TEXT("Attempting TTS recovery..."));
+
+    // 如果用户手动选择了引擎，且当前 provider 与用户选择不同，先恢复原始引擎
+    if (IsManualEngineMode()) {
+        std::string currentName = ttsProvider->GetProviderName();
+        std::string targetName;
+        if (userSelectedEngineName_ == "manbo") targetName = "manbo";
+        else if (userSelectedEngineName_ == "mimo") targetName = "xiaomi";
+        else if (userSelectedEngineName_ == "sapi") targetName = "sapi";
+
+        if (!targetName.empty() && currentName != targetName) {
+            LOG_INFO(TEXT("TTS recovery: restoring user-selected engine %hs (current: %hs)"),
+                userSelectedEngineName_.c_str(), currentName.c_str());
+            auto restored = TTSProviderFactory::Create(GetMIMO_API_KEY(), userSelectedEngineName_);
+            if (restored) {
+                ttsProvider = restored;
+            } else {
+                LOG_WARNING(TEXT("TTS recovery: failed to restore engine %hs"), userSelectedEngineName_.c_str());
+            }
+        }
+    }
 
     // Reset available flag to allow a test request
     ttsProvider->ResetAvailable();

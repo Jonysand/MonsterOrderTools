@@ -138,6 +138,7 @@ private:
 	void TryRecovery();
 	bool ShouldTryRecovery() const;
 	bool TrySwitchToNextProvider();  // 在当前Provider失败时尝试切换到下一个Provider
+	bool IsManualEngineMode() const { return !userSelectedEngineName_.empty() && userSelectedEngineName_ != "auto"; }
 
 	// 一般弹幕播报队列
 	std::list<TString> NormalMsgQueue;
@@ -195,6 +196,7 @@ private:
 	// 引擎降级相关
 	std::atomic<bool> isFallback{ false };              // 是否已降级到SAPI
 	std::string fallbackReason;            // 降级原因
+	std::string userSelectedEngineName_;   // 用户手动选择的引擎名称（auto模式为空）
 	std::atomic<int> consecutiveFailures{ 0 };          // 连续失败次数
 	std::chrono::steady_clock::time_point lastFailureTime;  // 上次失败时间
 	std::chrono::steady_clock::time_point lastRecoveryAttempt;  // 上次恢复尝试时间
