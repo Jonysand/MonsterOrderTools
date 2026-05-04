@@ -229,7 +229,6 @@ xcopy /y /q "$(ProjectDir)dict\*" "$(OutDir)dict\"</Command>
   <ItemGroup>
     <ClInclude Include="AIChatProvider.h" />
     <ClInclude Include="DeepSeekAIChatProvider.h" />
-    <ClInclude Include="MiniMaxAIChatProvider.h" />
     <ClInclude Include="AudioPlayer.h" />
     <ClInclude Include="BliveManager.h" />
     <ClInclude Include="CaptainCheckInModule.h" />
@@ -286,7 +285,6 @@ xcopy /y /q "$(ProjectDir)dict\*" "$(OutDir)dict\"</Command>
     <ClCompile Include="MHDanmuToolsHost.cpp" />
 
     <ClCompile Include="DeepSeekAIChatProvider.cpp" />
-    <ClCompile Include="MiniMaxAIChatProvider.cpp" />
     <ClCompile Include="MonsterDataManager.cpp" />
     <ClCompile Include="MonsterOrderWilds.cpp" />
     <ClCompile Include="Network.cpp" />
@@ -299,7 +297,6 @@ xcopy /y /q "$(ProjectDir)dict\*" "$(OutDir)dict\"</Command>
     <ClCompile Include="SapiTTSProvider.cpp" />
     <ClCompile Include="XiaomiTTSProvider.cpp" />
     <ClCompile Include="ManboTTSProvider.cpp" />
-    <ClCompile Include="MiniMaxTTSProvider.cpp" />
     <ClCompile Include="UnitTestMain.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)'!='UnitTest'">true</ExcludedFromBuild>
     </ClCompile>

@@ -31,6 +31,5 @@ class TTSProviderFactory {
 public:
     static std::shared_ptr<ITTSProvider> Create(
         const std::string& mimoApiKey,
-        const std::string& minimaxApiKey,
         const std::string& ttsEngine);
 };

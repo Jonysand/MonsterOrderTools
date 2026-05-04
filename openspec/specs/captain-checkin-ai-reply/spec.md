@@ -137,12 +137,12 @@
 **修复的问题**：
 
 1. **AI Chat Provider `IsAvailable()` 返回值错误** (`DeepSeekAIChatProvider.h`, `MiniMaxAIChatProvider.h`)
-   - 问题：`IsAvailable()` 返回的是上次 API 调用结果（`available_`），而不是检查 API key 是否有效
-   - 修复：改为 `return !apiKey_.empty()`，只要 API key 非空就返回 true
+    - 问题：`IsAvailable()` 返回的是上次 API 调用结果（`available_`），而不是检查 API key 是否有效
+    - 修复：改为 `return !apiKey_.empty()`，只要 API key 非空就返回 true
 
-2. **TTS Provider `IsAvailable()` 返回值错误** (`TTSProvider.h`, `XiaomiTTSProvider.cpp`, `MiniMaxTTSProvider.cpp`)
-   - 问题：同上，`IsAvailable()` 返回 `available_` 而不是检查 API key
-   - 修复：改为 `return !apiKey_.empty()`
+ 2. **TTS Provider `IsAvailable()` 返回值错误** (`TTSProvider.h`, `XiaomiTTSProvider.cpp`)
+    - 问题：同上，`IsAvailable()` 返回 `available_` 而不是检查 API key
+    - 修复：改为 `return !apiKey_.empty()`
 
  3. **签到 TTS 播放失败** (`CaptainCheckInModule.cpp`, `TextToSpeech.cpp`, `TextToSpeech.h`)
    - 问题：`PlayCheckinTTS` 使用 `TTSProviderFactory` 创建 provider（可能是 xiaomi），但 XiaomiTTS 返回的音频格式不被 MCI 正确支持；且之前未调用 `SaveCheckinAudio()` 保存音频
@@ -158,10 +158,8 @@
 
 **相关文件修改**：
 - `MonsterOrderWilds/DeepSeekAIChatProvider.h` - `IsAvailable()` 返回 `!apiKey_.empty()`
-- `MonsterOrderWilds/MiniMaxAIChatProvider.h` - 同上
-- `MonsterOrderWilds/TTSProvider.h` - `XiaomiTTSProvider` 和 `MiniMaxTTSProvider` 的 `IsAvailable()` 改为内联实现
+- `MonsterOrderWilds/TTSProvider.h` - `XiaomiTTSProvider` 的 `IsAvailable()` 改为内联实现
 - `MonsterOrderWilds/XiaomiTTSProvider.cpp` - 删除 `IsAvailable()` 定义
-- `MonsterOrderWilds/MiniMaxTTSProvider.cpp` - 删除 `IsAvailable()` 定义
 - `MonsterOrderWilds/TextToSpeech.h` - 新增 `SpeakCheckinTTS()` 方法声明
 - `MonsterOrderWilds/TextToSpeech.cpp` - 实现 `SpeakCheckinTTS()`，修改 `HandleSpeekDm()` 跳过签到消息
 - `MonsterOrderWilds/CaptainCheckInModule.cpp` - `PlayCheckinTTS()` 改用 `SpeakCheckinTTS()`
@@ -235,9 +233,9 @@
 
 ### FR-4: AI 回复生成
 
-- 调用 MiniMax 文本对话 API 生成个性化回复
-- API 端点: `api.minimaxi.com/v1/text/chatcompletion_v2`
-- Model: `M2-her`
+- 调用 DeepSeek 文本对话 API 生成个性化回复
+- API 端点: `api.deepseek.com/v1/chat/completions`
+- Model: `deepseek-chat`
 - Prompt 包含：用户名、连续打卡天数、用户关键词、最近发言
 - API 调用失败时回退到固定模板
 - API Key 为空时直接使用固定模板
@@ -282,7 +280,7 @@
 {
   "tts_provider": "xiaomi",
   "tts_api_key": "xxxx",
-  "chat_provider": "minimax",
+  "chat_provider": "deepseek",
   "chat_api_key": "xxx"
 }
 ```

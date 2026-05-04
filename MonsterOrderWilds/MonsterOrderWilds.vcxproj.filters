@@ -81,9 +81,6 @@
     <ClInclude Include="AIChatProvider.h">
       <Filter>DataProcessing</Filter>
     </ClInclude>
-    <ClInclude Include="MiniMaxAIChatProvider.h">
-      <Filter>DataProcessing</Filter>
-    </ClInclude>
     <ClInclude Include="DeepSeekAIChatProvider.h">
       <Filter>DataProcessing</Filter>
     </ClInclude>
@@ -180,9 +177,6 @@
     <ClCompile Include="AIChatProviderFactory.cpp">
       <Filter>DataProcessing</Filter>
     </ClCompile>
-    <ClCompile Include="MiniMaxAIChatProvider.cpp">
-      <Filter>DataProcessing</Filter>
-    </ClCompile>
     <ClCompile Include="DeepSeekAIChatProvider.cpp">
       <Filter>DataProcessing</Filter>
     </ClCompile>
@@ -194,9 +188,6 @@
     </ClCompile>
 
     <ClCompile Include="ManboTTSProvider.cpp">
-      <Filter>DataProcessing</Filter>
-    </ClCompile>
-    <ClCompile Include="MiniMaxTTSProvider.cpp">
       <Filter>DataProcessing</Filter>
     </ClCompile>
     <ClCompile Include="TTSCacheManager.cpp">

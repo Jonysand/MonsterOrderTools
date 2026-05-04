@@ -28,11 +28,6 @@ namespace MonsterOrderWindows
         public string MimoStyle;
         public string MimoAudioFormat;  // 写死的 mp3
 
-        // MiniMax TTS 配置
-        public string MinimaxApiKey;
-        public string MinimaxVoiceId;
-        public float MinimaxSpeed;
-
         // 窗口位置
         public double TopPosX;
         public double TopPosY;
@@ -70,9 +65,6 @@ namespace MonsterOrderWindows
                 MimoVoice = config.MIMO_VOICE ?? "mimo_default",
                 MimoStyle = config.MIMO_STYLE ?? "",
                 MimoAudioFormat = "mp3",
-                MinimaxApiKey = config.MINIMAX_API_KEY ?? "",
-                MinimaxVoiceId = config.MINIMAX_VOICE_ID ?? "female-tianmei",
-                MinimaxSpeed = config.MINIMAX_SPEED,
                 TopPosX = config.TopPos.X,
                 TopPosY = config.TopPos.Y,
                 DefaultMarqueeText = config.DEFAULT_MARQUEE_TEXT ?? "",
@@ -102,9 +94,6 @@ namespace MonsterOrderWindows
             config.MIMO_API_KEY = MimoApiKey;
             config.MIMO_VOICE = MimoVoice;
             config.MIMO_STYLE = MimoStyle;
-            config.MINIMAX_API_KEY = MinimaxApiKey;
-            config.MINIMAX_VOICE_ID = MinimaxVoiceId;
-            config.MINIMAX_SPEED = MinimaxSpeed;
             config.TopPos = new System.Windows.Point(TopPosX, TopPosY);
             config.DEFAULT_MARQUEE_TEXT = DefaultMarqueeText;
             config.TTS_CACHE_DAYS_TO_KEEP = TtsCacheDaysToKeep;

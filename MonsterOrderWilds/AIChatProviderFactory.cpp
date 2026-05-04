@@ -1,6 +1,5 @@
 #include "framework.h"
 #include "AIChatProvider.h"
-#include "MiniMaxAIChatProvider.h"
 #include "DeepSeekAIChatProvider.h"
 #include "CredentialsManager.h"
 #include "WriteLog.h"
@@ -10,16 +9,12 @@ std::unique_ptr<IAIChatProvider> AIChatProviderFactory::Create(
     try {
         auto cred = nlohmann::json::parse(credentialJson);
 
-        std::string provider = cred.value("chat_provider", "minimax");
+        std::string provider = cred.value("chat_provider", "deepseek");
         std::string apiKey = cred.value("chat_api_key", "");
 
         if (apiKey.empty()) {
             LOG_ERROR(TEXT("AI Chat API key is empty"));
             return nullptr;
-        }
-
-        if (provider == "minimax") {
-            return std::make_unique<MiniMaxAIChatProvider>(apiKey);
         }
 
         if (provider == "deepseek") {

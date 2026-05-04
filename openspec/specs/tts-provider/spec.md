@@ -38,16 +38,14 @@ class TTSProviderFactory {
 public:
     static std::unique_ptr<ITTSProvider> Create(
         const std::string& mimoApiKey,
-        const std::string& minimaxApiKey,
         const std::string& ttsEngine);
 };
 ```
 
 **参数说明**：
 - `mimoApiKey`: Xiaomi/MiMo TTS Provider 的 API Key
-- `minimaxApiKey`: MiniMax TTS Provider 的 API Key
 - `ttsEngine`: TTS 引擎选择，可选值：
-  - `"auto"`: 自动模式，优先 minimax，失败后回滚到 xiaomi，最后降级到 sapi
+  - `"auto"`: 自动模式，优先 manbo，失败后回滚到 mimo，最后降级到 sapi
   - `"mimo"`: 强制使用 Xiaomi/MiMo Provider
   - `"sapi"`: 强制使用 Windows SAPI
 
@@ -94,7 +92,7 @@ private:
 ```
 
 **降级策略**：
-1. AUTO 模式下，按 minimax → xiaomi → sapi 的顺序尝试
+1. AUTO 模式下，按 manbo → mimo → sapi 的顺序尝试
 2. 用户明确选择时尊重选择（mimo 或 sapi）
 3. 所有 Provider 都不可用时，降级到 Windows SAPI
 
@@ -139,52 +137,11 @@ private:
 - 非流式：`wav`
 - 流式：`pcm16`
 
-### MiniMaxTTSProvider
-
-**API 端点**:
-- **Endpoint**: `api.minimaxi.com`
-- **Port**: 443
-- **Path**: `/v1/t2a_v2`
-- **Method**: POST
-
-**请求体**:
-```json
-{
-  "model": "speech-2.8-hd",
-  "text": "需要合成语音的文本",
-  "stream": false,
-  "voice_setting": {
-    "voice_id": "male-qn-qingse",
-    "speed": 1,  // 从 ConfigManager::GetConfig().minimaxSpeed 读取
-    "vol": 1,
-    "pitch": 0,
-    "emotion": "happy"
-  },
-  "audio_setting": {
-    "sample_rate": 32000,
-    "bitrate": 128000,
-    "format": "mp3",
-    "channel": 1
-  }
-}
-```
-
-**响应解析**:
-```json
-{
-  "data": {
-    "audio": "hex编码的audio",
-    "status": 2
-  }
-}
-```
-
 ## Provider 一览
 
 | Provider | 实现类 | 说明 |
 |----------|--------|------|
 | xiaomi | XiaomiTTSProvider | Xiaomi TTS API |
-| minimax | MiniMaxTTSProvider | MiniMax TTS API |
 | sapi | SapiTTSProvider | Windows SAPI（降级 fallback） |
 
 ## Factory 实现
@@ -192,11 +149,14 @@ private:
 ```cpp
 std::unique_ptr<ITTSProvider> TTSProviderFactory::Create(
     const std::string& mimoApiKey,
-    const std::string& minimaxApiKey,
     const std::string& ttsEngine) {
 
     if (ttsEngine == "sapi") {
         return std::make_unique<SapiTTSProvider>();
+    }
+
+    if (ttsEngine == "manbo") {
+        return std::make_unique<ManboTTSProvider>();
     }
 
     if (ttsEngine == "mimo") {
@@ -206,24 +166,16 @@ std::unique_ptr<ITTSProvider> TTSProviderFactory::Create(
         return std::make_unique<XiaomiTTSProvider>(mimoApiKey);
     }
 
-    // AUTO 模式: minimax -> xiaomi -> sapi
-    if (!minimaxApiKey.empty()) {
-        return std::make_unique<MiniMaxTTSProvider>(minimaxApiKey);
-    }
-
-    if (!mimoApiKey.empty()) {
-        return std::make_unique<XiaomiTTSProvider>(mimoApiKey);
-    }
-
-    return std::make_unique<SapiTTSProvider>();
+    // AUTO 模式: manbo -> mimo -> sapi
+    return std::make_unique<ManboTTSProvider>();
 }
 ```
 
 **降级策略**：
 1. `ttsEngine = "sapi"`: 直接使用 Windows SAPI
-2. `ttsEngine = "mimo"`: 强制使用 Xiaomi/MiMo，如果 API Key 为空则降级到 SAPI
-3. `ttsEngine = "auto"` (默认): 优先 MiniMax，失败后回滚到 Xiaomi/MiMo，最后降级到 SAPI
-4. 所有 Provider 的 API Key 都为空时，使用 Windows SAPI
+2. `ttsEngine = "manbo"`: 强制使用 Manbo Provider
+3. `ttsEngine = "mimo"`: 强制使用 Xiaomi/MiMo，如果 API Key 为空则降级到 SAPI
+4. `ttsEngine = "auto"` (默认): 优先 Manbo（无需 API key），失败后回滚到 MiMo，最后降级到 SAPI
 
 ## 使用示例
 
@@ -257,7 +209,6 @@ public:
 | `MonsterOrderWilds/ITTSProvider.h` | `ITTSProvider` 接口、`TTSRequest`/`TTSResponse` 和 `TTSProviderFactory` |
 | `MonsterOrderWilds/SapiTTSProvider.cpp` | Windows SAPI 降级实现 |
 | `MonsterOrderWilds/XiaomiTTSProvider.cpp` | Xiaomi TTS 实现 |
-| `MonsterOrderWilds/MiniMaxTTSProvider.cpp` | MiniMax TTS 实现 |
 
 ## 实现说明
 
@@ -265,7 +216,6 @@ public:
 - `TTSRequest` 只包含通用参数：`text`
 - 各 Provider 自己从 `ConfigManager` 读取需要的配置：
   - `XiaomiTTSProvider` 读取 `mimoVoice`、`mimoStyle`
-  - `MiniMaxTTSProvider` 读取 `minimaxVoiceId`、`minimaxSpeed`
 - 这样避免 `TTSRequest` 膨胀，且配置连接更清晰
 
 **注意**：`MimoTTSClient` 与 `XiaomiTTSProvider` 是独立实现的，因为两者的接口定义不同（TTSRequest/TTSResponse 结构体不同）。如果需要复用 MimoTTSClient 的网络请求逻辑，需要进行接口转换。
@@ -295,10 +245,6 @@ cv.wait(lock, [&completed]() { return completed; });
 // 等待完成后调用 callback
 callback(resp);
 ```
-
-### MiniMaxTTSProvider 实现
-
-MiniMaxTTSProvider 的网络实现与 XiaomiTTSProvider 相同，都使用 `Network::MakeHttpsRequestAsync` + `condition_variable` 模式。
 
 ### MimoTTSClient 实现
 
