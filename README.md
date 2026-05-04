@@ -8,6 +8,13 @@
 
 ## [v25] - 2026-05-04
 
+### Fixed
+- **TTS 引擎标签实时更新**: 修复 `CurrentTTSEngineLabel` 无法实时显示当前 TTS 引擎的问题
+  - 根因: C++/CLI 编译导致 `__declspec(dllexport)` 产生 C++ name mangling，C# P/Invoke 找不到入口点 (`EntryPointNotFoundException`)
+  - 修复: 为 `TTSManager_GetCurrentProviderName`、`DataBridge_SetAIReplyCallback`、`DataBridge_SetCheckinTTSPlayCallback` 添加 `extern "C"` 禁用 name mangling
+  - 修复: `Config_SetValue` 字符串转换时保留末尾 `\0` 导致引擎名称比较失败（如 `"mimo\0" != "mimo"`），改用 `resize()` 去除终止符
+  - 增强: `GlobalEventListener.Invoke` 添加 try-catch 隔离，防止单个监听器异常中断整个事件链
+
 ### Removed
 - **移除 MiniMax 支持**: 彻底移除 MiniMax TTS Provider 和 MiniMax AI Chat Provider
   - 删除 `MiniMaxTTSProvider.cpp/h`、`MiniMaxAIChatProvider.cpp/h`

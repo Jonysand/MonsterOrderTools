@@ -81,7 +81,14 @@ namespace MonsterOrderWindows
             }
             foreach (var action in actions)
             {
-                action(args);
+                try
+                {
+                    action(args);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"GlobalEventListener.Invoke exception in event '{event_name}': {ex.Message}");
+                }
             }
         }
 

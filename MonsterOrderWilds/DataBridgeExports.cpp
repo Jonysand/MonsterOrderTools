@@ -56,12 +56,14 @@ extern "C" {
                 {
                     int wlen = MultiByteToWideChar(CP_ACP, 0, value, -1, nullptr, 0);
                     if (wlen > 0) {
-                        std::wstring wstr(wlen - 1, L'\0');
+                        std::wstring wstr(wlen, L'\0');
                         MultiByteToWideChar(CP_ACP, 0, value, -1, &wstr[0], wlen);
+                        wstr.resize(wlen - 1); // 去掉末尾 \0
                         int utf8Len = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, nullptr, 0, nullptr, nullptr);
                         if (utf8Len > 0) {
-                            std::string utf8Str(utf8Len - 1, '\0');
+                            std::string utf8Str(utf8Len, '\0');
                             WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, &utf8Str[0], utf8Len, nullptr, nullptr);
+                            utf8Str.resize(utf8Len - 1); // 去掉末尾 \0
                             configMgr->SetValueByMeta(meta, &utf8Str);
                         }
                     } else {
@@ -514,7 +516,7 @@ OnAIReplyCallback g_aiReplyCallback = nullptr;
 void* g_aiReplyUserData = nullptr;
 std::mutex g_aiReplyMutex;
 
-__declspec(dllexport) void __stdcall DataBridge_SetAIReplyCallback(OnAIReplyCallback callback, void* userData)
+extern "C" __declspec(dllexport) void __stdcall DataBridge_SetAIReplyCallback(OnAIReplyCallback callback, void* userData)
 {
 #if !ONLY_ORDER_MONSTER
     std::lock_guard<std::mutex> lock(g_aiReplyMutex);
@@ -529,7 +531,7 @@ void* g_checkinTTSPlayUserData = nullptr;
 }
 std::mutex g_checkinTTSPlayMutex;
 
-__declspec(dllexport) void __stdcall DataBridge_SetCheckinTTSPlayCallback(OnCheckinTTSPlayCallback callback, void* userData)
+extern "C" __declspec(dllexport) void __stdcall DataBridge_SetCheckinTTSPlayCallback(OnCheckinTTSPlayCallback callback, void* userData)
 {
 #if !ONLY_ORDER_MONSTER
     std::lock_guard<std::mutex> lock(g_checkinTTSPlayMutex);
@@ -538,17 +540,19 @@ __declspec(dllexport) void __stdcall DataBridge_SetCheckinTTSPlayCallback(OnChec
 #endif
 }
 
-__declspec(dllexport) void __stdcall TTSManager_GetCurrentProviderName(char* outBuffer, int bufferSize)
+extern "C" __declspec(dllexport) void __stdcall TTSManager_GetCurrentProviderName(char* outBuffer, int bufferSize)
 {
     try
     {
 #if !ONLY_ORDER_MONSTER
         std::string name = TTSManager::Inst()->GetCurrentProviderName();
+        LOG_DEBUG(TEXT("TTSManager_GetCurrentProviderName: returning '%hs'"), name.c_str());
         if (outBuffer && bufferSize > 0)
         {
             strncpy_s(outBuffer, bufferSize, name.c_str(), _TRUNCATE);
         }
 #else
+        LOG_DEBUG(TEXT("TTSManager_GetCurrentProviderName: ONLY_ORDER_MONSTER mode, returning empty"));
         if (outBuffer && bufferSize > 0)
         {
             outBuffer[0] = '\0';

@@ -404,13 +404,14 @@ namespace MonsterOrderWindows
             {
                 var sb = new System.Text.StringBuilder(64);
                 NativeImports.TTSManager_GetCurrentProviderName(sb, 64);
-                string providerName = sb.ToString();
+                string providerName = sb.ToString().TrimEnd('\0');
 
                 string displayName = providerName switch
                 {
                     "manbo" => "Manbo",
                     "xiaomi" => "小米MiMo",
                     "sapi" => "Windows SAPI",
+                    "" => "未知",
                     _ => providerName
                 };
 
@@ -422,6 +423,8 @@ namespace MonsterOrderWindows
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"UpdateCurrentTTSEngineLabel failed: {ex.Message}");
+                if (CurrentTTSEngineLabel != null)
+                    CurrentTTSEngineLabel.Content = "当前引擎: 获取失败";
             }
         }
 
