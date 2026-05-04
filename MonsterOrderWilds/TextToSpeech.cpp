@@ -44,7 +44,6 @@ TTSManager::TTSManager()
     const auto& config = ConfigManager::Inst()->GetConfig();
     ttsProvider = TTSProviderFactory::Create(
         GetMIMO_API_KEY(),
-        GetMINIMAX_API_KEY(),
         config.ttsEngine);
     audioPlayer = new AudioPlayer();
     TTSCacheManager::Inst()->Initialize();
@@ -483,9 +482,6 @@ TTSEngineType TTSManager::GetActiveEngineType() const
     if (config.ttsEngine.empty() || config.ttsEngine == "auto") {
         return TTSEngineType::Auto;
     }
-    if (config.ttsEngine == "minimax") {
-        return TTSEngineType::MiniMax;
-    }
     if (config.ttsEngine == "manbo") {
         return TTSEngineType::Manbo;
     }
@@ -578,7 +574,6 @@ void TTSManager::RefreshTTSProvider()
     std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
     ttsProvider = TTSProviderFactory::Create(
         GetMIMO_API_KEY(),
-        GetMINIMAX_API_KEY(),
         config.ttsEngine);
     LOG_INFO(TEXT("TTS provider refreshed successfully"));
 }
@@ -795,7 +790,7 @@ void TTSManager::ProcessPendingRequestInternal(std::list<std::shared_ptr<AsyncTT
         return;
     }
 
-    // 处理 MiniMax/MiMo 请求
+    // 处理 MiMo 请求
     // Pending → Requesting: 发起API请求
     if (req.text.empty()) {
         LOG_ERROR(TEXT("TTS Async: req.text is empty!"));
@@ -984,12 +979,8 @@ bool TTSManager::TrySwitchToNextProvider()
     std::string currentName = ttsProvider->GetProviderName();
     std::string nextEngine;
 
-    // 降级链：manbo -> minimax -> mimo -> sapi
+    // 降级链：manbo -> mimo -> sapi
     if (currentName == "manbo") {
-        if (!GetMINIMAX_API_KEY().empty()) nextEngine = "minimax";
-        else if (!GetMIMO_API_KEY().empty()) nextEngine = "mimo";
-        else nextEngine = "sapi";
-    } else if (currentName == "minimax") {
         if (!GetMIMO_API_KEY().empty()) nextEngine = "mimo";
         else nextEngine = "sapi";
     } else if (currentName == "xiaomi") {
@@ -999,7 +990,7 @@ bool TTSManager::TrySwitchToNextProvider()
     }
 
     LOG_WARNING(TEXT("TTS: Downgrading from %hs to %hs"), currentName.c_str(), nextEngine.c_str());
-    ttsProvider = TTSProviderFactory::Create(GetMIMO_API_KEY(), GetMINIMAX_API_KEY(), nextEngine);
+    ttsProvider = TTSProviderFactory::Create(GetMIMO_API_KEY(), nextEngine);
 
     if (ttsProvider) {
         LOG_INFO(TEXT("TTS: Successfully switched to %hs"), ttsProvider->GetProviderName().c_str());

@@ -25,7 +25,6 @@ enum class AsyncTTSState
 enum class TTSEngineType
 {
 	Auto,
-	MiniMax,
 	Manbo,
 	MiMo,
 	SAPI,

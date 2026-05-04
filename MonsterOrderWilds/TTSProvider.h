@@ -32,25 +32,6 @@ private:
     bool available_;
 };
 
-class MiniMaxTTSProvider : public ITTSProvider, public std::enable_shared_from_this<MiniMaxTTSProvider> {
-public:
-    MiniMaxTTSProvider(const std::string& apiKey);
-    std::string GetProviderName() const override;
-    bool IsAvailable() const override { return !apiKey_.empty() && available_; }
-    void ResetAvailable() override { available_ = true; }
-    std::string GetLastError() const override;
-    void RequestTTS(const TTSRequest& request, TTSCallback callback) override;
-    std::string BuildRequestBody(const TTSRequest& request) const;
-    std::string BuildRequestHeaders(const std::string& apiKey) const;
-    TTSResponse ParseResponse(const std::string& responseBody) const;
-    std::vector<uint8_t> HexToBytes(const std::string& hex) const;
-private:
-    std::vector<uint8_t> Base64ToBytes(const std::string& base64) const;
-    std::string apiKey_;
-    std::string lastError_;
-    bool available_;
-};
-
 class ManboTTSProvider : public ITTSProvider, public std::enable_shared_from_this<ManboTTSProvider> {
 public:
     ManboTTSProvider();

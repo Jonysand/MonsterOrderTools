@@ -114,13 +114,6 @@ namespace MonsterOrderWindows
             set { _mimoApiKey = value; OnPropertyChanged(); }
         }
 
-        private string _minimaxApiKey = "";
-        public string MinimaxApiKey
-        {
-            get => _minimaxApiKey;
-            set { _minimaxApiKey = value; OnPropertyChanged(); }
-        }
-
         private string _mimoVoice = "mimo_default";
         public string MimoVoice
         {
@@ -133,20 +126,6 @@ namespace MonsterOrderWindows
         {
             get => _mimoStyle;
             set { _mimoStyle = value; OnPropertyChanged(); }
-        }
-
-        private string _minimaxVoiceId = "female-tianmei";
-        public string MinimaxVoiceId
-        {
-            get => _minimaxVoiceId;
-            set { _minimaxVoiceId = value; OnPropertyChanged(); }
-        }
-
-        private float _minimaxSpeed = 1.0f;
-        public float MinimaxSpeed
-        {
-            get => _minimaxSpeed;
-            set { _minimaxSpeed = value; OnPropertyChanged(); }
         }
 
         private double _topPosX = 0;
@@ -206,11 +185,8 @@ namespace MonsterOrderWindows
             PenetratingModeOpacity = config.PENETRATING_MODE_OPACITY;
             TtsEngine = config.TTS_ENGINE ?? "auto";
             MimoApiKey = config.MIMO_API_KEY ?? "";
-            MinimaxApiKey = config.MINIMAX_API_KEY ?? "";
             MimoVoice = config.MIMO_VOICE ?? "mimo_default";
             MimoStyle = config.MIMO_STYLE ?? "";
-            MinimaxVoiceId = config.MINIMAX_VOICE_ID ?? "female-tianmei";
-            MinimaxSpeed = config.MINIMAX_SPEED;
             TopPosX = config.TopPos.X;
             TopPosY = config.TopPos.Y;
             DefaultMarqueeText = config.DEFAULT_MARQUEE_TEXT ?? "";
@@ -234,11 +210,8 @@ namespace MonsterOrderWindows
             config.PENETRATING_MODE_OPACITY = PenetratingModeOpacity;
             config.TTS_ENGINE = TtsEngine;
             config.MIMO_API_KEY = MimoApiKey;
-            config.MINIMAX_API_KEY = MinimaxApiKey;
             config.MIMO_VOICE = MimoVoice;
             config.MIMO_STYLE = MimoStyle;
-            config.MINIMAX_VOICE_ID = MinimaxVoiceId;
-            config.MINIMAX_SPEED = MinimaxSpeed;
             config.TopPos = new System.Windows.Point(TopPosX, TopPosY);
             config.DEFAULT_MARQUEE_TEXT = DefaultMarqueeText;
             config.TTS_CACHE_DAYS_TO_KEEP = TtsCacheDaysToKeep;

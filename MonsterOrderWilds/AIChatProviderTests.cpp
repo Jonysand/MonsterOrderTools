@@ -12,9 +12,9 @@ void TestAIChatProvider_Interface()
 
 void TestAIChatProviderFactory_Create()
 {
-    auto provider = AIChatProviderFactory::Create(R"({"chat_provider":"minimax","chat_api_key":"test_key"})");
+    auto provider = AIChatProviderFactory::Create(R"({"chat_provider":"deepseek","chat_api_key":"test_key"})");
     assert(provider != nullptr);
-    assert(provider->GetProviderName() == "minimax");
+    assert(provider->GetProviderName() == "deepseek");
     std::cout << "[PASS] TestAIChatProviderFactory_Create" << std::endl;
 }
 
@@ -27,7 +27,7 @@ void TestAIChatProviderFactory_InvalidJson()
 
 void TestAIChatProviderFactory_EmptyApiKey()
 {
-    auto provider = AIChatProviderFactory::Create(R"({"chat_provider":"minimax","chat_api_key":""})");
+    auto provider = AIChatProviderFactory::Create(R"({"chat_provider":"deepseek","chat_api_key":""})");
     assert(provider == nullptr);
     std::cout << "[PASS] TestAIChatProviderFactory_EmptyApiKey" << std::endl;
 }
