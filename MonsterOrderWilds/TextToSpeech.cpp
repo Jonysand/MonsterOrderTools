@@ -187,9 +187,11 @@ void TTSManager::HandleSpeekDm(const json& data)
         return;
     }
 #if !ONLY_ORDER_MONSTER
-    else if (GetActiveEngineType() == TTSEngineType::Manbo) {
-        std::string voiceFile = LocalVoiceManager::Inst()->MatchVoice(msg);
-        if (!voiceFile.empty()) {
+    // 检查本地语音匹配（特殊语音不依赖TTS引擎选择）
+    std::string voiceFile = LocalVoiceManager::Inst()->MatchVoice(msg);
+    if (!voiceFile.empty()) {
+        if (LocalVoiceManager::Inst()->IsSpecialVoice(msg)) {
+            // 特殊语音，任何TTS引擎下都直接播放
             auto reqPtr = std::make_shared<AsyncTTSRequest>();
             reqPtr->text = msg;
             reqPtr->engineType = TTSEngineType::LocalVoice;
@@ -197,7 +199,24 @@ void TTSManager::HandleSpeekDm(const json& data)
             reqPtr->startTime = std::chrono::steady_clock::now();
             reqPtr->responseFormat = "mp3";
             reqPtr->voice = voiceFile;
-            
+
+            {
+                std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
+                asyncPendingQueue_.push_back(reqPtr);
+            }
+            LOG_DEBUG(TEXT("HandleSpeekDm: Special local voice queued for: %s"), msg.c_str());
+            return;
+        }
+        // 普通本地语音仅在Manbo引擎下播放
+        if (GetActiveEngineType() == TTSEngineType::Manbo) {
+            auto reqPtr = std::make_shared<AsyncTTSRequest>();
+            reqPtr->text = msg;
+            reqPtr->engineType = TTSEngineType::LocalVoice;
+            reqPtr->state = AsyncTTSState::Pending;
+            reqPtr->startTime = std::chrono::steady_clock::now();
+            reqPtr->responseFormat = "mp3";
+            reqPtr->voice = voiceFile;
+
             {
                 std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
                 asyncPendingQueue_.push_back(reqPtr);
@@ -205,7 +224,6 @@ void TTSManager::HandleSpeekDm(const json& data)
             LOG_DEBUG(TEXT("HandleSpeekDm: Local voice queued for: %s"), msg.c_str());
             return;
         }
-        // Manbo 引擎但未匹配到本地语音，继续加入 NormalMsgQueue 使用 TTS 播报
     }
 #endif
     {

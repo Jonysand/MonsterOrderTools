@@ -28,6 +28,10 @@ LocalVoiceManager::LocalVoiceManager() {
     voiceMap_[TEXT("哦耶")] = "manbo/ohyeah.mp3";
     voiceMap_[TEXT("欧耶")] = "manbo/ohyeah.mp3";
     voiceMap_[TEXT("wow")] = "manbo/wow.mp3";
+    voiceMap_[TEXT("痛快！这才叫狩猎！")] = "mho/tongkuai.mp3";
+
+    // 初始化不依赖TTS引擎的特殊语音集合
+    specialVoices_.insert(ToLower(TEXT("痛快！这才叫狩猎！")));
 
     LOG_DEBUG(TEXT("LocalVoiceManager initialized, zip path: %s"), Utf8ToWstring(zipPath_).c_str());
 }
@@ -41,6 +45,10 @@ std::string LocalVoiceManager::MatchVoice(const std::wstring& msg) const {
         return it->second;
     }
     return "";
+}
+
+bool LocalVoiceManager::IsSpecialVoice(const std::wstring& msg) const {
+    return specialVoices_.find(ToLower(msg)) != specialVoices_.end();
 }
 
 bool LocalVoiceManager::LoadVoiceData(const std::string& voiceFile, std::vector<uint8_t>& outData) {

@@ -38,6 +38,18 @@ void TestLocalVoiceManagerMatch() {
         TestLog("[FAIL] TestLocalVoiceManagerMatch: 'WOW' should match manbo/wow.mp3 (case insensitive)");
         return;
     }
+    if (mgr->MatchVoice(TEXT("痛快！这才叫狩猎！")) != "mho/tongkuai.mp3") {
+        TestLog("[FAIL] TestLocalVoiceManagerMatch: '痛快！这才叫狩猎！' should match mho/tongkuai.mp3");
+        return;
+    }
+    if (!mgr->IsSpecialVoice(TEXT("痛快！这才叫狩猎！"))) {
+        TestLog("[FAIL] TestLocalVoiceManagerMatch: '痛快！这才叫狩猎！' should be special voice");
+        return;
+    }
+    if (mgr->IsSpecialVoice(TEXT("曼波"))) {
+        TestLog("[FAIL] TestLocalVoiceManagerMatch: '曼波' should not be special voice");
+        return;
+    }
 
     // 不应该匹配
     if (!mgr->MatchVoice(TEXT("哈哈曼波")).empty()) {
