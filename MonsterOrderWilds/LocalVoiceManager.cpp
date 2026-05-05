@@ -28,10 +28,12 @@ LocalVoiceManager::LocalVoiceManager() {
     voiceMap_[TEXT("哦耶")] = "manbo/ohyeah.mp3";
     voiceMap_[TEXT("欧耶")] = "manbo/ohyeah.mp3";
     voiceMap_[TEXT("wow")] = "manbo/wow.mp3";
-    voiceMap_[TEXT("痛快！这才叫狩猎！")] = "mho/tongkuai.mp3";
+    voiceMap_[TEXT("痛快！！")] = "mho/tongkuai.mp3";
+    voiceMap_[TEXT("痛快!!")] = "mho/tongkuai.mp3";
 
     // 初始化不依赖TTS引擎的特殊语音集合
-    specialVoices_.insert(ToLower(TEXT("痛快！这才叫狩猎！")));
+    specialVoices_.insert(ToLower(TEXT("痛快！！")));
+    specialVoices_.insert(ToLower(TEXT("痛快!!")));
 
     LOG_DEBUG(TEXT("LocalVoiceManager initialized, zip path: %s"), Utf8ToWstring(zipPath_).c_str());
 }

@@ -6,7 +6,13 @@
 
 所有变更详见 [openspec/changes/archive/](openspec/changes/archive/)
 
-## [v25] - 2026-05-04
+## [v25] - 2026-05-05
+
+### Added
+- **特殊语音支持**: 添加本地特殊语音播放功能，可不依赖 Manbo TTS 引擎直接播放本地语音文件
+  - 新增 `LocalVoiceManager`：弹幕内容匹配本地语音资源并直接播放
+  - 特殊语音播放独立于 TTS 引擎选择，即使使用 MiMo/SAPI 引擎也能触发
+  - 安装包包含 `local_voices.zip` 资源文件
 
 ### Fixed
 - **TTS 引擎标签实时更新**: 修复 `CurrentTTSEngineLabel` 无法实时显示当前 TTS 引擎的问题
@@ -14,6 +20,12 @@
   - 修复: 为 `TTSManager_GetCurrentProviderName`、`DataBridge_SetAIReplyCallback`、`DataBridge_SetCheckinTTSPlayCallback` 添加 `extern "C"` 禁用 name mangling
   - 修复: `Config_SetValue` 字符串转换时保留末尾 `\0` 导致引擎名称比较失败（如 `"mimo\0" != "mimo"`），改用 `resize()` 去除终止符
   - 增强: `GlobalEventListener.Invoke` 添加 try-catch 隔离，防止单个监听器异常中断整个事件链
+- **TTS 重复播报修复**: 修复 TTS 降级或切换引擎后同一条弹幕被重复播报的问题
+- **TTS 手动选择失败恢复**: 修复手动选择 TTS 引擎失败后无法自动恢复原引擎的问题
+- **怪物列表路径修复**: 修复 `monster_list.json` 使用工作目录相对路径导致启动时加载失败的问题，改为使用 exe 目录相对路径
+- **历史订单列表加载修复**: 修复历史订单列表在启动时不加载的问题
+- **小米 TTS 模型更新**: 更新小米 MiMo TTS 模型版本和怪物图标路径配置
+- **点怪列表文字自动滚动修复**: 修复点怪列表中用户名和怪物名的文字自动滚动功能失效的问题
 
 ### Removed
 - **移除 MiniMax 支持**: 彻底移除 MiniMax TTS Provider 和 MiniMax AI Chat Provider
