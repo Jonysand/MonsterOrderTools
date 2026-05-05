@@ -125,11 +125,17 @@ bool PriorityQueueManager::LoadList(const std::string& configPath)
         }
 
         if (!std::filesystem::exists(path))
+        {
+            LOG_DEBUG(TEXT("PriorityQueueManager: OrderList.list not found at %s"), path.c_str());
             return false;
+        }
 
         std::ifstream file(path);
         if (!file.is_open())
+        {
+            LOG_DEBUG(TEXT("PriorityQueueManager: Failed to open OrderList.list at %s"), path.c_str());
             return false;
+        }
 
         std::stringstream buffer;
         buffer << file.rdbuf();
@@ -167,6 +173,7 @@ bool PriorityQueueManager::LoadList(const std::string& configPath)
                 userIds_.insert(node.userId);
         }
 
+        LOG_DEBUG(TEXT("PriorityQueueManager: Loaded %d orders from %s"), (int)queue_.size(), path.c_str());
         return true;
     }
     catch (const json::parse_error& e)

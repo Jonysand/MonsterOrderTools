@@ -80,6 +80,7 @@ namespace MonsterOrderWindows
             {
                 DanmuManager.GetInst();
                 MonsterData.GetInst().LoadJsonData();
+                DanmuManager.GetInst().LoadHistoryOrder();
                 string configDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "MonsterOrderWilds_configs");
                 MonsterIconLoader.Initialize(configDir);
             }

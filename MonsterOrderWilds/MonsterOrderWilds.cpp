@@ -1,6 +1,7 @@
 ﻿#include "MonsterOrderWilds.h"
 #include "MHDanmuToolsHost.h"
 #include "BliveManager.h"
+#include "DataBridge.h"
 #if !ONLY_ORDER_MONSTER
 #include "TextToSpeech.h"
 #endif
@@ -74,6 +75,8 @@ void MonsterOrderWilds::Tick()
 	// TTSManager tick
 	TTSManager::Inst()->Tick();
 #endif
+	// PriorityQueueManager tick (auto-save)
+	DataBridge::GetPriorityQueueManager()->Tick();
 	// Commands from WPF
 	tickWPFCommand();
 }
