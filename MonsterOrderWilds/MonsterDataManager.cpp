@@ -33,7 +33,11 @@ bool MonsterDataManager::LoadJsonData(const std::string& configPath)
         std::string path = configPath;
         if (path.empty())
         {
-            path = "MonsterOrderWilds_configs/monster_list.json";
+            wchar_t exePath[MAX_PATH];
+            GetModuleFileNameW(NULL, exePath, MAX_PATH);
+            std::filesystem::path exeFullPath(exePath);
+            std::filesystem::path exeDir = exeFullPath.parent_path();
+            path = (exeDir / "MonsterOrderWilds_configs" / "monster_list.json").string();
         }
 
         if (!std::filesystem::exists(path))
