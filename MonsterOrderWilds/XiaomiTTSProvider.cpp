@@ -85,9 +85,10 @@ std::string XiaomiTTSProvider::BuildRequestBody(const TTSRequest& request) const
     std::string fullText = styleTag + processedText;
 
     nlohmann::json j;
-    j["model"] = "mimo-v2-tts";
+    j["model"] = "mimo-v2.5-tts";
     j["messages"] = {
-        {{"role", "assistant"}, {"content", fullText}}
+        {{"role", "user"}, {"content", "Bright, bouncy, speak fast"}},
+        {{"role", "assistant"}, {"content", fullText}},
     };
     json audio;
     audio["voice"] = config.mimoVoice.empty() ? "mimo_default" : config.mimoVoice;
