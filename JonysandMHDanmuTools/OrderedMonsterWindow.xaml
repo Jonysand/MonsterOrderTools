@@ -125,24 +125,29 @@
                     <GridViewColumn Header="水友名" Width="190">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding AudienceName}">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Foreground" Value="White"></Setter>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding GuardLevel}" Value="3">
-                                                    <Setter Property="Foreground" Value="#00d1f1" />
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding GuardLevel}" Value="2">
-                                                    <Setter Property="Foreground" Value="#e17aff" />
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding GuardLevel}" Value="1">
-                                                    <Setter Property="Foreground" Value="#ce623e" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
+                                <Canvas Width="190" Height="60" ClipToBounds="True"
+                                        Loaded="OnScrollTextLoaded"
+                                        MouseEnter="OnScrollTextMouseEnter"
+                                        MouseLeave="OnScrollTextMouseLeave">
+                                    <TextBlock Text="{Binding AudienceName}" Canvas.Left="0" Canvas.Top="15">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="White"></Setter>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding GuardLevel}" Value="3">
+                                                        <Setter Property="Foreground" Value="#00d1f1" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding GuardLevel}" Value="2">
+                                                        <Setter Property="Foreground" Value="#e17aff" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding GuardLevel}" Value="1">
+                                                        <Setter Property="Foreground" Value="#ce623e" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Canvas>
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
@@ -156,22 +161,27 @@
                     <GridViewColumn Header="怪物名字" Width="190">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding MonsterName}">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Setter Property="Foreground" Value="White"></Setter>
-                                            <Setter Property="FontWeight" Value="Bold"></Setter>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding TemperedLevel}" Value="2">
-                                                    <Setter Property="Foreground" Value="#ce623e" />
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding TemperedLevel}" Value="1">
-                                                    <Setter Property="Foreground" Value="#8b63d1" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
+                                <Canvas Width="190" Height="60" ClipToBounds="True"
+                                        Loaded="OnScrollTextLoaded"
+                                        MouseEnter="OnScrollTextMouseEnter"
+                                        MouseLeave="OnScrollTextMouseLeave">
+                                    <TextBlock Text="{Binding MonsterName}" Canvas.Left="0" Canvas.Top="15">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="White"></Setter>
+                                                <Setter Property="FontWeight" Value="Bold"></Setter>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding TemperedLevel}" Value="2">
+                                                        <Setter Property="Foreground" Value="#ce623e" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding TemperedLevel}" Value="1">
+                                                        <Setter Property="Foreground" Value="#8b63d1" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Canvas>
                             </DataTemplate>
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
