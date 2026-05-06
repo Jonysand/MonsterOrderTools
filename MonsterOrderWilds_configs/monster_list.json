@@ -1314,7 +1314,7 @@
   },
   "金火龙": {
     "默认历战等级": 0,
-    "图标地址": "MHWorld/MHWI-Pink_Rathian_Icon.png",
+    "图标地址": "MHWI/MHWI-Gold_Rathian_Icon.png",
     "别称": [
       "金火",
       "金火龙"
@@ -1606,7 +1606,7 @@
   },
   "硫斩龙": {
     "默认历战等级": 0,
-    "图标地址": "MHWI/MHWI-Glavenus_Icon.png",
+    "图标地址": "MHWI/MHWI-Acidic_Glavenus_Icon.png",
     "别称": [
       "硫斩",
       "流斩",

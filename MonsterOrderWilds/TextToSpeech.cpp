@@ -577,10 +577,11 @@ void CALLBACK TTSManager::SapiSpeakCallback(WPARAM wParam, LPARAM lParam)
     if (pEvent->eEventId == SPEI_STREAM_ENDED_ID) {
         LOG_DEBUG(TEXT("TTS Async: SAPI SPEI_STREAM_ENDED received"));
         std::lock_guard<std::recursive_mutex> lock(pManager->asyncMutex_);
-        if (!pManager->asyncPendingQueue_.empty()) {
-            auto it = pManager->asyncPendingQueue_.begin();
+        // 遍历队列找到正在播放的 SAPI 请求（修复：不假设 SAPI 请求在队首）
+        for (auto it = pManager->asyncPendingQueue_.begin(); it != pManager->asyncPendingQueue_.end(); ++it) {
             if ((*it)->engineType == TTSEngineType::SAPI && (*it)->state == AsyncTTSState::Playing) {
                 (*it)->sapiStreamEnded = true;
+                break;
             }
         }
     }
@@ -699,6 +700,25 @@ void TTSManager::ProcessAsyncTTS()
 		bool foundPending = false;
 		for (auto it = asyncPendingQueue_.begin(); it != asyncPendingQueue_.end(); ++it) {
 			if ((*it)->state == AsyncTTSState::Pending) {
+				// SAPI 请求需要串行播放：检查是否已有 SAPI 请求正在播放
+				bool willUseSapi = ((*it)->engineType == TTSEngineType::SAPI) ||
+					isFallback ||
+					(ttsProvider && ttsProvider->GetProviderName() == "sapi");
+				if (willUseSapi) {
+					bool hasSapiPlaying = false;
+					for (auto& req : asyncPendingQueue_) {
+						if (req->engineType == TTSEngineType::SAPI && req->state == AsyncTTSState::Playing) {
+							hasSapiPlaying = true;
+							break;
+						}
+					}
+					if (hasSapiPlaying) {
+						LOG_DEBUG(TEXT("TTS Async: SAPI request queued, waiting for previous to complete: %s"),
+							(*it)->text.c_str());
+						continue; // 跳过这个请求，继续查找下一个 Pending
+					}
+				}
+
 				(*it)->startTime = std::chrono::steady_clock::now();
 				activeRequestCount_++;
 				LOG_INFO(TEXT("TTS Async: Starting new request for: %s (active: %d)"),
