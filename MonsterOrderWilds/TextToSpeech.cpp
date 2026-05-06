@@ -789,6 +789,9 @@ void TTSManager::ProcessPendingRequestInternal(std::list<std::shared_ptr<AsyncTT
                 LOG_ERROR(TEXT("TTS Async: pVoice is NULL, SAPI playback failed"));
                 req.state = AsyncTTSState::Failed;
                 req.errorMessage = "pVoice is NULL";
+                if (req.callback) {
+                    req.callback(false, req.errorMessage);
+                }
                 return;
             }
 
