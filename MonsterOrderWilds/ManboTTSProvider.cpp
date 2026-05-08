@@ -110,13 +110,17 @@ void ManboTTSProvider::DownloadAudio(const std::string& audioUrl, TTSCallback ca
         "",
         "",
         useHttps,
-        [self = shared_from_this(), callback](bool success, const std::string& resp, DWORD error) {
-            if (!success || error != 0) {
+        [self = shared_from_this(), callback](bool success, const std::string& resp, DWORD error, DWORD httpStatusCode) {
+            if (!success || error != 0 || httpStatusCode != 200) {
                 self->lastError_ = "Audio download failed";
+                if (httpStatusCode != 0 && httpStatusCode != 200) {
+                    self->lastError_ += " (HTTP " + std::to_string(httpStatusCode) + ")";
+                }
                 self->available_ = false;
                 TTSResponse response;
                 response.success = false;
                 response.errorMsg = self->lastError_;
+                response.httpStatusCode = static_cast<int>(httpStatusCode);
                 try {
                     callback(response);
                 } catch (...) {}
@@ -126,6 +130,7 @@ void ManboTTSProvider::DownloadAudio(const std::string& audioUrl, TTSCallback ca
             TTSResponse response;
             response.success = true;
             response.audioData.assign(resp.begin(), resp.end());
+            response.httpStatusCode = static_cast<int>(httpStatusCode);
             try {
                 callback(response);
             } catch (...) {}
@@ -144,13 +149,17 @@ void ManboTTSProvider::RequestTTS(const TTSRequest& request, TTSCallback callbac
         "",
         "",
         true,
-        [self = shared_from_this(), callback](bool success, const std::string& resp, DWORD error) {
-            if (!success || error != 0) {
+        [self = shared_from_this(), callback](bool success, const std::string& resp, DWORD error, DWORD httpStatusCode) {
+            if (!success || error != 0 || httpStatusCode != 200) {
                 self->lastError_ = "HTTP request failed";
+                if (httpStatusCode != 0 && httpStatusCode != 200) {
+                    self->lastError_ += " (HTTP " + std::to_string(httpStatusCode) + ")";
+                }
                 self->available_ = false;
                 TTSResponse response;
                 response.success = false;
                 response.errorMsg = self->lastError_;
+                response.httpStatusCode = static_cast<int>(httpStatusCode);
                 try {
                     callback(response);
                 } catch (...) {}
@@ -164,6 +173,7 @@ void ManboTTSProvider::RequestTTS(const TTSRequest& request, TTSCallback callbac
                 TTSResponse response;
                 response.success = false;
                 response.errorMsg = self->lastError_;
+                response.httpStatusCode = static_cast<int>(httpStatusCode);
                 try {
                     callback(response);
                 } catch (...) {}

@@ -116,7 +116,7 @@ namespace Network {
     using WebsocketMessageCallback = std::function<void(HINTERNET hWebsocket, ProtoUtils::Packet)>;
 
     // 异步回调类型
-    using HttpsAsyncCallback = std::function<void(bool success, const std::string& response, DWORD error)>;
+    using HttpsAsyncCallback = std::function<void(bool success, const std::string& response, DWORD error, DWORD httpStatusCode)>;
     using WebSocketAsyncCallback = std::function<void(bool success, HINTERNET websocket, DWORD error)>;
 
     // 异步 HTTP 请求

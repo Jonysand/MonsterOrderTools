@@ -113,12 +113,14 @@ private:
         std::atomic<bool> completed{false};
         std::string response;
         DWORD error = 0;
+        DWORD httpStatusCode = 0;
 
-        void Complete(bool success_, const std::string& response_, DWORD error_) {
+        void Complete(bool success_, const std::string& response_, DWORD error_, DWORD httpStatusCode_ = 0) {
             // 数据写入在 CAS 之前，确保对读取端可见
             // 即使 CAS 失败，写入也无害（只有一个线程能通过 CAS）
             if (success_) { response = response_; }
             error = error_;
+            httpStatusCode = httpStatusCode_;
             bool expected = false;
             if (!completed.compare_exchange_strong(expected, true)) return;
         }

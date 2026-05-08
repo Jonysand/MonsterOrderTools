@@ -15,7 +15,7 @@ namespace Network {
         HttpsAsyncCallback onComplete
     ) {
         if (onComplete) {
-            onComplete(true, "", 0);
+            onComplete(true, "", 0, 200);
         }
     }
 

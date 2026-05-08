@@ -51,6 +51,7 @@ bool DeepSeekAIChatProvider::CallAPI(const std::string& prompt, std::string& out
 
     std::string response;
     DWORD httpError = 0;
+    DWORD httpStatusCode = 0;
     std::mutex mtx;
     std::condition_variable cv;
     bool completed = false;
@@ -63,11 +64,12 @@ bool DeepSeekAIChatProvider::CallAPI(const std::string& prompt, std::string& out
         headersStr,
         body,
         true,
-        [&](bool success, const std::string& resp, DWORD error) {
+        [&](bool success, const std::string& resp, DWORD error, DWORD statusCode) {
             try {
                 std::lock_guard<std::mutex> lock(mtx);
                 response = resp;
                 httpError = error;
+                httpStatusCode = statusCode;
                 completed = true;
                 cv.notify_one();
             } catch (...) {
@@ -80,6 +82,15 @@ bool DeepSeekAIChatProvider::CallAPI(const std::string& prompt, std::string& out
 
     if (httpError != 0) {
         lastError_ = "HTTP request failed: " + GetWinHttpErrorString(httpError);
+        available_ = false;
+        return false;
+    }
+
+    if (httpStatusCode != 200) {
+        lastError_ = "HTTP error: " + std::to_string(httpStatusCode);
+        if (!response.empty()) {
+            lastError_ += ", response: " + response.substr(0, 200);
+        }
         available_ = false;
         return false;
     }
@@ -128,9 +139,14 @@ void DeepSeekAIChatProvider::CallAPIAsync(const std::string& prompt, std::functi
         headersStr,
         body,
         true,
-        [this, callback](bool success, const std::string& resp, DWORD error) {
-            if (!success || error != 0) {
-                lastError_ = "HTTP request failed: " + GetWinHttpErrorString(error);
+        [this, callback](bool success, const std::string& resp, DWORD error, DWORD httpStatusCode) {
+            if (!success || error != 0 || httpStatusCode != 200) {
+                lastError_ = "HTTP request failed";
+                if (error != 0) {
+                    lastError_ += ": " + GetWinHttpErrorString(error);
+                } else if (httpStatusCode != 0 && httpStatusCode != 200) {
+                    lastError_ += " (HTTP " + std::to_string(httpStatusCode) + ")";
+                }
                 available_ = false;
                 if (callback) callback(false, "");
                 return;

@@ -159,6 +159,7 @@ namespace Network
             HINTERNET hRequest = nullptr;
             std::string response;
             std::atomic<DWORD> error{0};
+            std::atomic<DWORD> httpStatusCode{0};
             Network::HttpsAsyncCallback callback;
             std::mutex mtx;
             std::weak_ptr<std::atomic<bool>> cleanupFlag;
@@ -248,7 +249,7 @@ namespace Network
         std::thread([ctx, closeConnect]() {
             if (ctx->callback) {
                 try {
-                    ctx->callback(false, "", ctx->error.load());
+                    ctx->callback(false, "", ctx->error.load(), ctx->httpStatusCode.load());
                 } catch (...) {
                     LOG_ERROR(TEXT("[Network] HttpsRequest callback exception"));
                 }
@@ -324,6 +325,10 @@ namespace Network
                     if (!receiveResult) {
                         ctx->error.store(GetLastError());
                     } else {
+                        DWORD statusCode = 0;
+                        DWORD statusCodeSize = sizeof(statusCode);
+                        WinHttpQueryHeaders(ctx->hRequest, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER, WINHTTP_HEADER_NAME_BY_INDEX, &statusCode, &statusCodeSize, WINHTTP_NO_HEADER_INDEX);
+                        ctx->httpStatusCode.store(statusCode);
                         ctx->error.store(HttpsAsyncUtils::ReadResponseData(ctx.get()));
                     }
                 }
@@ -333,7 +338,7 @@ namespace Network
                     std::lock_guard<std::mutex> lock(ctx->mtx);
                     if (ctx->callback) {
                         try {
-                            ctx->callback(ctx->error.load() == 0, ctx->response, ctx->error.load());
+                            ctx->callback(ctx->error.load() == 0, ctx->response, ctx->error.load(), ctx->httpStatusCode.load());
                         } catch (...) {
                             LOG_ERROR(TEXT("[Network] HttpsRequest callback exception (completion)"));
                         }
@@ -348,7 +353,7 @@ namespace Network
                     if (cleanupFlag->exchange(true)) return;
                     std::lock_guard<std::mutex> lock(ctx->mtx);
                     if (ctx->callback) {
-                        ctx->callback(false, "", -1);
+                        ctx->callback(false, "", -1, 0);
                     }
                 } catch (...) {
                 }

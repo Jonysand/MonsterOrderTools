@@ -3,6 +3,7 @@
 #include "TTSProvider.h"
 #include "ConfigManager.h"
 #include "Network.h"
+#include "StringUtils.h"
 #include <winhttp.h>
 #include <string>
 #include <algorithm>
@@ -28,7 +29,7 @@ namespace {
         }
         std::wstring wstr(buffer, len);
         LocalFree(buffer);
-        return std::string(wstr.begin(), wstr.end());
+        return wstring_to_utf8(wstr);
     }
 }
 
@@ -52,13 +53,14 @@ void XiaomiTTSProvider::RequestTTS(const TTSRequest& request, TTSCallback callba
         headers,
         body,
         true,
-        [self = shared_from_this(), callback](bool success, const std::string& resp, DWORD error) {
+        [self = shared_from_this(), callback](bool success, const std::string& resp, DWORD error, DWORD httpStatusCode) {
             if (!success || error != 0) {
                 self->lastError_ = "HTTP request failed: " + GetWinHttpErrorString(error);
                 self->available_ = false;
                 TTSResponse ttsResp;
                 ttsResp.success = false;
                 ttsResp.errorMsg = self->lastError_;
+                ttsResp.httpStatusCode = static_cast<int>(httpStatusCode);
                 try {
                     callback(ttsResp);
                 } catch (...) {
@@ -66,13 +68,13 @@ void XiaomiTTSProvider::RequestTTS(const TTSRequest& request, TTSCallback callba
                 return;
             }
 
-            auto ttsResp = self->ParseResponse(resp, 200);
+            auto ttsResp = self->ParseResponse(resp, static_cast<int>(httpStatusCode));
             self->available_ = ttsResp.success;
             if (!ttsResp.success) {
                 self->lastError_ = ttsResp.errorMsg;
             }
             try {
-                callback({ ttsResp.audioData, ttsResp.success, ttsResp.errorMsg });
+                callback({ ttsResp.audioData, ttsResp.success, ttsResp.errorMsg, ttsResp.httpStatusCode });
             } catch (...) {
             }
         });
@@ -104,9 +106,13 @@ std::string XiaomiTTSProvider::BuildRequestHeaders(const std::string& apiKey) co
 TTSResponse XiaomiTTSProvider::ParseResponse(const std::string& responseBody, int httpStatusCode) const {
     TTSResponse result;
     result.success = false;
+    result.httpStatusCode = httpStatusCode;
 
     if (httpStatusCode != 200) {
         result.errorMsg = "HTTP error: " + std::to_string(httpStatusCode);
+        if (!responseBody.empty()) {
+            result.errorMsg += ", response: " + responseBody.substr(0, 200);
+        }
         return result;
     }
 

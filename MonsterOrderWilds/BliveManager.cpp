@@ -152,12 +152,12 @@ void BliveManager::Start(const std::string& IdCode)
 
     auto request = std::make_shared<AsyncRequest>();
     request->type = AsyncRequest::HTTP;
-    request->httpCallback = [this](bool success, const std::string& response, DWORD error) {
+    request->httpCallback = [this](bool success, const std::string& response, DWORD error, DWORD httpStatusCode) {
         if (destroying_.load()) return;
         if (success) {
             OnReceiveStartResponse(response);
         } else {
-            LOG_ERROR(TEXT("Start request failed with error: %d"), error);
+            LOG_ERROR(TEXT("Start request failed with error: %d, status: %d"), error, httpStatusCode);
             SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::NetworkError);
         }
     };
@@ -174,8 +174,8 @@ void BliveManager::Start(const std::string& IdCode)
         signedHeader,
         params,
         true,
-        [request](bool success, const std::string& response, DWORD error) {
-            request->Complete(success, response, error);
+        [request](bool success, const std::string& response, DWORD error, DWORD httpStatusCode) {
+            request->Complete(success, response, error, httpStatusCode);
         }
     );
 }
@@ -191,7 +191,7 @@ void BliveManager::End(const std::string& GameId, bool restart)
 
     auto request = std::make_shared<AsyncRequest>();
     request->type = AsyncRequest::HTTP;
-    request->httpCallback = [this, restart](bool success, const std::string& response, DWORD error) {
+    request->httpCallback = [this, restart](bool success, const std::string& response, DWORD error, DWORD httpStatusCode) {
         if (destroying_.load()) return;
         if (success) {
             LOG_DEBUG(TEXT("Stop response: %s"), ProtoUtils::Decode(response).c_str());
@@ -212,8 +212,8 @@ void BliveManager::End(const std::string& GameId, bool restart)
         signedHeader,
         params,
         true,
-        [request](bool success, const std::string& response, DWORD error) {
-            request->Complete(success, response, error);
+        [request](bool success, const std::string& response, DWORD error, DWORD httpStatusCode) {
+            request->Complete(success, response, error, httpStatusCode);
         }
     );
 }
@@ -244,9 +244,10 @@ void BliveManager::Tick() {
                         bool success = req->error == 0;
                         std::string response = req->response;
                         DWORD error = req->error;
-                        callbacksToInvoke.push_back([req, success, response, error]() {
+                        DWORD httpStatusCode = req->httpStatusCode;
+                        callbacksToInvoke.push_back([req, success, response, error, httpStatusCode]() {
                             try {
-                                req->httpCallback(success, response, error);
+                                req->httpCallback(success, response, error, httpStatusCode);
                             } catch (...) {
                                 LOG_ERROR(TEXT("[BliveManager] httpCallback exception"));
                             }
@@ -378,12 +379,12 @@ void BliveManager::StartAppHeartBeat()
 
     auto request = std::make_shared<AsyncRequest>();
     request->type = AsyncRequest::HTTP;
-    request->httpCallback = [this](bool success, const std::string& response, DWORD error) {
+    request->httpCallback = [this](bool success, const std::string& response, DWORD error, DWORD httpStatusCode) {
         if (destroying_.load()) return;
         if (success) {
             OnReceiveAppHeartbeatResponse(response);
         } else {
-            LOG_ERROR(TEXT("Heartbeat request failed with error: %d"), error);
+            LOG_ERROR(TEXT("Heartbeat request failed with error: %d, status: %d"), error, httpStatusCode);
             SetConnectionState(ConnectionState::Reconnecting, DisconnectReason::NetworkError);
         }
     };
@@ -400,8 +401,8 @@ void BliveManager::StartAppHeartBeat()
         signedHeartbeatHeader,
         heartbeatParams,
         true,
-        [request](bool success, const std::string& response, DWORD error) {
-            request->Complete(success, response, error);
+        [request](bool success, const std::string& response, DWORD error, DWORD httpStatusCode) {
+            request->Complete(success, response, error, httpStatusCode);
         }
     );
 }

@@ -686,6 +686,15 @@ void TTSManager::ProcessAsyncTTS()
 		bool foundPending = false;
 		for (auto it = asyncPendingQueue_.begin(); it != asyncPendingQueue_.end(); ++it) {
 			if ((*it)->state == AsyncTTSState::Pending) {
+				// 检查重试间隔：如果请求正在等待重试间隔，跳过
+				if ((*it)->retryCount > 0) {
+					auto now = std::chrono::steady_clock::now();
+					if (now < (*it)->startTime) {
+						auto waitMs = std::chrono::duration_cast<std::chrono::milliseconds>((*it)->startTime - now).count();
+						LOG_DEBUG(TEXT("TTS Async: Request waiting retry interval (%lld ms), skipping: %s"), waitMs, (*it)->text.c_str());
+						continue; // 跳过这个请求，继续查找下一个 Pending
+					}
+				}
 				// SAPI 请求需要串行播放：检查是否已有 SAPI 请求正在播放
 				bool willUseSapi = ((*it)->engineType == TTSEngineType::SAPI) ||
 					isFallback ||
@@ -888,7 +897,7 @@ void TTSManager::ProcessPendingRequestInternal(std::list<std::shared_ptr<AsyncTT
             }
         } else {
             reqPtr->errorMessage = response.errorMsg;
-            LOG_ERROR(TEXT("TTS Async: API request failed: %s"), utf8_to_wstring(response.errorMsg).c_str());
+            LOG_ERROR(TEXT("TTS Async: API request failed (HTTP %d): %s"), response.httpStatusCode, utf8_to_wstring(response.errorMsg).c_str());
             if (HandleRequestFailureInternal(*reqPtr) && reqPtr->callback) {
                 reqPtr->callback(false, response.errorMsg);
             }
@@ -1052,8 +1061,9 @@ bool TTSManager::HandleRequestFailureInternal(AsyncTTSRequest& req)
     if (req.retryCount < MAX_RETRY_COUNT) {
         req.retryCount++;
         req.state = AsyncTTSState::Pending;  // 重置为Pending，重新请求
+        req.startTime = std::chrono::steady_clock::now() + std::chrono::milliseconds(RETRY_INTERVAL_MS);
         activeRequestCount_--;  // Bug #3 fix: decrement to avoid double-counting when second loop picks it up
-        LOG_WARNING(TEXT("TTS Async: Retrying request (%d/%d)"), req.retryCount, MAX_RETRY_COUNT);
+        LOG_WARNING(TEXT("TTS Async: Retrying request (%d/%d) after %dms"), req.retryCount, MAX_RETRY_COUNT, RETRY_INTERVAL_MS);
         return false;
     }
 
@@ -1149,6 +1159,15 @@ void TTSManager::TryRecovery()
 {
 
     if (!ttsProvider) {
+        return;
+    }
+
+    // 手动模式下，如果用户明确选择了非SAPI引擎但已fallback，不自动恢复
+    // 避免API key过期时反复fallback/恢复的死循环
+    // 用户可通过手动切换设置来强制刷新引擎
+    if (IsManualEngineMode() && isFallback && userSelectedEngineName_ != "sapi") {
+        LOG_INFO(TEXT("TTS: Manual engine mode with fallback, skipping auto-recovery. User can refresh engine via settings."));
+        lastRecoveryAttempt = std::chrono::steady_clock::now();
         return;
     }
 

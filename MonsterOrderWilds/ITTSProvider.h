@@ -13,6 +13,7 @@ struct TTSResponse {
     std::vector<uint8_t> audioData;
     bool success;
     std::string errorMsg;
+    int httpStatusCode = 0;
 };
 
 using TTSCallback = std::function<void(const TTSResponse&)>;
