@@ -195,7 +195,9 @@ void TTSManager::HandleSpeekDm(const json& data)
         reqPtr->text = msg;
         reqPtr->engineType = TTSEngineType::LocalVoice;
         reqPtr->state = AsyncTTSState::Pending;
-        reqPtr->startTime = std::chrono::steady_clock::now();
+        reqPtr->requestStartTime = std::chrono::steady_clock::now();
+        reqPtr->playbackStartTime = std::chrono::steady_clock::time_point(); // 未开始播放
+        reqPtr->retryAfterTime = std::chrono::steady_clock::time_point();    // 未设置重试
         reqPtr->responseFormat = "mp3";
         reqPtr->voice = voiceFile;
 
@@ -377,7 +379,9 @@ bool TTSManager::Speak(const TString& text)
     reqPtr->text = text;
     reqPtr->engineType = GetActiveEngineType();
     reqPtr->state = AsyncTTSState::Pending;
-    reqPtr->startTime = std::chrono::steady_clock::now();
+    reqPtr->requestStartTime = std::chrono::steady_clock::now();
+    reqPtr->playbackStartTime = std::chrono::steady_clock::time_point();
+    reqPtr->retryAfterTime = std::chrono::steady_clock::time_point();
 
     LOG_INFO(TEXT("TTS Engine type: %d"), (int)reqPtr->engineType);
 
@@ -407,7 +411,9 @@ void TTSManager::SpeakCheckinTTS(const TString& text, const std::string& usernam
     reqPtr->text = text;
     reqPtr->engineType = GetActiveEngineType();
     reqPtr->state = AsyncTTSState::Pending;
-    reqPtr->startTime = std::chrono::steady_clock::now();
+    reqPtr->requestStartTime = std::chrono::steady_clock::now();
+    reqPtr->playbackStartTime = std::chrono::steady_clock::time_point();
+    reqPtr->retryAfterTime = std::chrono::steady_clock::time_point();
     reqPtr->responseFormat = "mp3";
     reqPtr->isCheckinTTS = true;
     reqPtr->checkinUsername = username;
@@ -623,7 +629,9 @@ void TTSManager::SpeakWithMimoAsync(const TString& text, std::function<void(bool
     auto reqPtr = std::make_shared<AsyncTTSRequest>();
     reqPtr->text = text;
     reqPtr->state = AsyncTTSState::Pending;
-    reqPtr->startTime = std::chrono::steady_clock::now();
+    reqPtr->requestStartTime = std::chrono::steady_clock::now();
+    reqPtr->playbackStartTime = std::chrono::steady_clock::time_point();
+    reqPtr->retryAfterTime = std::chrono::steady_clock::time_point();
     reqPtr->callback = callback;
 
     // 获取配置参数
@@ -680,14 +688,14 @@ void TTSManager::ProcessAsyncTTS()
 
 	// 如果未达到并发上限，从队列取新的请求（遍历队列找 Pending，不只是检查队首）
 	while (activeRequestCount_ < MAX_CONCURRENT_TTS && !asyncPendingQueue_.empty()) {
-		bool foundPending = false;
+		bool startedAny = false;
 		for (auto it = asyncPendingQueue_.begin(); it != asyncPendingQueue_.end(); ++it) {
 			if ((*it)->state == AsyncTTSState::Pending) {
 				// 检查重试间隔：如果请求正在等待重试间隔，跳过
-				if ((*it)->retryCount > 0) {
+				if ((*it)->retryCount > 0 && (*it)->retryAfterTime != std::chrono::steady_clock::time_point()) {
 					auto now = std::chrono::steady_clock::now();
-					if (now < (*it)->startTime) {
-						auto waitMs = std::chrono::duration_cast<std::chrono::milliseconds>((*it)->startTime - now).count();
+					if (now < (*it)->retryAfterTime) {
+						auto waitMs = std::chrono::duration_cast<std::chrono::milliseconds>((*it)->retryAfterTime - now).count();
 						LOG_DEBUG(TEXT("TTS Async: Request waiting retry interval (%lld ms), skipping: %s"), waitMs, (*it)->text.c_str());
 						continue; // 跳过这个请求，继续查找下一个 Pending
 					}
@@ -707,21 +715,21 @@ void TTSManager::ProcessAsyncTTS()
 					if (hasSapiPlaying) {
 						LOG_DEBUG(TEXT("TTS Async: SAPI request queued, waiting for previous to complete: %s"),
 							(*it)->text.c_str());
-						continue; // 跳过这个请求，继续查找下一个 Pending
+						continue; // 跳过这个SAPI请求，继续查找下一个非SAPI的Pending请求
 					}
 				}
 
-				(*it)->startTime = std::chrono::steady_clock::now();
+				(*it)->requestStartTime = std::chrono::steady_clock::now();
 				activeRequestCount_++;
 				LOG_INFO(TEXT("TTS Async: Starting new request for: %s (active: %d)"),
 					(*it)->text.c_str(), activeRequestCount_.load());
 				ProcessPendingRequestInternal(it);
-				foundPending = true;
-				break;
+				startedAny = true;
+				break; // 启动了一个请求后退出内层循环，让外层while检查并发上限
 			}
 		}
-		if (!foundPending) {
-			break;
+		if (!startedAny) {
+			break; // 没有启动任何请求（所有Pending都被跳过或没有Pending），退出外层循环
 		}
 	}
 }
@@ -902,7 +910,7 @@ void TTSManager::ProcessPendingRequestInternal(std::list<std::shared_ptr<AsyncTT
     });
 
     req.state = AsyncTTSState::Requesting;
-    req.startTime = std::chrono::steady_clock::now();
+    req.requestStartTime = std::chrono::steady_clock::now();
 }
 
 void TTSManager::ProcessRequestingStateInternal(AsyncTTSRequest& req)
@@ -921,7 +929,7 @@ void TTSManager::ProcessRequestingStateInternal(AsyncTTSRequest& req)
     }
 
     auto now = std::chrono::steady_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - req.startTime).count();
+    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - req.requestStartTime).count();
 
     if (elapsed >= API_TIMEOUT_SECONDS) {
         LOG_WARNING(TEXT("TTS Async: API request timeout (%lld seconds)"), (long long)elapsed);
@@ -929,7 +937,13 @@ void TTSManager::ProcessRequestingStateInternal(AsyncTTSRequest& req)
         // 等到下次Tick，如果audioData有数据会转为Playing，没有才会真正失败
         // 为了避免无限等待，最多等待2个额外的超时周期
         if (elapsed >= API_TIMEOUT_SECONDS * 3) {
-            HandleRequestFailureInternal(req);
+            // Race condition guard: double-check state and audioData before handling failure
+            // HTTP callback might have just completed between the audioData check above and now
+            if (req.state == AsyncTTSState::Requesting && req.audioData.empty()) {
+                HandleRequestFailureInternal(req);
+            } else {
+                LOG_INFO(TEXT("TTS Async: Request state changed or audioData arrived during timeout check, skipping failure handling"));
+            }
         }
     }
 }
@@ -967,7 +981,7 @@ void TTSManager::ProcessPlayingStateInternal(AsyncTTSRequest& req)
         }
         req.playbackStarted = true;
         req.audioData.clear();
-        req.startTime = std::chrono::steady_clock::now();  // 重置超时计时
+        req.playbackStartTime = std::chrono::steady_clock::now();  // 重置播放超时计时
         LOG_INFO(TEXT("TTS Async: Audio playback started"));
 
         if (req.isCheckinTTS && !req.checkinUsername.empty()) {
@@ -990,7 +1004,7 @@ void TTSManager::ProcessPlayingStateInternal(AsyncTTSRequest& req)
         bool timedOut = false;
         if (PLAYBACK_TIMEOUT_SECONDS > 0) {
             auto now = std::chrono::steady_clock::now();
-            auto playbackElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - req.startTime).count();
+            auto playbackElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - req.playbackStartTime).count();
             timedOut = (playbackElapsed > PLAYBACK_TIMEOUT_SECONDS * 1000);
         }
         
@@ -999,7 +1013,7 @@ void TTSManager::ProcessPlayingStateInternal(AsyncTTSRequest& req)
                 LOG_INFO(TEXT("TTS Async: Playback completed (MCI reported stop)"));
             } else {
                 LOG_WARNING(TEXT("TTS Async: Playback timeout (%d ms), treating as completed"), 
-                    (int)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - req.startTime).count());
+                    (int)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - req.playbackStartTime).count());
                 if (audioPlayer != NULL) {
                     audioPlayer->Stop();
                 }
@@ -1051,14 +1065,29 @@ bool TTSManager::TrySwitchToNextProvider()
 
 bool TTSManager::HandleRequestFailureInternal(AsyncTTSRequest& req)
 {
-    // 注意：此函数在ProcessAsyncTTS持有asyncMutex_时被调用，不要再获取锁
-    // 返回值：true = 请求真正失败（不再重试），false = 正在重试
+	// 注意：此函数在ProcessAsyncTTS持有asyncMutex_时被调用，不要再获取锁
+	// 返回值：true = 请求真正失败（不再重试），false = 正在重试
+
+    // Race condition guard: only handle failure if request is still in an expected state
+    // If state has already changed to Playing/Completed/Failed (by callback or other logic), skip
+    if (req.state != AsyncTTSState::Requesting && req.state != AsyncTTSState::Playing) {
+        LOG_DEBUG(TEXT("TTS Async: HandleRequestFailureInternal called but request state is %d, not Requesting/Playing. Skipping."), (int)req.state);
+        return false; // Already handled, don't trigger failure callback
+    }
+
+    // If audioData has arrived (callback completed just before we got the lock), don't fail
+    if (!req.audioData.empty()) {
+        LOG_INFO(TEXT("TTS Async: audioData arrived before failure handling, converting to Playing state"));
+        req.state = AsyncTTSState::Playing;
+        return false; // Not a failure, will continue as Playing
+    }
 
     // 重试逻辑
     if (req.retryCount < MAX_RETRY_COUNT) {
         req.retryCount++;
         req.state = AsyncTTSState::Pending;  // 重置为Pending，重新请求
-        req.startTime = std::chrono::steady_clock::now() + std::chrono::milliseconds(RETRY_INTERVAL_MS);
+        req.retryAfterTime = std::chrono::steady_clock::now() + std::chrono::milliseconds(RETRY_INTERVAL_MS);
+        req.requestStartTime = std::chrono::steady_clock::now(); // 重置请求开始时间，避免重试后超时计算异常
         activeRequestCount_--;  // Bug #3 fix: decrement to avoid double-counting when second loop picks it up
         LOG_WARNING(TEXT("TTS Async: Retrying request (%d/%d) after %dms"), req.retryCount, MAX_RETRY_COUNT, RETRY_INTERVAL_MS);
         return false;
@@ -1098,10 +1127,11 @@ void TTSManager::CleanupCompletedRequests()
     std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
     while (!asyncPendingQueue_.empty()) {
         auto& front = asyncPendingQueue_.front();
-        if (front->state == AsyncTTSState::Completed || front->state == AsyncTTSState::Failed) {
+    if (front->state == AsyncTTSState::Completed || front->state == AsyncTTSState::Failed) {
             asyncPendingQueue_.pop_front();
+            activeRequestCount_--;
         } else {
-            break;  // 队列是FIFO，前面的已完成才清理
+            break;
         }
     }
 }

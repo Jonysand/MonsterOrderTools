@@ -39,7 +39,9 @@ struct AsyncTTSRequest
 	TTSEngineType engineType = TTSEngineType::Auto;  // 引擎类型
 	std::vector<uint8_t> audioData;        // API返回的音频数据
 	std::string responseFormat;            // 音频格式
-	std::chrono::steady_clock::time_point startTime;  // 状态开始时间
+	std::chrono::steady_clock::time_point requestStartTime;  // 请求开始时间（用于API超时判定）
+	std::chrono::steady_clock::time_point playbackStartTime; // 播放开始时间（用于播放超时判定）
+	std::chrono::steady_clock::time_point retryAfterTime;    // 重试等待截止时间
 	int retryCount = 0;                     // 重试次数
 	std::string errorMessage;               // 错误信息
 	bool isCheckinTTS = false;              // 是否为checkin TTS
