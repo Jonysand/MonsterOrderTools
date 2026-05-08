@@ -649,26 +649,24 @@ void TTSManager::ProcessAsyncTTS()
     // 处理所有当前活跃的请求（需要加锁保护asyncPendingQueue_）
     std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
 
-    // 处理活跃请求：遍历当前活跃的请求（Bug #15 fix: iterate properly instead of always begin())
-    int processed = 0;
-    auto it = asyncPendingQueue_.begin();
-    while (processed < activeRequestCount_ && it != asyncPendingQueue_.end()) {
+    // 处理活跃请求：遍历整个队列处理所有非 Pending 请求
+    // Bug fix: 原代码用 processed < activeRequestCount_ 限制遍历数量，
+    // 但 HandleRequestFailureInternal 重试时会减少 activeRequestCount_，
+    // 导致后面的请求被跳过、卡在 Requesting 状态无法超时，造成队列积压。
+    for (auto it = asyncPendingQueue_.begin(); it != asyncPendingQueue_.end(); ) {
         auto& reqPtr = *it;
         switch (reqPtr->state) {
         case AsyncTTSState::Pending:
-            ProcessPendingRequestInternal(it);
+            // Pending 请求由第二段循环处理（含重试间隔检查和并发限制）
             ++it;
-            processed++;
             break;
         case AsyncTTSState::Requesting:
             ProcessRequestingStateInternal(*reqPtr);
             ++it;
-            processed++;
             break;
         case AsyncTTSState::Playing:
             ProcessPlayingStateInternal(*reqPtr);
             ++it;
-            processed++;
             break;
         case AsyncTTSState::Completed:
         case AsyncTTSState::Failed:
@@ -676,7 +674,6 @@ void TTSManager::ProcessAsyncTTS()
                 reqPtr->state == AsyncTTSState::Completed ? TEXT("completed") : TEXT("failed"));
             it = asyncPendingQueue_.erase(it);
             activeRequestCount_--;
-            processed++;
             break;
         }
     }
