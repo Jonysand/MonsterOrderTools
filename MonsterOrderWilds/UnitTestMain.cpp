@@ -48,7 +48,7 @@ extern void RunAllStringProcessorTests();
 extern void RunAllDataBridgeTests();
 extern void RunAllCredentialsManagerTests();
 extern void TestTTSCacheManager();
-extern void TestDynamicComboConstants();
+extern void RunTextToSpeechTests();
 extern void RunProfileManagerTests();
 extern void RunAIChatProviderTests();
 extern void RunTTSProviderTests();
@@ -103,7 +103,7 @@ int RunTests()
     TestLog("");
     
     TestLog("Running TextToSpeech tests...");
-    TestDynamicComboConstants();
+    RunTextToSpeechTests();
     TestLog("");
 
     TestLog("Running ProfileManager tests...");

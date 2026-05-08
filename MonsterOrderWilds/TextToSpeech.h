@@ -39,10 +39,18 @@ struct AsyncTTSRequest
 	TTSEngineType engineType = TTSEngineType::Auto;  // 引擎类型
 	std::vector<uint8_t> audioData;        // API返回的音频数据
 	std::string responseFormat;            // 音频格式
-	std::chrono::steady_clock::time_point requestStartTime;  // 请求开始时间（用于API超时判定）
-	std::chrono::steady_clock::time_point playbackStartTime; // 播放开始时间（用于播放超时判定）
-	std::chrono::steady_clock::time_point retryAfterTime;    // 重试等待截止时间
-	int retryCount = 0;                     // 重试次数
+	std::chrono::steady_clock::time_point totalStartTime;	// 请求总开始时间（用于总超时上限判定，不重置）
+	std::chrono::steady_clock::time_point requestStartTime;	// 当前请求开始时间（用于API超时判定）
+	std::chrono::steady_clock::time_point playbackStartTime;	// 播放开始时间（用于播放超时判定）
+	std::chrono::steady_clock::time_point retryAfterTime;	// 重试等待截止时间
+	int retryCount = 0;						// 重试次数
+
+	void ResetTiming() {
+		totalStartTime = std::chrono::steady_clock::now();
+		requestStartTime = std::chrono::steady_clock::now();
+		playbackStartTime = std::chrono::steady_clock::time_point();
+		retryAfterTime = std::chrono::steady_clock::time_point();
+	}
 	std::string errorMessage;               // 错误信息
 	bool isCheckinTTS = false;              // 是否为checkin TTS
 	std::string checkinUsername;            // checkin用户名（用于缓存）
@@ -105,6 +113,20 @@ public:
 	std::string GetCurrentProviderName() const;
 
 public:
+	// TTS 超时和并发控制常量
+	static constexpr int MAX_CONCURRENT_TTS = 64;      // API并发请求数
+	static constexpr int MAX_ASYNC_QUEUE_SIZE = 0;      // 队列大小限制（0=不限制）
+	static constexpr int MAX_RETRY_COUNT = 5;           // 最大重试次数
+	static constexpr int RETRY_INTERVAL_MS = 500;       // 重试间隔（毫秒）
+	static constexpr int API_TIMEOUT_SECONDS = 5;		// API请求超时（秒）
+	static constexpr int MAX_TOTAL_TIMEOUT_SECONDS = 15;	// 请求总超时上限（秒），防止重试后无限等待
+	static constexpr int PLAYBACK_TIMEOUT_SECONDS = 60;		// 播放超时（秒）
+	static constexpr int SAPI_PLAYBACK_TIMEOUT_SECONDS = 30;	// SAPI播放超时（秒），防止回调丢失导致卡死
+	static constexpr int GIFT_COOLDOWN_SECONDS = 5;
+	static constexpr int DYNAMIC_COMBO_WINDOW_SECONDS = 10;
+	// 实例存活标志，用于防止SAPI回调中的UAF
+	static std::atomic<bool> s_instanceAlive;
+
 	bool Speak(const TString& text);
 	bool PlayAudioData(const std::vector<uint8_t>& audioData, const std::string& format = "mp3");
 	void SpeakCheckinTTS(const TString& text, const std::string& username, std::function<void(bool success, const std::string& errorMsg)> callback = nullptr);
@@ -121,11 +143,13 @@ private:
 	void ProcessPlayingStateInternal(AsyncTTSRequest& req);
 	// SAPI播放完成回调
 	static void CALLBACK SapiSpeakCallback(WPARAM wParam, LPARAM lParam);
+	// SAPI辅助方法：配置语音参数（查找中文语音、设置rate/volume）
+	void SetupSapiVoiceParams(ISpVoice* voice);
+	// SAPI辅助方法：转义文本并构建SSML
+	static std::wstring BuildSapiSsml(const TString& text);
 	// 处理失败/超时（内部版，不获取锁，由ProcessAsyncTTS在持有锁时调用）
 	// 返回值：true = 请求真正失败（不再重试），false = 正在重试
 	bool HandleRequestFailureInternal(AsyncTTSRequest& req);
-	// 清理已完成/失败的请求
-	void CleanupCompletedRequests();
 
 	void HandleDmOrderFood(const std::wstring& text, const std::wstring& uname);
 
@@ -166,15 +190,6 @@ private:
 	// 异步TTS请求队列（API并发请求，播放串行）
 	std::list<std::shared_ptr<AsyncTTSRequest>> asyncPendingQueue_;      // 等待队列
 	std::atomic<int> activeRequestCount_{ 0 };   // 当前正在处理的请求数量
-	static constexpr int MAX_CONCURRENT_TTS = 64;      // API并发请求数
-	static constexpr int MAX_ASYNC_QUEUE_SIZE = 0;      // 队列大小限制（0=不限制）
-	static constexpr int MAX_RETRY_COUNT = 5;           // 最大重试次数
-	static constexpr int RETRY_INTERVAL_MS = 500;       // 重试间隔（毫秒）
-	static constexpr int API_TIMEOUT_SECONDS = 5;       // API请求超时（秒）
-	static constexpr int PLAYBACK_TIMEOUT_SECONDS = 0; // 播放超时（秒），0表示不超时
-
-	static constexpr int GIFT_COOLDOWN_SECONDS = 5;
-	static constexpr int DYNAMIC_COMBO_WINDOW_SECONDS = 10;
 
 	struct DynamicComboEntry {
 		std::string combo_id;
