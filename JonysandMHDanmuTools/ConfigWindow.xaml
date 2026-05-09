@@ -592,6 +592,17 @@
                                        FontFamily="Segoe UI Variable"
                                        FontSize="12"
                                        Margin="0,5,0,0" />
+                            <Button
+                                Name="BatchCheckinButton"
+                                Content="一键黑幕"
+                                Margin="0,20,0,0"
+                                Width="100"
+                                Height="32"
+                                HorizontalAlignment="Left"
+                                Background="#444"
+                                Foreground="White"
+                                BorderBrush="#444"
+                                Click="BatchCheckinButton_Click" />
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

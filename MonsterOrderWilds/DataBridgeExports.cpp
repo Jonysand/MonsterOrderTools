@@ -510,6 +510,36 @@ extern "C" {
             LOG_ERROR(TEXT("CaptainCheckInModule_SetTriggerWords failed: %s"), e.what());
         }
     }
+
+    __declspec(dllexport) bool __stdcall ProfileManager_BatchCheckin(char* outMessage, int messageBufferSize)
+    {
+        try
+        {
+#if !ONLY_ORDER_MONSTER
+            auto result = ProfileManager::Inst()->BatchCheckin();
+            if (outMessage && messageBufferSize > 0)
+            {
+                strncpy_s(outMessage, messageBufferSize, result.message.c_str(), _TRUNCATE);
+            }
+            return result.success;
+#else
+            if (outMessage && messageBufferSize > 0)
+            {
+                outMessage[0] = '\0';
+            }
+            return false;
+#endif
+        }
+        catch (const std::exception& e)
+        {
+            LOG_ERROR(TEXT("ProfileManager_BatchCheckin failed: %s"), e.what());
+            if (outMessage && messageBufferSize > 0)
+            {
+                strncpy_s(outMessage, messageBufferSize, e.what(), _TRUNCATE);
+            }
+            return false;
+        }
+    }
 }
 
 OnAIReplyCallback g_aiReplyCallback = nullptr;

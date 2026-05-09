@@ -7,6 +7,7 @@
 #include <sstream>
 #include <iomanip>
 #include <limits>
+#include <set>
 #include <sys/stat.h>
 
 #ifdef _WIN32
@@ -1473,4 +1474,207 @@ int32_t ProfileManager::FindLastMissingCheckinDate(const std::string& uid, int32
     }
 
     return missingDate;
+}
+
+// 辅助函数：获取今天日期 YYYYMMDD
+static int32_t GetTodayDate() {
+    time_t now = time(nullptr);
+    struct tm localTime;
+    localtime_s(&localTime, &now);
+    return (localTime.tm_year + 1900) * 10000 + (localTime.tm_mon + 1) * 100 + localTime.tm_mday;
+}
+
+// 辅助函数：int日期转tm结构
+static void IntDateToTm(int32_t date, struct tm& outTm) {
+    memset(&outTm, 0, sizeof(outTm));
+    outTm.tm_year = date / 10000 - 1900;
+    outTm.tm_mon = (date % 10000) / 100 - 1;
+    outTm.tm_mday = date % 100;
+    mktime(&outTm);
+}
+
+// 辅助函数：获取下一天
+static int32_t NextDate(int32_t date) {
+    struct tm tm;
+    IntDateToTm(date, tm);
+    tm.tm_mday += 1;
+    mktime(&tm);
+    return (tm.tm_year + 1900) * 10000 + (tm.tm_mon + 1) * 100 + tm.tm_mday;
+}
+
+ProfileManager::BatchCheckinResult ProfileManager::BatchCheckin() {
+    std::lock_guard<std::recursive_mutex> lock(profilesLock_);
+    BatchCheckinResult result;
+    if (!storage_) {
+        result.message = "数据库未初始化";
+        return result;
+    }
+
+    int32_t today = GetTodayDate();
+    int64_t timestamp = GetCurrentTimestamp();
+    sqlite3* db = (sqlite3*)storage_;
+
+    LOG_INFO(TEXT("ProfileManager::BatchCheckin 开始，今天日期: %d"), today);
+
+    // 查询所有 cumulative_days > 0 的用户
+    const char* selectUsersSql = "SELECT uid, username, last_checkin_date, continuous_days, cumulative_days FROM user_profiles WHERE cumulative_days > 0";
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db, selectUsersSql, -1, &stmt, nullptr) != SQLITE_OK) {
+        result.message = "查询用户失败: " + std::string(sqlite3_errmsg(db));
+        LOG_ERROR(TEXT("ProfileManager::BatchCheckin %hs"), result.message.c_str());
+        return result;
+    }
+
+    struct UserInfo {
+        std::string uid;
+        std::string username;
+        int32_t lastCheckinDate;
+        int32_t continuousDays;
+        int32_t cumulativeDays;
+    };
+    std::vector<UserInfo> users;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        UserInfo user;
+        user.uid = (const char*)sqlite3_column_text(stmt, 0);
+        user.username = (const char*)sqlite3_column_text(stmt, 1);
+        user.lastCheckinDate = sqlite3_column_int(stmt, 2);
+        user.continuousDays = sqlite3_column_int(stmt, 3);
+        user.cumulativeDays = sqlite3_column_int(stmt, 4);
+        users.push_back(user);
+    }
+    sqlite3_finalize(stmt);
+
+    result.totalUsers = (int)users.size();
+    LOG_INFO(TEXT("ProfileManager::BatchCheckin 共找到 %d 个需要补签的用户"), result.totalUsers);
+
+    // 开始事务
+    if (sqlite3_exec(db, "BEGIN IMMEDIATE", nullptr, nullptr, nullptr) != SQLITE_OK) {
+        result.message = "开始事务失败: " + std::string(sqlite3_errmsg(db));
+        LOG_ERROR(TEXT("ProfileManager::BatchCheckin %hs"), result.message.c_str());
+        return result;
+    }
+
+    auto rollbackAndReturn = [&](const std::string& errorMsg) {
+        sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+        BatchCheckinResult errResult;
+        errResult.message = errorMsg;
+        LOG_ERROR(TEXT("ProfileManager::BatchCheckin %hs"), errorMsg.c_str());
+        return errResult;
+    };
+
+    for (const auto& user : users) {
+        // 获取用户的所有打卡日期
+        const char* selectDatesSql = "SELECT checkin_date FROM checkin_records WHERE uid = ? ORDER BY checkin_date ASC";
+        if (sqlite3_prepare_v2(db, selectDatesSql, -1, &stmt, nullptr) != SQLITE_OK) {
+            return rollbackAndReturn("查询打卡记录失败: " + std::string(sqlite3_errmsg(db)));
+        }
+        sqlite3_bind_text(stmt, 1, user.uid.c_str(), -1, SQLITE_TRANSIENT);
+
+        std::set<int32_t> existingDates;
+        while (sqlite3_step(stmt) == SQLITE_ROW) {
+            existingDates.insert(sqlite3_column_int(stmt, 0));
+        }
+        sqlite3_finalize(stmt);
+
+        // 计算起始日期
+        int32_t minDate;
+        if (existingDates.empty()) {
+            // 从今天往前推 cumulative-1 天
+            struct tm tm;
+            IntDateToTm(today, tm);
+            tm.tm_mday -= (user.cumulativeDays - 1);
+            mktime(&tm);
+            minDate = (tm.tm_year + 1900) * 10000 + (tm.tm_mon + 1) * 100 + tm.tm_mday;
+        } else {
+            minDate = *existingDates.begin();
+        }
+
+        // 确定结束日期
+        int32_t endDate = (user.lastCheckinDate > 0 && user.lastCheckinDate > today) ? user.lastCheckinDate : today;
+
+        // 生成日期范围内的所有日期
+        std::set<int32_t> allDates;
+        int32_t current = minDate;
+        while (current <= endDate) {
+            allDates.insert(current);
+            current = NextDate(current);
+        }
+
+        // 找出缺失的日期
+        std::vector<int32_t> missingDates;
+        for (int32_t d : allDates) {
+            if (existingDates.find(d) == existingDates.end()) {
+                missingDates.push_back(d);
+            }
+        }
+
+        // 补签缺失的日期
+        for (int32_t checkinDate : missingDates) {
+            const char* insertSql = "INSERT OR IGNORE INTO checkin_records (uid, checkin_date, created_at, username) VALUES (?, ?, ?, ?)";
+            if (sqlite3_prepare_v2(db, insertSql, -1, &stmt, nullptr) != SQLITE_OK) {
+                return rollbackAndReturn("插入打卡记录失败: " + std::string(sqlite3_errmsg(db)));
+            }
+            sqlite3_bind_text(stmt, 1, user.uid.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_bind_int(stmt, 2, checkinDate);
+            sqlite3_bind_int64(stmt, 3, timestamp);
+            sqlite3_bind_text(stmt, 4, user.username.c_str(), -1, SQLITE_TRANSIENT);
+            int stepResult = sqlite3_step(stmt);
+            sqlite3_finalize(stmt);
+            if (stepResult != SQLITE_DONE && stepResult != SQLITE_CONSTRAINT) {
+                return rollbackAndReturn("插入打卡记录执行失败: " + std::string(sqlite3_errmsg(db)));
+            }
+            result.totalInserted++;
+        }
+
+        // 更新 user_profiles
+        int32_t newLastCheckin = endDate;
+        int32_t newContinuous = user.cumulativeDays;
+
+        if (newLastCheckin != user.lastCheckinDate || newContinuous != user.continuousDays) {
+            const char* updateSql = "UPDATE user_profiles SET last_checkin_date = ?, continuous_days = ?, updated_at = ? WHERE uid = ?";
+            if (sqlite3_prepare_v2(db, updateSql, -1, &stmt, nullptr) != SQLITE_OK) {
+                return rollbackAndReturn("更新用户资料失败: " + std::string(sqlite3_errmsg(db)));
+            }
+            sqlite3_bind_int(stmt, 1, newLastCheckin);
+            sqlite3_bind_int(stmt, 2, newContinuous);
+            sqlite3_bind_int64(stmt, 3, timestamp);
+            sqlite3_bind_text(stmt, 4, user.uid.c_str(), -1, SQLITE_TRANSIENT);
+            int stepResult = sqlite3_step(stmt);
+            sqlite3_finalize(stmt);
+            if (stepResult != SQLITE_DONE) {
+                return rollbackAndReturn("更新用户资料执行失败: " + std::string(sqlite3_errmsg(db)));
+            }
+            result.patchedUsers++;
+        }
+
+        if (!missingDates.empty()) {
+            LOG_INFO(TEXT("ProfileManager::BatchCheckin %hs: 补签 %d 天"), user.username.c_str(), (int)missingDates.size());
+        } else {
+            result.skippedUsers++;
+        }
+    }
+
+    // 提交事务
+    if (sqlite3_exec(db, "COMMIT", nullptr, nullptr, nullptr) != SQLITE_OK) {
+        sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+        result.totalInserted = 0;
+        result.patchedUsers = 0;
+        result.skippedUsers = 0;
+        result.message = "提交事务失败: " + std::string(sqlite3_errmsg(db));
+        LOG_ERROR(TEXT("ProfileManager::BatchCheckin %hs"), result.message.c_str());
+        return result;
+    }
+
+    // 生成结果消息
+    std::ostringstream oss;
+    oss << "操作完成\n";
+    oss << "总用户数: " << result.totalUsers << "\n";
+    oss << "补签用户数: " << result.patchedUsers << "\n";
+    oss << "跳过用户数: " << result.skippedUsers << " (已连续到今天)\n";
+    oss << "插入打卡记录数: " << result.totalInserted;
+    result.message = oss.str();
+    result.success = true;
+
+    LOG_INFO(TEXT("ProfileManager::BatchCheckin %hs"), result.message.c_str());
+    return result;
 }

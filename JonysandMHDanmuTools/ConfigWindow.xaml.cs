@@ -579,5 +579,28 @@ namespace MonsterOrderWindows
             if (_isInitializing) return;
             GlobalEventListener.Invoke("ConfigChanged", "CHECKIN_TRIGGER_WORDS:" + CheckinTriggerWordsTextBox.Text);
         }
+
+        private void BatchCheckinButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var messageBytes = new byte[4096];
+                bool success = NativeImports.ProfileManager_BatchCheckin(messageBytes, messageBytes.Length);
+                string message = System.Text.Encoding.UTF8.GetString(messageBytes).TrimEnd('\0');
+
+                if (success)
+                {
+                    MessageBox.Show(message, "一键黑幕执行成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                else
+                {
+                    MessageBox.Show(message, "一键黑幕执行失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("执行一键黑幕时出错：" + ex.Message, "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
     }
 }

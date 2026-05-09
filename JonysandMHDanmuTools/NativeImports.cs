@@ -108,6 +108,9 @@ namespace MonsterOrderWindows
         [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
         public static extern void CaptainCheckInModule_SetTriggerWords(string words);
 
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall)]
+        public static extern bool ProfileManager_BatchCheckin([Out] byte[] outMessage, int messageBufferSize);
+
         [UnmanagedFunctionPointer(CallingConvention.StdCall, CharSet = CharSet.Unicode)]
         public delegate void DanmuProcessedCallback(string userName, string monsterName, IntPtr userData);
 

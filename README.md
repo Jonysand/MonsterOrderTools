@@ -6,6 +6,22 @@
 
 所有变更详见 [openspec/changes/archive/](openspec/changes/archive/)
 
+## [v29] - 2026-05-09
+
+### Added
+- **一键黑幕（批量补签）**: 将 Python 批量补签脚本内嵌到 C++ 项目，舰长打卡 AI 配置页新增"一键黑幕"按钮
+  - 功能实现于 `ProfileManager`，复用现有数据库连接和 `profilesLock_` 锁机制
+  - 查询所有 `cumulative_days > 0` 的用户，自动补签从最早打卡日期到今天的连续缺失日期
+  - 使用 `BEGIN IMMEDIATE` 事务包裹整个批量操作，失败全量回滚保证数据一致性
+  - 补签完成后更新 `user_profiles.last_checkin_date` 和 `continuous_days`
+  - 通过 `DataBridge` 导出供 C# UI 调用，结果消息通过 `MessageBox` 弹窗显示
+  - 功能不在 `ONLY_ORDER_MONSTER=1`（Lite 模式）下显示
+
+### Fixed
+- **弹窗乱码修复**: 修复"一键黑幕"结果弹窗中文乱码问题
+  - 根因: C++ 侧传递 UTF-8 编码字节，C# 侧 `StringBuilder` + `CharSet.Ansi` 导致系统用 GBK 解码
+  - 修复: C# P/Invoke 声明移除 `CharSet.Ansi`，改用 `byte[]` 接收，`Encoding.UTF8.GetString()` 手动解码
+
 ## [v28] - 2026-05-09
 
 ### Added

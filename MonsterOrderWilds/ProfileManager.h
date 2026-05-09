@@ -93,6 +93,17 @@ public:
     // 从 checkin_records 表中重新计算用户的连续打卡天数（支持补签后正确计算）
     int32_t CalculateContinuousDaysFromRecords(const std::string& uid);
 
+    // 批量补签：为所有有累计打卡天数的用户补签缺失日期，使打卡连续到今天
+    struct BatchCheckinResult {
+        bool success = false;
+        int totalUsers = 0;
+        int patchedUsers = 0;
+        int skippedUsers = 0;
+        int totalInserted = 0;
+        std::string message;
+    };
+    BatchCheckinResult BatchCheckin();
+
     // 获取原始数据库句柄（用于测试清理等场景）
     void* GetStorage() const { return storage_; }
 
