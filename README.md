@@ -6,6 +6,35 @@
 
 所有变更详见 [openspec/changes/archive/](openspec/changes/archive/)
 
+## [v27] - 2026-05-09
+
+### Changed
+- **Manbo TTS API 迁移**: 替换 Manbo TTS API 端点到 `api.milorapart.top`
+  - 新 API 路径: `/apis/mbAIscvip?text=<message>&format=mp3&speed=<speed>&key=<api_key>`
+  - 添加 `Authorization: Bearer <key>` 请求头鉴权
+  - 响应字段从 `data.audio_url` 改为顶层 `url`，错误字段从 `message` 改为 `msg`
+  - 语速映射: `speechRate`（-10~10）线性映射为 API `speed`（-50~50）
+
+### Added
+- **Manbo API Key 配置**: 新增 Manbo API Key 注册表存储和 UI 输入框
+  - 注册表路径: `HKCU\Software\MonsterOrderWilds\ManboApiKey`（与 idCode 同级）
+  - 全栈字段同步: C++ ConfigData → DataBridgeWrapper → C# DataStructures/Utils/ProxyClasses
+  - ConfigWindow 新增 Manbo API Key 输入框（PasswordBox），位于 TTS 引擎选择框下方
+  - 语音速率滑块移至 TTS 引擎设置区域
+
+## [v26] - 2026-05-09
+
+### Fixed
+- **SAPI TTS 架构优化**: 移除回调机制，改用 `GetStatus()` 轮询检测播放状态
+  - 解决回调中 Voice 对象生命周期管理的 UAF（Use-After-Free）风险
+  - 添加播放超时保护，防止卡死
+- **TTS 队列关键 bug 修复**: 修复弹幕密集时 TTS 请求被饿死导致 `active` 计数异常增长的问题
+  - 修复 HTTP 状态码未传递及错误消息为空的问题
+- **SAPI TTS 串行播放修复**: 防止弹幕密集时音频覆盖丢失
+
+### Changed
+- **本地音频触发优化**: 去掉仅限 Manbo TTS 引擎的限制，所有本地语音在任何 TTS 引擎设置下均可直接播放
+
 ## [v25] - 2026-05-05
 
 ### Added

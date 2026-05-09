@@ -232,6 +232,68 @@
                                     Margin="8,0,0,0"
                                     FontWeight="SemiBold" />
                             </StackPanel>
+                            <Border Name="ManboConfigPanel" Margin="8,8,0,0">
+                                <StackPanel>
+                                    <Label
+                                        Content="Manbo 设置"
+                                        FontFamily="Segoe UI Variable"
+                                        FontSize="14"
+                                        FontWeight="SemiBold"
+                                        Foreground="#0078D4"
+                                        Margin="0,4,0,4" />
+                                    <Border
+                                        Background="#ddd"
+                                        CornerRadius="6"
+                                        Padding="6,2"
+                                        HorizontalAlignment="Left"
+                                        Height="34">
+                                        <Grid>
+                                            <PasswordBox
+                                                Name="ManboApiKeyTextBox"
+                                                VerticalAlignment="Center"
+                                                Width="250"
+                                                Height="28"
+                                                PasswordChanged="ManboApiKeyTextBox_PasswordChanged" />
+                                            <TextBlock
+                                                Name="ManboApiKeyPlaceholder"
+                                                Text="输入Manbo API Key"
+                                                Foreground="#888"
+                                                VerticalAlignment="Center"
+                                                Margin="8,0,0,0"
+                                                IsHitTestVisible="False"
+                                                FontSize="14"
+                                                FontFamily="Segoe UI Variable"
+                                                Visibility="Visible" />
+                                        </Grid>
+                                    </Border>
+                                </StackPanel>
+                            </Border>
+                            <StackPanel Orientation="Horizontal" Margin="8,8,0,0"
+                                VerticalAlignment="Center">
+                                <Label
+                                    Content="语音速率"
+                                    VerticalAlignment="Center"
+                                    FontFamily="Segoe UI Variable"
+                                    FontSize="14"
+                                    Foreground="#222"
+                                    Margin="0,0,8,0" />
+                                <Slider
+                                    Name="VoiceRateSlider"
+                                    Minimum="-10"
+                                    Maximum="10"
+                                    TickFrequency="1"
+                                    IsSnapToTickEnabled="True"
+                                    Width="120"
+                                    VerticalAlignment="Center"
+                                    Margin="0,0,8,0"
+                                    ValueChanged="VoiceRateSlider_ValueChanged" />
+                                <TextBlock
+                                    Text="{Binding ElementName=VoiceRateSlider, Path=Value, StringFormat=F0}"
+                                    VerticalAlignment="Center"
+                                    FontSize="14"
+                                    Foreground="#222"
+                                    Width="30" />
+                            </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="8,8,0,0"
                                 VerticalAlignment="Center">
                                 <Label
@@ -316,31 +378,6 @@
                                         FontWeight="SemiBold"
                                         Foreground="#0078D4"
                                         Margin="0,4,0,4" />
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4"
-                                        VerticalAlignment="Center">
-                                        <Label
-                                            Content="语音速率"
-                                            VerticalAlignment="Center"
-                                            FontSize="14"
-                                            Foreground="#222"
-                                            Margin="0,0,8,0" />
-                                        <Slider
-                                            Name="VoiceRateSlider"
-                                            Minimum="-10"
-                                            Maximum="10"
-                                            TickFrequency="1"
-                                            IsSnapToTickEnabled="True"
-                                            Width="120"
-                                            VerticalAlignment="Center"
-                                            Margin="0,0,8,0"
-                                            ValueChanged="VoiceRateSlider_ValueChanged" />
-                                        <TextBlock
-                                            Text="{Binding ElementName=VoiceRateSlider, Path=Value, StringFormat=F0}"
-                                            VerticalAlignment="Center"
-                                            FontSize="14"
-                                            Foreground="#222"
-                                            Width="30" />
-                                    </StackPanel>
                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,4"
                                         VerticalAlignment="Center">
                                         <Label

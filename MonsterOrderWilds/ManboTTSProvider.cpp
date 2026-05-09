@@ -1,6 +1,7 @@
 #include "framework.h"
 #include "TTSProvider.h"
 #include "Network.h"
+#include "ConfigManager.h"
 #include "WriteLog.h"
 #include <winhttp.h>
 #include <string>
@@ -37,10 +38,15 @@ std::string ManboTTSProvider::GetProviderName() const { return "manbo"; }
 std::string ManboTTSProvider::GetLastError() const { return lastError_; }
 
 std::string ManboTTSProvider::BuildRequestUrl(const TTSRequest& request) const {
-    std::string url = "/api/speech/AiChat/?module=audio&text=";
+    std::string url = "/apis/mbAIscvip?text=";
     url += UrlEncode(request.text);
-    url += "&voice=";
-    url += UrlEncode("曼波");
+    url += "&format=mp3";
+
+    ConfigData config = ConfigManager::Inst()->GetConfig();
+    int apiSpeed = config.speechRate * 5;
+    url += "&speed=" + std::to_string(apiSpeed);
+    url += "&key=" + UrlEncode(config.manboApiKey);
+
     return url;
 }
 
@@ -51,15 +57,15 @@ TTSResponse ManboTTSProvider::ParseApiResponse(const std::string& responseBody) 
     try {
         auto j = nlohmann::json::parse(responseBody);
         if (j.contains("code") && j["code"].get<int>() == 200) {
-            if (j.contains("data") && j["data"].contains("audio_url") && j["data"]["audio_url"].is_string()) {
+            if (j.contains("url") && j["url"].is_string()) {
                 result.success = true;
-                result.errorMsg = j["data"]["audio_url"].get<std::string>();
+                result.errorMsg = j["url"].get<std::string>();
             } else {
-                result.errorMsg = "Invalid response format: missing audio_url";
+                result.errorMsg = "Invalid response format: missing url";
             }
         } else {
-            if (j.contains("message") && j["message"].is_string()) {
-                result.errorMsg = j["message"].get<std::string>();
+            if (j.contains("msg") && j["msg"].is_string()) {
+                result.errorMsg = j["msg"].get<std::string>();
             } else {
                 result.errorMsg = "API error";
             }
@@ -140,13 +146,16 @@ void ManboTTSProvider::DownloadAudio(const std::string& audioUrl, TTSCallback ca
 void ManboTTSProvider::RequestTTS(const TTSRequest& request, TTSCallback callback) {
     std::string requestUrl = BuildRequestUrl(request);
     std::wstring wRequestUrl(requestUrl.begin(), requestUrl.end());
-    
+
+    ConfigData config = ConfigManager::Inst()->GetConfig();
+    std::string headers = "Authorization: Bearer " + config.manboApiKey + "\r\n";
+
     Network::MakeHttpsRequestAsync(
-        TEXT("api-v2.cenguigui.cn"),
+        TEXT("api.milorapart.top"),
         443,
         wRequestUrl.c_str(),
         TEXT("GET"),
-        "",
+        headers,
         "",
         true,
         [self = shared_from_this(), callback](bool success, const std::string& resp, DWORD error, DWORD httpStatusCode) {

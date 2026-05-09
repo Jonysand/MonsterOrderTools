@@ -13,6 +13,7 @@ namespace
 {
     const char* REG_SUBKEY = "Software\\MonsterOrderWilds";
     const char* REG_VALUE_NAME = "IdCode";
+    const char* REG_MANBO_API_KEY = "ManboApiKey";
 
     std::string ReadIdCodeFromRegistry()
     {
@@ -32,6 +33,24 @@ namespace
         return result;
     }
 
+    std::string ReadManboApiKeyFromRegistry()
+    {
+        std::string result;
+        HKEY hKey;
+        if (RegOpenKeyExA(HKEY_CURRENT_USER, REG_SUBKEY, 0, KEY_READ, &hKey) == ERROR_SUCCESS)
+        {
+            char buffer[256];
+            DWORD bufferSize = sizeof(buffer);
+            if (RegQueryValueExA(hKey, REG_MANBO_API_KEY, nullptr, nullptr, (LPBYTE)buffer, &bufferSize) == ERROR_SUCCESS)
+            {
+                buffer[min(bufferSize, (DWORD)(sizeof(buffer) - 1))] = '\0';
+                result = buffer;
+            }
+            RegCloseKey(hKey);
+        }
+        return result;
+    }
+
     bool WriteIdCodeToRegistry(const std::string& idCode)
     {
         HKEY hKey;
@@ -39,6 +58,19 @@ namespace
         if (RegCreateKeyExA(HKEY_CURRENT_USER, REG_SUBKEY, 0, nullptr, REG_OPTION_NON_VOLATILE, KEY_WRITE, nullptr, &hKey, &disp) == ERROR_SUCCESS)
         {
             RegSetValueExA(hKey, REG_VALUE_NAME, 0, REG_SZ, (const BYTE*)idCode.c_str(), idCode.length() + 1);
+            RegCloseKey(hKey);
+            return true;
+        }
+        return false;
+    }
+
+    bool WriteManboApiKeyToRegistry(const std::string& manboApiKey)
+    {
+        HKEY hKey;
+        DWORD disp;
+        if (RegCreateKeyExA(HKEY_CURRENT_USER, REG_SUBKEY, 0, nullptr, REG_OPTION_NON_VOLATILE, KEY_WRITE, nullptr, &hKey, &disp) == ERROR_SUCCESS)
+        {
+            RegSetValueExA(hKey, REG_MANBO_API_KEY, 0, REG_SZ, (const BYTE*)manboApiKey.c_str(), manboApiKey.length() + 1);
             RegCloseKey(hKey);
             return true;
         }
@@ -153,6 +185,7 @@ bool ConfigManager::LoadConfig()
 
         // 从注册表读取 idCode（无论配置文件是否存在都读取）
         config_.idCode = ReadIdCodeFromRegistry();
+        config_.manboApiKey = ReadManboApiKeyFromRegistry();
 
         dirty_ = false;
         return configLoaded;
@@ -162,6 +195,7 @@ bool ConfigManager::LoadConfig()
         LOG_ERROR(TEXT("ConfigManager: LoadConfig failed: %s"), e.what());
         // 即使加载失败，也尝试从注册表读取 idCode
         config_.idCode = ReadIdCodeFromRegistry();
+        config_.manboApiKey = ReadManboApiKeyFromRegistry();
         return false;
     }
 }
@@ -241,6 +275,14 @@ bool ConfigManager::SaveConfig(bool force)
             return false;
         }
 
+        // 将 manboApiKey 写入注册表
+        if (!WriteManboApiKeyToRegistry(config_.manboApiKey))
+        {
+            LOG_ERROR(TEXT("ConfigManager: Failed to write manboApiKey to registry"));
+            dirty_ = true;
+            return false;
+        }
+
         dirty_ = false;
         return true;
     }
@@ -276,6 +318,15 @@ void ConfigManager::SetIdCode(const std::string& value)
     lock_.lock();
     bool changed = config_.idCode != value;
     if (changed) { config_.idCode = value; dirty_ = true; }
+    lock_.unlock();
+    if (changed) NotifyConfigChanged();
+}
+
+void ConfigManager::SetManboApiKey(const std::string& value)
+{
+    lock_.lock();
+    bool changed = config_.manboApiKey != value;
+    if (changed) { config_.manboApiKey = value; dirty_ = true; }
     lock_.unlock();
     if (changed) NotifyConfigChanged();
 }

@@ -18,6 +18,7 @@ namespace MonsterOrderBridge
         {
             auto config = DataBridge::GetAllConfig();
             IdCode = gcnew System::String(config.idCode.c_str());
+            ManboApiKey = gcnew System::String(config.manboApiKey.c_str());
             OnlyMedalOrder = config.onlyMedalOrder;
             EnableVoice = config.enableVoice;
             SpeechRate = config.speechRate;
@@ -45,6 +46,7 @@ namespace MonsterOrderBridge
         {
             ConfigData data;
             data.idCode = msclr::interop::marshal_as<std::string>(IdCode);
+            data.manboApiKey = msclr::interop::marshal_as<std::string>(ManboApiKey);
             data.onlyMedalOrder = OnlyMedalOrder;
             data.enableVoice = EnableVoice;
             data.speechRate = SpeechRate;
@@ -79,6 +81,7 @@ namespace MonsterOrderBridge
 
         // 属性
         property System::String^ IdCode;
+        property System::String^ ManboApiKey;
         property bool OnlyMedalOrder;
         property bool EnableVoice;
         property int SpeechRate;

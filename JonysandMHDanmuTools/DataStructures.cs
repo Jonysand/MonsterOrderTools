@@ -10,6 +10,7 @@ namespace MonsterOrderWindows
     {
         // 基本配置
         public string IdCode;
+        public string ManboApiKey;
         public bool OnlyMedalOrder;
         public bool EnableVoice;
         public int SpeechRate;
@@ -50,6 +51,7 @@ namespace MonsterOrderWindows
             return new ConfigDataSnapshot
             {
                 IdCode = config.ID_CODE ?? "",
+                ManboApiKey = config.MANBO_API_KEY ?? "",
                 OnlyMedalOrder = config.ONLY_MEDAL_ORDER,
                 EnableVoice = config.ENABLE_VOICE,
                 SpeechRate = config.SPEECH_RATE,
@@ -80,6 +82,7 @@ namespace MonsterOrderWindows
         public void ApplyTo(MainConfig config)
         {
             config.ID_CODE = IdCode;
+            config.MANBO_API_KEY = ManboApiKey;
             config.ONLY_MEDAL_ORDER = OnlyMedalOrder;
             config.ENABLE_VOICE = EnableVoice;
             config.SPEECH_RATE = SpeechRate;

@@ -197,6 +197,7 @@ namespace MonsterOrderWindows
             _configHandlers = new Dictionary<string, Action<string, string>>
             {
                 ["ID_CODE"] = (k, v) => _Config.Config.ID_CODE = v,
+                ["MANBO_API_KEY"] = (k, v) => _Config.Config.MANBO_API_KEY = v,
                 ["ONLY_MEDAL_ORDER"] = (k, v) => _Config.Config.ONLY_MEDAL_ORDER = v == "1",
                 ["ENABLE_VOICE"] = (k, v) => _Config.Config.ENABLE_VOICE = v == "1",
                 ["SPEECH_RATE"] = (k, v) => { if (int.TryParse(v, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out int val)) _Config.Config.SPEECH_RATE = val; },

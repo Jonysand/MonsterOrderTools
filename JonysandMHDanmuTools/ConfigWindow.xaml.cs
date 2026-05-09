@@ -57,6 +57,9 @@ namespace MonsterOrderWindows
             ConfigProxy.Instance.RefreshFromConfig(config);
 
             IdentityCodeTextBox.Password = config.ID_CODE;
+            ManboApiKeyTextBox.Password = config.MANBO_API_KEY ?? "";
+            ManboApiKeyPlaceholder.Visibility =
+                string.IsNullOrEmpty(ManboApiKeyTextBox.Password) ? Visibility.Visible : Visibility.Collapsed;
             if (config.ONLY_MEDAL_ORDER)
                 OnlyMedalOrderCheckBox.IsChecked = true;
 
@@ -245,6 +248,14 @@ namespace MonsterOrderWindows
         {
             IdentityCodePlaceholder.Visibility =
                 string.IsNullOrEmpty(IdentityCodeTextBox.Password) ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private void ManboApiKeyTextBox_PasswordChanged(object sender, RoutedEventArgs e)
+        {
+            if (_isInitializing) return;
+            ManboApiKeyPlaceholder.Visibility =
+                string.IsNullOrEmpty(ManboApiKeyTextBox.Password) ? Visibility.Visible : Visibility.Collapsed;
+            GlobalEventListener.Invoke("ConfigChanged", "MANBO_API_KEY:" + ManboApiKeyTextBox.Password);
         }
 
         private void OnlyMedalOrderCheckBox_Changed(object sender, RoutedEventArgs e)

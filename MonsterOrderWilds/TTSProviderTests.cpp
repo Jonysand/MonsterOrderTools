@@ -147,9 +147,10 @@ void TestManboTTSProvider_BuildRequestUrl()
     req.text = "你好世界";
     
     std::string url = manbo.BuildRequestUrl(req);
-    assert(url.find("/api/speech/AiChat/") != std::string::npos);
-    assert(url.find("module=audio") != std::string::npos);
-    assert(url.find("voice=") != std::string::npos);
+    assert(url.find("/apis/mbAIscvip?text=") != std::string::npos);
+    assert(url.find("format=mp3") != std::string::npos);
+    assert(url.find("speed=") != std::string::npos);
+    assert(url.find("key=") != std::string::npos);
     
     std::cout << "[PASS] TestManboTTSProvider_BuildRequestUrl" << std::endl;
 }
@@ -157,11 +158,11 @@ void TestManboTTSProvider_BuildRequestUrl()
 void TestManboTTSProvider_ParseApiResponse_Success()
 {
     ManboTTSProvider manbo;
-    std::string responseBody = "{\"code\":200,\"message\":\"生成音频成功\",\"data\":{\"audio_url\":\"https://example.com/audio.wav\"}}";
+    std::string responseBody = "{\"code\":200,\"msg\":\"生成完成!\",\"url\":\"https://example.com/audio.mp3\"}";
     
     auto resp = manbo.ParseApiResponse(responseBody);
     assert(resp.success == true);
-    assert(resp.errorMsg == "https://example.com/audio.wav");
+    assert(resp.errorMsg == "https://example.com/audio.mp3");
     
     std::cout << "[PASS] TestManboTTSProvider_ParseApiResponse_Success" << std::endl;
 }
@@ -169,7 +170,7 @@ void TestManboTTSProvider_ParseApiResponse_Success()
 void TestManboTTSProvider_ParseApiResponse_Error()
 {
     ManboTTSProvider manbo;
-    std::string responseBody = "{\"code\":500,\"message\":\"服务器错误\"}";
+    std::string responseBody = "{\"code\":500,\"msg\":\"服务器错误\"}";
     
     auto resp = manbo.ParseApiResponse(responseBody);
     assert(resp.success == false);
@@ -198,6 +199,18 @@ void TestManboTTSProvider_IsAvailable()
     assert(manbo.GetLastError().empty());
     
     std::cout << "[PASS] TestManboTTSProvider_IsAvailable" << std::endl;
+}
+
+void TestManboTTSProvider_ParseApiResponse_MissingUrl()
+{
+    ManboTTSProvider manbo;
+    std::string responseBody = "{\"code\":200,\"msg\":\"成功\"}";
+    
+    auto resp = manbo.ParseApiResponse(responseBody);
+    assert(resp.success == false);
+    assert(!resp.errorMsg.empty());
+    
+    std::cout << "[PASS] TestManboTTSProvider_ParseApiResponse_MissingUrl" << std::endl;
 }
 
 void TestTTSProviderFactory_Create_ManboExplicit()
@@ -267,6 +280,7 @@ void RunTTSProviderTests()
     TestManboTTSProvider_ParseApiResponse_Success();
     TestManboTTSProvider_ParseApiResponse_Error();
     TestManboTTSProvider_ParseApiResponse_InvalidJson();
+    TestManboTTSProvider_ParseApiResponse_MissingUrl();
     TestManboTTSProvider_IsAvailable();
     // TestTTSProviderFactory_Create_Sapi();  // Requires SapiTTSProvider, disabled
     TestTTSProviderFactory_Create_Auto_ManboFirst();

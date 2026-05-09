@@ -30,6 +30,13 @@ namespace MonsterOrderWindows
             set { _idCode = value; OnPropertyChanged(); }
         }
 
+        private string _manboApiKey = "";
+        public string ManboApiKey
+        {
+            get => _manboApiKey;
+            set { _manboApiKey = value; OnPropertyChanged(); }
+        }
+
         private bool _onlyMedalOrder = true;
         public bool OnlyMedalOrder
         {
@@ -173,6 +180,7 @@ namespace MonsterOrderWindows
         public void RefreshFromConfig(MainConfig config)
         {
             IdCode = config.ID_CODE ?? "";
+            ManboApiKey = config.MANBO_API_KEY ?? "";
             OnlyMedalOrder = config.ONLY_MEDAL_ORDER;
             EnableVoice = config.ENABLE_VOICE;
             SpeechRate = config.SPEECH_RATE;
@@ -198,6 +206,7 @@ namespace MonsterOrderWindows
         public void ApplyToConfig(MainConfig config)
         {
             config.ID_CODE = IdCode;
+            config.MANBO_API_KEY = ManboApiKey;
             config.ONLY_MEDAL_ORDER = OnlyMedalOrder;
             config.ENABLE_VOICE = EnableVoice;
             config.SPEECH_RATE = SpeechRate;
