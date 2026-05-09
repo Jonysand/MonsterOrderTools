@@ -523,34 +523,9 @@ bool TTSManager::SpeakWithSapiSync(const TString& text)
 
 void CALLBACK TTSManager::SapiSpeakCallback(WPARAM wParam, LPARAM lParam)
 {
-    TTSManager* pManager = reinterpret_cast<TTSManager*>(wParam);
-    if (pManager == nullptr) return;
-
-    // UAF防护：检查实例是否仍然存活
-    if (!TTSManager::s_instanceAlive.load()) {
-        LOG_DEBUG(TEXT("TTS Async: SAPI callback received but instance already destroyed, skipping"));
-        return;
-    }
-
-    SPEVENT* pEvent = reinterpret_cast<SPEVENT*>(lParam);
-    if (pEvent == nullptr) return;
-
-    if (pEvent->eEventId == SPEI_STREAM_ENDED_ID) {
-        LOG_DEBUG(TEXT("TTS Async: SAPI SPEI_STREAM_ENDED received"));
-        std::lock_guard<std::recursive_mutex> lock(pManager->asyncMutex_);
-        // 二次检查：获取锁后再次确认实例存活
-        if (!TTSManager::s_instanceAlive.load()) {
-            LOG_DEBUG(TEXT("TTS Async: Instance destroyed after acquiring lock, skipping"));
-            return;
-        }
-        // 遍历队列找到正在播放的 SAPI 请求（修复：不假设 SAPI 请求在队首）
-        for (auto it = pManager->asyncPendingQueue_.begin(); it != pManager->asyncPendingQueue_.end(); ++it) {
-            if ((*it)->engineType == TTSEngineType::SAPI && (*it)->state == AsyncTTSState::Playing) {
-                (*it)->sapiStreamEnded = true;
-                break;
-            }
-        }
-    }
+    // SAPI SetNotifyCallbackFunction 需要线程有消息泵才能正常触发回调
+    // 此回调已弃用，改用 pVoice->GetStatus() 轮询检测播放完成
+    // 保留空函数以避免编译错误
 }
 
 void TTSManager::RefreshTTSProvider()
@@ -658,8 +633,9 @@ void TTSManager::ProcessAsyncTTS()
         }
     }
 
-	// 如果未达到并发上限，从队列取新的请求（遍历队列找 Pending，不只是检查队首）
-	while (activeRequestCount_ < MAX_CONCURRENT_TTS && !asyncPendingQueue_.empty()) {
+	// 从队列取新的请求（遍历队列找 Pending，不只是检查队首）
+	// SAPI 引擎已有串行控制，不受 MAX_CONCURRENT_TTS 限制；MiMo 引擎保留并发限制
+	while (!asyncPendingQueue_.empty()) {
 		bool startedAny = false;
 		for (auto it = asyncPendingQueue_.begin(); it != asyncPendingQueue_.end(); ++it) {
 			if ((*it)->state == AsyncTTSState::Pending) {
@@ -672,11 +648,12 @@ void TTSManager::ProcessAsyncTTS()
 						continue; // 跳过这个请求，继续查找下一个 Pending
 					}
 				}
-				// SAPI 请求需要串行播放：检查是否已有 SAPI 请求正在播放
+				// 判断是否使用 SAPI 引擎
 				bool willUseSapi = ((*it)->engineType == TTSEngineType::SAPI) ||
 					isFallback ||
 					(ttsProvider && ttsProvider->GetProviderName() == "sapi");
 				if (willUseSapi) {
+					// SAPI 请求需要串行播放：检查是否已有 SAPI 请求正在播放
 					bool hasSapiPlaying = false;
 					for (auto& req : asyncPendingQueue_) {
 						if (req->engineType == TTSEngineType::SAPI && req->state == AsyncTTSState::Playing) {
@@ -688,6 +665,13 @@ void TTSManager::ProcessAsyncTTS()
 						LOG_DEBUG(TEXT("TTS Async: SAPI request queued, waiting for previous to complete: %s"),
 							(*it)->text.c_str());
 						continue; // 跳过这个SAPI请求，继续查找下一个非SAPI的Pending请求
+					}
+					// SAPI 引擎：不受 MAX_CONCURRENT_TTS 限制，由串行控制保证顺序
+				} else {
+					// MiMo 引擎：检查并发上限
+					if (activeRequestCount_ >= MAX_CONCURRENT_TTS) {
+						LOG_DEBUG(TEXT("TTS Async: MiMo concurrent limit reached (%d), skipping"), activeRequestCount_.load());
+						continue;
 					}
 				}
 
@@ -773,13 +757,11 @@ void TTSManager::ProcessPendingRequestInternal(std::list<std::shared_ptr<AsyncTT
             HRESULT hr = pVoice->Speak(ssml.c_str(), SPF_IS_XML | SPF_ASYNC, NULL);
             if (SUCCEEDED(hr)) {
                 LOG_DEBUG(TEXT("TTS Async: SAPI Speak started with SPF_ASYNC"));
-                pVoice->SetNotifyCallbackFunction(SapiSpeakCallback, (WPARAM)this, 0);
-                ULONGLONG interestMask = SPFEI(SPEI_STREAM_ENDED_ID);
-                pVoice->SetInterest(interestMask, interestMask);
                 if (req.callback) {
                     req.callback(true, "");
                 }
-            } else {
+            }
+            else {
                 LOG_ERROR(TEXT("TTS Async: SAPI Speak failed, hr=0x%08X"), hr);
                 req.state = AsyncTTSState::Failed;
                 req.errorMessage = "SAPI speak failed";
@@ -923,7 +905,7 @@ void TTSManager::ProcessPlayingStateInternal(AsyncTTSRequest& req)
 {
     // 注意：此函数在ProcessAsyncTTS持有asyncMutex_时被调用，不要再获取锁
 
-    // 处理 SAPI 请求完成
+    // 处理 SAPI 请求完成：使用 pVoice->GetStatus() 轮询检测（SetNotifyCallbackFunction 需要消息泵）
     if (req.engineType == TTSEngineType::SAPI) {
         if (req.sapiStreamEnded) {
             LOG_INFO(TEXT("TTS Async: SAPI playback completed (SPEI_STREAM_ENDED)"));
@@ -932,8 +914,21 @@ void TTSManager::ProcessPlayingStateInternal(AsyncTTSRequest& req)
             lastFailureTime = std::chrono::steady_clock::now();
             return;
         }
-        
-        // SAPI 播放超时检查：防止回调丢失导致永久占用并发槽
+
+        // 轮询 pVoice->GetStatus() 检测播放完成
+        if (pVoice) {
+            SPVOICESTATUS status;
+            HRESULT hr = pVoice->GetStatus(&status, NULL);
+            if (SUCCEEDED(hr) && status.dwRunningState == SPRS_DONE) {
+                LOG_INFO(TEXT("TTS Async: SAPI playback completed (GetStatus: SPRS_DONE)"));
+                req.state = AsyncTTSState::Completed;
+                consecutiveFailures = 0;
+                lastFailureTime = std::chrono::steady_clock::now();
+                return;
+            }
+        }
+
+        // SAPI 播放超时检查：防止永久占用并发槽
         if (SAPI_PLAYBACK_TIMEOUT_SECONDS > 0 && req.playbackStartTime != std::chrono::steady_clock::time_point()) {
             auto now = std::chrono::steady_clock::now();
             auto playbackElapsed = std::chrono::duration_cast<std::chrono::seconds>(now - req.playbackStartTime).count();
