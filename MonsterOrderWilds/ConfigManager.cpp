@@ -169,6 +169,9 @@ bool ConfigManager::LoadConfig()
             try { if (j.contains("MIMO_AUDIO_FORMAT")) config_.mimoAudioFormat = j["MIMO_AUDIO_FORMAT"].get<std::string>(); }
             catch (const std::exception& e) { LOG_DEBUG(TEXT("ConfigManager: MIMO_AUDIO_FORMAT wrong type, using default: %s"), e.what()); }
 
+            try { if (j.contains("MANBO_VOICE")) config_.manboVoice = j["MANBO_VOICE"].get<std::string>(); }
+            catch (const std::exception& e) { LOG_DEBUG(TEXT("ConfigManager: MANBO_VOICE wrong type, using default: %s"), e.what()); }
+
             try { if (j.contains("TTS_CACHE_DAYS_TO_KEEP")) config_.ttsCacheDaysToKeep = j["TTS_CACHE_DAYS_TO_KEEP"].get<int>(); }
             catch (const std::exception& e) { LOG_DEBUG(TEXT("ConfigManager: TTS_CACHE_DAYS_TO_KEEP wrong type, using default: %s"), e.what()); }
 
@@ -236,6 +239,7 @@ bool ConfigManager::SaveConfig(bool force)
         j["MIMO_VOICE"] = config_.mimoVoice;
         j["MIMO_STYLE"] = config_.mimoStyle;
         j["MIMO_AUDIO_FORMAT"] = config_.mimoAudioFormat;
+        j["MANBO_VOICE"] = config_.manboVoice;
 
         j["TTS_CACHE_DAYS_TO_KEEP"] = config_.ttsCacheDaysToKeep;
 
@@ -327,6 +331,15 @@ void ConfigManager::SetManboApiKey(const std::string& value)
     lock_.lock();
     bool changed = config_.manboApiKey != value;
     if (changed) { config_.manboApiKey = value; dirty_ = true; }
+    lock_.unlock();
+    if (changed) NotifyConfigChanged();
+}
+
+void ConfigManager::SetManboVoice(const std::string& value)
+{
+    lock_.lock();
+    bool changed = config_.manboVoice != value;
+    if (changed) { config_.manboVoice = value; dirty_ = true; }
     lock_.unlock();
     if (changed) NotifyConfigChanged();
 }

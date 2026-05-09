@@ -60,6 +60,51 @@ namespace MonsterOrderWindows
             ManboApiKeyTextBox.Password = config.MANBO_API_KEY ?? "";
             ManboApiKeyPlaceholder.Visibility =
                 string.IsNullOrEmpty(ManboApiKeyTextBox.Password) ? Visibility.Visible : Visibility.Collapsed;
+
+            // 填充音色列表
+            ManboVoiceComboBox.Items.Clear();
+            ManboVoiceComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem 
+            { 
+                Content = "曼波（付费）", 
+                Tag = "曼波" 
+            });
+            
+            foreach (var voice in ToolsMain.ManboVoiceList)
+            {
+                if (voice != "曼波")
+                {
+                    ManboVoiceComboBox.Items.Add(new System.Windows.Controls.ComboBoxItem 
+                    { 
+                        Content = voice, 
+                        Tag = voice 
+                    });
+                }
+            }
+            
+            // 选择保存的音色
+            string savedVoice = config.MANBO_VOICE ?? "曼波";
+            bool found = false;
+            foreach (System.Windows.Controls.ComboBoxItem item in ManboVoiceComboBox.Items)
+            {
+                if ((string)item.Tag == savedVoice)
+                {
+                    ManboVoiceComboBox.SelectedItem = item;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found && !string.IsNullOrEmpty(savedVoice))
+            {
+                // 如果保存的音色不在列表中，添加并选中
+                var newItem = new System.Windows.Controls.ComboBoxItem 
+                { 
+                    Content = savedVoice, 
+                    Tag = savedVoice 
+                };
+                ManboVoiceComboBox.Items.Add(newItem);
+                ManboVoiceComboBox.SelectedItem = newItem;
+            }
+
             if (config.ONLY_MEDAL_ORDER)
                 OnlyMedalOrderCheckBox.IsChecked = true;
 
@@ -256,6 +301,19 @@ namespace MonsterOrderWindows
             ManboApiKeyPlaceholder.Visibility =
                 string.IsNullOrEmpty(ManboApiKeyTextBox.Password) ? Visibility.Visible : Visibility.Collapsed;
             GlobalEventListener.Invoke("ConfigChanged", "MANBO_API_KEY:" + ManboApiKeyTextBox.Password);
+        }
+
+        private void ManboVoiceComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            if (_isInitializing) return;
+            if (ManboVoiceComboBox.SelectedItem is System.Windows.Controls.ComboBoxItem item)
+            {
+                string voice = item.Tag as string;
+                if (!string.IsNullOrEmpty(voice))
+                {
+                    GlobalEventListener.Invoke("ConfigChanged", $"MANBO_VOICE:{voice}");
+                }
+            }
         }
 
         private void OnlyMedalOrderCheckBox_Changed(object sender, RoutedEventArgs e)

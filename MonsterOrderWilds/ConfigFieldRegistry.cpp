@@ -26,6 +26,7 @@ void ConfigFieldRegistry::RegisterAll()
 
     REGISTER_FIELD("idCode", std::string, idCode, ConfigFieldType::String);
     REGISTER_FIELD("manboApiKey", std::string, manboApiKey, ConfigFieldType::String);
+    REGISTER_FIELD("manboVoice", std::string, manboVoice, ConfigFieldType::String);
 #if !ONLY_ORDER_MONSTER
     REGISTER_FIELD_WITH_CALLBACK("ttsEngine", std::string, ttsEngine, ConfigFieldType::String,
         [](ConfigData& cfg) {

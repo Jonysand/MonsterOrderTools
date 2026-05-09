@@ -11,6 +11,7 @@ struct ConfigData
     // 基本配置
     std::string idCode = "";
     std::string manboApiKey = "";
+    std::string manboVoice = "曼波";
     bool onlyMedalOrder = true;
     bool enableVoice = false;
     int speechRate = 0;
@@ -77,6 +78,7 @@ public:
     void SetMimoStyle(const std::string& value);
     void SetMimoAudioFormat(const std::string& value);
     void SetManboApiKey(const std::string& value);
+    void SetManboVoice(const std::string& value);
     void SetWindowPosition(double x, double y);
     void SetTtsCacheDaysToKeep(int value);
     void SetEnableCaptainCheckinAI(bool value);

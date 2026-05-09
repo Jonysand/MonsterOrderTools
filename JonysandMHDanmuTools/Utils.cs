@@ -159,6 +159,10 @@ namespace MonsterOrderWindows
                 () => GetString("manboApiKey"),
                 v => SetValue("manboApiKey", (string)v, ConfigFieldType.String));
 
+            Register("manboVoice", ConfigFieldType.String,
+                () => GetString("manboVoice"),
+                v => SetValue("manboVoice", (string)v, ConfigFieldType.String));
+
             Register("onlyMedalOrder", ConfigFieldType.Bool,
                 () => GetBool("onlyMedalOrder"),
                 v => SetValue("onlyMedalOrder", (bool)v, ConfigFieldType.Bool));
@@ -328,6 +332,12 @@ namespace MonsterOrderWindows
         {
             get => (string)ConfigFieldRegistry.Get("manboApiKey");
             set { ConfigFieldRegistry.Set("manboApiKey", value); OnPropertyChanged(); }
+        }
+
+        public String MANBO_VOICE
+        {
+            get => (string)ConfigFieldRegistry.Get("manboVoice");
+            set { ConfigFieldRegistry.Set("manboVoice", value); OnPropertyChanged(); }
         }
 
         public bool ONLY_MEDAL_ORDER

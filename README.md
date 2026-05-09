@@ -6,6 +6,19 @@
 
 所有变更详见 [openspec/changes/archive/](openspec/changes/archive/)
 
+## [v28] - 2026-05-09
+
+### Added
+- **Manbo TTS 音色选择**: 新增 184 种音色可选（除默认"曼波"外）
+  - UI 新增音色选择 ComboBox，"曼波（付费）"置顶显示
+  - 硬编码音色列表（184 项），覆盖新闻、动漫、方言、角色等多种风格
+  - 配置字段 `manboVoice` 全栈同步（C++ ConfigData ↔ C# MainConfig）
+  - 根据音色自动切换 API 端点：
+    - "曼波" → `/apis/mbAIscvip`（付费音色）
+    - 其他音色 → `/apis/AIvoice?speaker=<音色>`（免费音色）
+  - 两种端点使用相同的 `Authorization: Bearer <key>` 鉴权和响应格式
+  - 配置持久化到 JSON 和注册表，支持跨 session 保留选择
+
 ## [v27] - 2026-05-09
 
 ### Changed

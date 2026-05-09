@@ -38,16 +38,25 @@ std::string ManboTTSProvider::GetProviderName() const { return "manbo"; }
 std::string ManboTTSProvider::GetLastError() const { return lastError_; }
 
 std::string ManboTTSProvider::BuildRequestUrl(const TTSRequest& request) const {
-    std::string url = "/apis/mbAIscvip?text=";
-    url += UrlEncode(request.text);
-    url += "&format=mp3";
-
     ConfigData config = ConfigManager::Inst()->GetConfig();
-    int apiSpeed = config.speechRate * 5;
-    url += "&speed=" + std::to_string(apiSpeed);
-    url += "&key=" + UrlEncode(config.manboApiKey);
 
-    return url;
+    if (config.manboVoice == "\u66fc\u6ce2") {
+        // 现有端点
+        std::string url = "/apis/mbAIscvip?text=";
+        url += UrlEncode(request.text);
+        url += "&format=mp3";
+        int apiSpeed = config.speechRate * 5;
+        url += "&speed=" + std::to_string(apiSpeed);
+        url += "&key=" + UrlEncode(config.manboApiKey);
+        return url;
+    } else {
+        // 新端点
+        std::string url = "/apis/AIvoice?speaker=";
+        url += UrlEncode(config.manboVoice);
+        url += "&text=";
+        url += UrlEncode(request.text);
+        return url;
+    }
 }
 
 TTSResponse ManboTTSProvider::ParseApiResponse(const std::string& responseBody) const {

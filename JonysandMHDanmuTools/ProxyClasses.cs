@@ -37,6 +37,13 @@ namespace MonsterOrderWindows
             set { _manboApiKey = value; OnPropertyChanged(); }
         }
 
+        private string _manboVoice = "曼波";
+        public string ManboVoice
+        {
+            get => _manboVoice;
+            set { _manboVoice = value; OnPropertyChanged(); }
+        }
+
         private bool _onlyMedalOrder = true;
         public bool OnlyMedalOrder
         {
@@ -181,6 +188,7 @@ namespace MonsterOrderWindows
         {
             IdCode = config.ID_CODE ?? "";
             ManboApiKey = config.MANBO_API_KEY ?? "";
+            ManboVoice = config.MANBO_VOICE ?? "曼波";
             OnlyMedalOrder = config.ONLY_MEDAL_ORDER;
             EnableVoice = config.ENABLE_VOICE;
             SpeechRate = config.SPEECH_RATE;
@@ -207,6 +215,7 @@ namespace MonsterOrderWindows
         {
             config.ID_CODE = IdCode;
             config.MANBO_API_KEY = ManboApiKey;
+            config.MANBO_VOICE = ManboVoice;
             config.ONLY_MEDAL_ORDER = OnlyMedalOrder;
             config.ENABLE_VOICE = EnableVoice;
             config.SPEECH_RATE = SpeechRate;

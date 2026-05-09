@@ -33,6 +33,34 @@ namespace MonsterOrderWindows
         static private ConfigService _Config = null;
 
         static public bool IsOnlyOrderMonster { get; private set; } = false;
+        public static List<string> ManboVoiceList { get; private set; } = new List<string>
+        {
+            "曼波",
+            "撒娇学妹", "广告男声", "网文解说", "说唱小哥", "动漫小新", "萌娃",
+            "温和宝爸", "严厉大叔", "傲娇男声", "拽拽馒头", "生活小妙招", "春日甜妹", "清甜女声", "质感男声",
+            "东北能哥", "电竞解说", "水果舞曲", "做作夹子音", "感性女生", "和蔼奶奶", "清爽男大", "九小月",
+            "硬妹", "大耳小图", "电视广告", "心机御姐", "童话解说", "武则天", "懒小羊", "春节甜妹",
+            "动漫海绵", "直率英子", "情感语录", "侠客", "动漫解说", "甜美解说", "太乙", "军事解说",
+            "少儿故事", "皇上", "病弱少女", "川妹子", "译制片男II", "龅牙珍珍", "锤子哥", "甜美悦悦",
+            "强势妹", "小品艺术家", "生活导师", "播音旁白", "老婆婆", "黛玉", "康康舞曲", "小女孩",
+            "渊博小叔", "调皮公主", "电台广播", "娱乐扒妹II", "天津小哥", "暖心学姐", "美小羊", "柜哥",
+            "云龙哥", "台湾男生", "直播一姐", "小魔童", "上海阿姨", "悬疑解说", "猴哥", "译制片男",
+            "萌娃百科", "文艺男声", "稚气少女", "乒乓解说", "理智姐", "咆哮哥", "舌尖解说", "赛事解说",
+            "松弛男声", "可爱女生", "生活主播", "容嬷嬷", "章鱼哥哥", "东北老铁", "科技博主", "歌唱达人",
+            "新闻男声", "温柔淑女", "温柔播报", "港普男声2", "幺妹", "紫薇", "樱花小哥", "扒小编",
+            "翩翩公子", "广告男声2", "樱桃爷爷", "潮汕大叔", "太白", "纪录片解说", "知性女声", "清冷女声",
+            "康定情歌", "清新歌手", "八戒", "佩奇猪", "顾姐", "解说小帅", "台湾女生", "严厉老太",
+            "王小也", "如来佛祖", "熊二", "雅痞大叔", "亲切女声", "粤语男声", "宝宝冯", "电子馒头",
+            "小青", "心灵鸡汤", "娱乐扒妹", "知识讲解", "小姐姐", "米老哥", "狐狸姐姐", "广西表哥",
+            "重庆小伙", "亲切阿姨", "唐小鸭", "佛系馒头", "沉稳男声", "恐怖电影", "靓女", "京腔",
+            "英语女王", "游戏解说男", "河南大叔", "温柔女友", "湘普甜甜", "青岛小哥", "语音助手", "快板",
+            "港普男声", "TVB女声", "摇滚男生", "活泼女孩", "女少侠", "天线波波", "娱乐播报", "单口相声",
+            "促销男声", "情歌王", "甜美女孩", "傲娇大小姐", "养生丽姐", "温迪迪", "女儿国王", "歌唱女王",
+            "激扬男声", "病娇少女", "贺岁女娃", "广普", "旅游资讯", "大丫", "霸总", "沉稳解说",
+            "樱桃丸子", "古风男主", "派星星", "西安掌柜", "新闻女声", "阳光男生", "官方客服", "和大人",
+            "娱乐播报2", "温柔男声", "魅力女友", "阳光少年", "高冷男声", "春日部姐姐", "猴哥说唱", "东厂公公",
+            "商务殷语", "文艺女声"
+        };
 
         public void SetOnlyOrderMonsterMode(bool value)
         {
@@ -120,7 +148,7 @@ namespace MonsterOrderWindows
             }
 
             // 事件注册
-            GlobalEventListener.AddListener("LOG", (object msg) => SendCommand("LOG:" + msg.ToString()));
+            GlobalEventListener.AddListener("LOG", (object msg) => SendCommand("Log:" + msg.ToString()));
             GlobalEventListener.AddListener("OrderWindowLocked", (object msg) => OnOrderWindowLocked());
             GlobalEventListener.AddListener("Message", (object msg) => OnOrderWindowLocked());
             GlobalEventListener.AddListener("ConfigChanged", (object msg) => ConfigChanged(msg));
@@ -198,6 +226,7 @@ namespace MonsterOrderWindows
             {
                 ["ID_CODE"] = (k, v) => _Config.Config.ID_CODE = v,
                 ["MANBO_API_KEY"] = (k, v) => _Config.Config.MANBO_API_KEY = v,
+                ["MANBO_VOICE"] = (k, v) => _Config.Config.MANBO_VOICE = v,
                 ["ONLY_MEDAL_ORDER"] = (k, v) => _Config.Config.ONLY_MEDAL_ORDER = v == "1",
                 ["ENABLE_VOICE"] = (k, v) => _Config.Config.ENABLE_VOICE = v == "1",
                 ["SPEECH_RATE"] = (k, v) => { if (int.TryParse(v, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out int val)) _Config.Config.SPEECH_RATE = val; },

@@ -266,6 +266,21 @@
                                                 Visibility="Visible" />
                                         </Grid>
                                     </Border>
+                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                        <Label
+                                            Content="音色选择"
+                                            VerticalAlignment="Center"
+                                            FontSize="14"
+                                            Foreground="#222"
+                                            Margin="0,0,8,0" />
+                                        <ComboBox
+                                            Name="ManboVoiceComboBox"
+                                            Width="150"
+                                            FontSize="14"
+                                            SelectionChanged="ManboVoiceComboBox_SelectionChanged">
+                                            <ComboBoxItem Content="曼波（付费）" Tag="曼波" />
+                                        </ComboBox>
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
                             <StackPanel Orientation="Horizontal" Margin="8,8,0,0"

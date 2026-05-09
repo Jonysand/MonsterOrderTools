@@ -140,19 +140,52 @@ void TestXiaomiTTSProvider_ParseResponse_Error()
     std::cout << "[PASS] TestXiaomiTTSProvider_ParseResponse_Error" << std::endl;
 }
 
-void TestManboTTSProvider_BuildRequestUrl()
+void TestManboTTSProvider_BuildRequestUrl_DefaultVoice()
 {
     ManboTTSProvider manbo;
     TTSRequest req;
     req.text = "你好世界";
     
+    // 设置默认音色为"曼波"
+    ConfigManager::Inst()->SetManboVoice("曼波");
+    ConfigManager::Inst()->SetSpeechRate(0);
+    ConfigManager::Inst()->SetManboApiKey("test_key");
+    
     std::string url = manbo.BuildRequestUrl(req);
     assert(url.find("/apis/mbAIscvip?text=") != std::string::npos);
     assert(url.find("format=mp3") != std::string::npos);
     assert(url.find("speed=") != std::string::npos);
-    assert(url.find("key=") != std::string::npos);
+    assert(url.find("key=test_key") != std::string::npos);
     
-    std::cout << "[PASS] TestManboTTSProvider_BuildRequestUrl" << std::endl;
+    std::cout << "[PASS] TestManboTTSProvider_BuildRequestUrl_DefaultVoice" << std::endl;
+}
+
+void TestManboTTSProvider_BuildRequestUrl_OtherVoice()
+{
+    ManboTTSProvider manbo;
+    TTSRequest req;
+    req.text = "hello";
+    
+    ConfigManager::Inst()->SetManboVoice("顾姐");
+    
+    std::string url = manbo.BuildRequestUrl(req);
+    assert(url.find("/apis/AIvoice") != std::string::npos);
+    assert(url.find("speaker=%E9%A1%BE%E5%A7%90") != std::string::npos); // URL encoded
+    assert(url.find("text=hello") != std::string::npos);
+    std::cout << "[PASS] TestManboTTSProvider_BuildRequestUrl_OtherVoice" << std::endl;
+    
+    // 恢复默认值
+    ConfigManager::Inst()->SetManboVoice("曼波");
+}
+
+void TestManboTTSProvider_ParseApiResponse_NewEndpoint()
+{
+    ManboTTSProvider manbo;
+    std::string json = R"({"code":200,"msg":"生成完成!","url":"http://example.com/test.mp3","api_source":"test"})";
+    TTSResponse resp = manbo.ParseApiResponse(json);
+    assert(resp.success == true);
+    assert(resp.errorMsg == "http://example.com/test.mp3");
+    std::cout << "[PASS] TestManboTTSProvider_ParseApiResponse_NewEndpoint" << std::endl;
 }
 
 void TestManboTTSProvider_ParseApiResponse_Success()
@@ -276,7 +309,9 @@ void RunTTSProviderTests()
     TestXiaomiTTSProvider_BuildRequestHeaders();
     TestXiaomiTTSProvider_ParseResponse_Success();
     TestXiaomiTTSProvider_ParseResponse_Error();
-    TestManboTTSProvider_BuildRequestUrl();
+    TestManboTTSProvider_BuildRequestUrl_DefaultVoice();
+    TestManboTTSProvider_BuildRequestUrl_OtherVoice();
+    TestManboTTSProvider_ParseApiResponse_NewEndpoint();
     TestManboTTSProvider_ParseApiResponse_Success();
     TestManboTTSProvider_ParseApiResponse_Error();
     TestManboTTSProvider_ParseApiResponse_InvalidJson();
