@@ -118,8 +118,8 @@ public:
 	static constexpr int MAX_ASYNC_QUEUE_SIZE = 0;      // 队列大小限制（0=不限制）
 	static constexpr int MAX_RETRY_COUNT = 5;           // 最大重试次数
 	static constexpr int RETRY_INTERVAL_MS = 500;       // 重试间隔（毫秒）
-	static constexpr int API_TIMEOUT_SECONDS = 5;		// API请求超时（秒）
-	static constexpr int MAX_TOTAL_TIMEOUT_SECONDS = 15;	// 请求总超时上限（秒），防止重试后无限等待
+	static constexpr int API_TIMEOUT_SECONDS = 3;		// API请求超时（秒）
+	static constexpr int MAX_TOTAL_TIMEOUT_SECONDS = 12;	// 请求总超时上限（秒），防止重试后无限等待
 	static constexpr int PLAYBACK_TIMEOUT_SECONDS = 60;		// 播放超时（秒）
 	static constexpr int SAPI_PLAYBACK_TIMEOUT_SECONDS = 30;	// SAPI播放超时（秒），防止回调丢失导致卡死
 	static constexpr int GIFT_COOLDOWN_SECONDS = 5;
@@ -219,6 +219,6 @@ private:
 	std::chrono::steady_clock::time_point lastFailureTime;  // 上次失败时间
 	std::chrono::steady_clock::time_point lastRecoveryAttempt;  // 上次恢复尝试时间
 	static constexpr int MAX_CONSECUTIVE_FAILURES = 3;  // 最大连续失败次数
-	static constexpr int RECOVERY_INTERVAL_SECONDS = 300;  // 恢复尝试间隔（秒）
+	static constexpr int RECOVERY_INTERVAL_SECONDS = 10;  // 恢复尝试间隔（秒）
 	static constexpr int64_t COOLDOWN_CLEANUP_INTERVAL_MS = 60000;  // 冷却清理间隔（毫秒）
 };

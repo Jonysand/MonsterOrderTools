@@ -888,8 +888,8 @@ void TTSManager::ProcessRequestingStateInternal(AsyncTTSRequest& req)
         LOG_WARNING(TEXT("TTS Async: API request timeout (%lld seconds)"), (long long)elapsed);
         // 不在这里标记失败，因为HTTP回调可能还在处理中
         // 等到下次Tick，如果audioData有数据会转为Playing，没有才会真正失败
-        // 为了避免无限等待，最多等待2个额外的超时周期
-        if (elapsed >= API_TIMEOUT_SECONDS * 3) {
+        // 为了避免无限等待，最多等待1个额外的超时周期
+        if (elapsed >= API_TIMEOUT_SECONDS * 2) {
             // Race condition guard: double-check state and audioData before handling failure
             // HTTP callback might have just completed between the audioData check above and now
             if (req.state == AsyncTTSState::Requesting && req.audioData.empty()) {
@@ -1151,15 +1151,6 @@ void TTSManager::TryRecovery()
 {
 
     if (!ttsProvider) {
-        return;
-    }
-
-    // 手动模式下，如果用户明确选择了非SAPI引擎但已fallback，不自动恢复
-    // 避免API key过期时反复fallback/恢复的死循环
-    // 用户可通过手动切换设置来强制刷新引擎
-    if (IsManualEngineMode() && isFallback && userSelectedEngineName_ != "sapi") {
-        LOG_INFO(TEXT("TTS: Manual engine mode with fallback, skipping auto-recovery. User can refresh engine via settings."));
-        lastRecoveryAttempt = std::chrono::steady_clock::now();
         return;
     }
 

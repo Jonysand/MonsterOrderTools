@@ -6,6 +6,23 @@
 
 所有变更详见 [openspec/changes/archive/](openspec/changes/archive/)
 
+## [v30] - 2026-05-10
+
+### Changed
+- **TTS 超时优化**: 缩短 API 超时判定时间，减少失败请求队列积压
+  - `API_TIMEOUT_SECONDS`: 5秒 → 3秒
+  - `MAX_TOTAL_TIMEOUT_SECONDS`: 15秒 → 12秒
+  - 超时倍数: `×3` → `×2`（失败判定从15秒缩短到6秒）
+  - 效果: TTS API 失败后更快释放并发槽，减少队列阻塞
+
+- **TTS 恢复间隔缩短**: `RECOVERY_INTERVAL_SECONDS`: 300秒(5分钟) → 10秒
+  - API fallback 到 SAPI 后，每10秒尝试恢复，而非5分钟
+  - 更快检测 API 可用性，及时切回在线语音
+
+- **手动模式自动恢复**: 移除手动模式下跳过自动恢复的限制
+  - 此前手动选择非SAPI引擎后 fallback 不会自动恢复（避免API key过期死循环）
+  - 现在所有模式下统一每10秒尝试恢复，用户体验更一致
+
 ## [v29] - 2026-05-09
 
 ### Added
