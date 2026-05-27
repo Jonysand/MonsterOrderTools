@@ -6,6 +6,25 @@
 
 所有变更详见 [openspec/changes/archive/](openspec/changes/archive/)
 
+## [v33] - 2026-05-27
+
+### Added
+- **舰长打卡记录导出**: 新增导出按钮和选项对话框，支持按用户昵称筛选导出详细记录或所有用户汇总数据
+  - 支持 CSV/JSON 格式，UTF-8 BOM 编码
+  - 新增 `ProfileManager_ExportUsersSummary` API 和 `ExportOptionsDialog` 对话框
+
+### Fixed
+- **TTS API 失败即时 SAPI Fallback**: API 请求失败后立即切换 SAPI 播放同一条弹幕，不再丢弃消息
+  - 根因: API 持续不可用时，旧逻辑重试 5 次耗时 12 秒后才 fallback，且 recovery 过于激进导致反复竞争，消息被丢弃
+  - 修复: `MAX_RETRY_COUNT` 5→0，`MAX_TOTAL_TIMEOUT_SECONDS` 12→3，API 失败一次（3s）即转 SAPI
+  - 新增 5 秒冷却机制: API 失败后 5 秒内所有新请求直接走 SAPI，冷却到期后自动重试 API
+  - HTTP 回调保护: Manbo 响应到达时如果请求已转 SAPI，忽略迟到的响应避免状态冲突
+  - `TryRecovery` 简化: 移除不可靠的 `IsAvailable()` 测试请求，冷却到期后直接清除 fallback，由下一个真实请求验证 API
+
+- **TTS SAPI pVoice 重建机制**: pVoice 损坏时自动重建，防止 SAPI 播放永久失效
+  - 新增 `RecreateSapiVoice()` 方法，`SpeakWithSapi`/`SpeakWithSapiSync` 失败时自动重建并重试
+  - `activeRequestCount_` 下溢保护，防止并发限制失效
+
 ## [v32] - 2026-05-27
 
 ### Fixed

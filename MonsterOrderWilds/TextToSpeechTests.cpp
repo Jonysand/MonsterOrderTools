@@ -44,14 +44,14 @@ void TestAsyncTTSRequestResetTiming() {
 }
 
 void TestMaxTotalTimeoutConstant() {
-    // 验证总超时上限常量设置合理（应该大于 TTSManager::API_TIMEOUT_SECONDS 但小于重试最坏情况）
+    // 验证总超时上限常量设置合理（应该 >= TTSManager::API_TIMEOUT_SECONDS）
     char buf[256];
-    if (TTSManager::TTSManager::MAX_TOTAL_TIMEOUT_SECONDS > TTSManager::TTSManager::API_TIMEOUT_SECONDS) {
-        snprintf(buf, sizeof(buf), "[PASS] TestMaxTotalTimeoutConstant - TTSManager::MAX_TOTAL_TIMEOUT_SECONDS (%d) > TTSManager::API_TIMEOUT_SECONDS (%d)", 
+    if (TTSManager::TTSManager::MAX_TOTAL_TIMEOUT_SECONDS >= TTSManager::TTSManager::API_TIMEOUT_SECONDS) {
+        snprintf(buf, sizeof(buf), "[PASS] TestMaxTotalTimeoutConstant - TTSManager::MAX_TOTAL_TIMEOUT_SECONDS (%d) >= TTSManager::API_TIMEOUT_SECONDS (%d)", 
             TTSManager::TTSManager::MAX_TOTAL_TIMEOUT_SECONDS, TTSManager::TTSManager::API_TIMEOUT_SECONDS);
         TestLog(buf);
     } else {
-        TestLog("[FAIL] TestMaxTotalTimeoutConstant - TTSManager::MAX_TOTAL_TIMEOUT_SECONDS should be > TTSManager::API_TIMEOUT_SECONDS");
+        TestLog("[FAIL] TestMaxTotalTimeoutConstant - TTSManager::MAX_TOTAL_TIMEOUT_SECONDS should be >= TTSManager::API_TIMEOUT_SECONDS");
     }
     
     // 验证总超时上限不超过 30 秒（避免用户体验太差）
@@ -64,13 +64,13 @@ void TestMaxTotalTimeoutConstant() {
 }
 
 void TestRetryCountLimit() {
-    // 验证重试次数常量
+    // 验证重试次数常量（0=不重试，失败直接切SAPI）
     char buf[256];
-    if (TTSManager::MAX_RETRY_COUNT == 5) {
-        snprintf(buf, sizeof(buf), "[PASS] TestRetryCountLimit - TTSManager::MAX_RETRY_COUNT is 5 as expected");
+    if (TTSManager::MAX_RETRY_COUNT == 0) {
+        snprintf(buf, sizeof(buf), "[PASS] TestRetryCountLimit - TTSManager::MAX_RETRY_COUNT is 0 (no retry, immediate SAPI fallback)");
         TestLog(buf);
     } else {
-        snprintf(buf, sizeof(buf), "[FAIL] TestRetryCountLimit - TTSManager::MAX_RETRY_COUNT should be 5, got %d", TTSManager::MAX_RETRY_COUNT);
+        snprintf(buf, sizeof(buf), "[FAIL] TestRetryCountLimit - TTSManager::MAX_RETRY_COUNT should be 0, got %d", TTSManager::MAX_RETRY_COUNT);
         TestLog(buf);
     }
 }

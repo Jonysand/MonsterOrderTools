@@ -58,6 +58,7 @@ struct AsyncTTSRequest
 	int speed = 0;                          // 语速
 	bool playbackStarted = false;            // 是否已开始播放
 	bool sapiStreamEnded = false;            // SAPI流是否已结束
+	bool hasTriedSapiFallback = false;       // 是否已尝试过 SAPI fallback（防止无限循环）
 	std::function<void(bool success, const std::string& errorMsg)> callback;  // 完成回调
 };
 
@@ -116,14 +117,15 @@ public:
 	// TTS 超时和并发控制常量
 	static constexpr int MAX_CONCURRENT_TTS = 2;      // API并发请求数
 	static constexpr int MAX_ASYNC_QUEUE_SIZE = 0;      // 队列大小限制（0=不限制）
-	static constexpr int MAX_RETRY_COUNT = 5;           // 最大重试次数
-	static constexpr int RETRY_INTERVAL_MS = 500;       // 重试间隔（毫秒）
+	static constexpr int MAX_RETRY_COUNT = 0;           // 最大重试次数（0=不重试，失败直接切SAPI）
+	static constexpr int RETRY_INTERVAL_MS = 0;         // 重试间隔（毫秒）
 	static constexpr int API_TIMEOUT_SECONDS = 3;		// API请求超时（秒）
-	static constexpr int MAX_TOTAL_TIMEOUT_SECONDS = 12;	// 请求总超时上限（秒），防止重试后无限等待
+	static constexpr int MAX_TOTAL_TIMEOUT_SECONDS = 3;	// 请求总超时上限（秒），与API_TIMEOUT一致，快速失败
 	static constexpr int PLAYBACK_TIMEOUT_SECONDS = 60;		// 播放超时（秒）
 	static constexpr int SAPI_PLAYBACK_TIMEOUT_SECONDS = 30;	// SAPI播放超时（秒），防止回调丢失导致卡死
 	static constexpr int GIFT_COOLDOWN_SECONDS = 5;
 	static constexpr int DYNAMIC_COMBO_WINDOW_SECONDS = 10;
+	static constexpr int API_COOLDOWN_SECONDS = 5;     // API失败后冷却时间（秒），冷却期间直接走SAPI
 	// 实例存活标志，用于防止SAPI回调中的UAF
 	static std::atomic<bool> s_instanceAlive;
 
@@ -220,6 +222,7 @@ private:
 	std::atomic<int> consecutiveFailures{ 0 };          // 连续失败次数
 	std::chrono::steady_clock::time_point lastFailureTime;  // 上次失败时间
 	std::chrono::steady_clock::time_point lastRecoveryAttempt;  // 上次恢复尝试时间
+	std::chrono::steady_clock::time_point apiCooldownExpiry;  // API冷却到期时间（冷却期间直接走SAPI）
 	static constexpr int MAX_CONSECUTIVE_FAILURES = 3;  // 最大连续失败次数
 	static constexpr int RECOVERY_INTERVAL_SECONDS = 10;  // 恢复尝试间隔（秒）
 	static constexpr int64_t COOLDOWN_CLEANUP_INTERVAL_MS = 60000;  // 冷却清理间隔（毫秒）

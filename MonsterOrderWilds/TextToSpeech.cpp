@@ -523,6 +523,11 @@ TTSEngineType TTSManager::GetActiveEngineType() const
     if (isFallback) {
         return TTSEngineType::SAPI;
     }
+    // API冷却期间直接走SAPI，避免重复尝试不可用的API
+    auto now = std::chrono::steady_clock::now();
+    if (now < apiCooldownExpiry) {
+        return TTSEngineType::SAPI;
+    }
     const auto& config = ConfigManager::Inst()->GetConfig();
     if (config.ttsEngine.empty() || config.ttsEngine == "auto") {
         return TTSEngineType::Auto;
@@ -699,8 +704,11 @@ void TTSManager::ProcessAsyncTTS()
 					}
 				}
 				// 判断是否使用 SAPI 引擎
+				auto now = std::chrono::steady_clock::now();
 				bool willUseSapi = ((*it)->engineType == TTSEngineType::SAPI) ||
 					isFallback ||
+					(now < apiCooldownExpiry) ||
+					((*it)->hasTriedSapiFallback) ||
 					(ttsProvider && ttsProvider->GetProviderName() == "sapi");
 				if (willUseSapi) {
 					// SAPI 请求需要串行播放：检查是否已有 SAPI 请求正在播放
@@ -886,6 +894,11 @@ void TTSManager::ProcessPendingRequestInternal(std::list<std::shared_ptr<AsyncTT
                 reqPtr->callback(true, "");
             }
         } else {
+            // 如果请求已转到SAPI fallback，忽略迟到的API响应
+            if (reqPtr->hasTriedSapiFallback && reqPtr->engineType == TTSEngineType::SAPI) {
+                LOG_INFO(TEXT("TTS Async: Ignoring late API response, request already switched to SAPI"));
+                return;
+            }
             reqPtr->errorMessage = response.errorMsg;
             LOG_ERROR(TEXT("TTS Async: API request failed (HTTP %d): %s"), response.httpStatusCode, utf8_to_wstring(response.errorMsg).c_str());
             if (HandleRequestFailureInternal(*reqPtr) && reqPtr->callback) {
@@ -920,14 +933,28 @@ void TTSManager::ProcessRequestingStateInternal(AsyncTTSRequest& req)
     if (totalElapsed >= MAX_TOTAL_TIMEOUT_SECONDS) {
         LOG_WARNING(TEXT("TTS Async: Total request timeout (%lld seconds), forcing failure"), (long long)totalElapsed);
         if (req.state == AsyncTTSState::Requesting && req.audioData.empty()) {
-            // 强制标记为失败，不再重试或切换Provider
-            // 注意：不在这里递减 activeRequestCount_，由 ProcessAsyncTTS 的清理循环统一处理
+            // 尝试SAPI fallback：设置冷却并转SAPI重新排队
+            if (!req.hasTriedSapiFallback) {
+                req.hasTriedSapiFallback = true;
+                req.engineType = TTSEngineType::SAPI;
+                req.state = AsyncTTSState::Pending;
+                req.retryCount = 0;
+                req.requestStartTime = std::chrono::steady_clock::now();
+                req.totalStartTime = std::chrono::steady_clock::now();
+                auto now = std::chrono::steady_clock::now();
+                apiCooldownExpiry = now + std::chrono::seconds(API_COOLDOWN_SECONDS);
+                isFallback = true;
+                if (activeRequestCount_ > 0) activeRequestCount_--;
+                LOG_WARNING(TEXT("TTS Async: Total timeout, switching to SAPI fallback (cooldown %ds)"), API_COOLDOWN_SECONDS);
+                return;
+            }
+            // 已试过SAPI仍然失败，标记真正失败
             req.state = AsyncTTSState::Failed;
             req.errorMessage = "Total timeout exceeded";
             consecutiveFailures = MAX_CONSECUTIVE_FAILURES;
             lastFailureTime = now;
             TriggerFallback();
-            LOG_ERROR(TEXT("TTS Async: Request failed after total timeout (%llds), fallback triggered"), (long long)totalElapsed);
+            LOG_ERROR(TEXT("TTS Async: Request failed after total timeout (%llds), even with SAPI fallback"), (long long)totalElapsed);
             if (req.callback) {
                 req.callback(false, req.errorMessage);
             }
@@ -1098,62 +1125,43 @@ bool TTSManager::TrySwitchToNextProvider()
 bool TTSManager::HandleRequestFailureInternal(AsyncTTSRequest& req)
 {
     // 注意：此函数在ProcessAsyncTTS持有asyncMutex_时被调用，不要再获取锁
-    // 返回值：true = 请求真正失败（不再重试），false = 正在重试
+    // 返回值：true = 请求真正失败（不再重试），false = 正在重试/SAPI fallback
 
     // Race condition guard: only handle failure if request is still in an expected state
-    // If state has already changed to Playing/Completed/Failed (by callback or other logic), skip
     if (req.state != AsyncTTSState::Requesting && req.state != AsyncTTSState::Playing) {
         LOG_DEBUG(TEXT("TTS Async: HandleRequestFailureInternal called but request state is %d, not Requesting/Playing. Skipping."), (int)req.state);
-        return false; // Already handled, don't trigger failure callback
+        return false;
     }
 
     // If audioData has arrived (callback completed just before we got the lock), don't fail
     if (!req.audioData.empty()) {
         LOG_INFO(TEXT("TTS Async: audioData arrived before failure handling, converting to Playing state"));
         req.state = AsyncTTSState::Playing;
-        return false; // Not a failure, will continue as Playing
-    }
-
-    // 重试逻辑
-    if (req.retryCount < MAX_RETRY_COUNT) {
-        req.retryCount++;
-        req.state = AsyncTTSState::Pending;  // 重置为Pending，重新请求
-        req.retryAfterTime = std::chrono::steady_clock::now() + std::chrono::milliseconds(RETRY_INTERVAL_MS);
-        req.errorMessage.clear(); // 重置错误消息，避免旧错误误导
-        activeRequestCount_--;  // Bug #3 fix: decrement to avoid double-counting when second loop picks it up
-        LOG_WARNING(TEXT("TTS Async: Retrying request (%d/%d) after %dms"), req.retryCount, MAX_RETRY_COUNT, RETRY_INTERVAL_MS);
         return false;
     }
 
-    // 重试次数用尽，尝试降级到下一个Provider
-    if (TrySwitchToNextProvider()) {
-        req.retryCount = 0;  // 重置重试次数，使用新Provider重试
+    // API失败 → 立即尝试SAPI fallback（一次失败即切换，不重试API）
+    if (!req.hasTriedSapiFallback) {
+        req.hasTriedSapiFallback = true;
+        req.engineType = TTSEngineType::SAPI;
         req.state = AsyncTTSState::Pending;
-        req.retryAfterTime = std::chrono::steady_clock::time_point(); // 清除重试等待，立即启动新Provider请求
-        req.errorMessage.clear(); // 重置错误消息
-        activeRequestCount_--;
+        req.retryCount = 0;
+        req.requestStartTime = std::chrono::steady_clock::now();
+        req.totalStartTime = std::chrono::steady_clock::now();
+        req.errorMessage.clear();
+        auto now = std::chrono::steady_clock::now();
+        apiCooldownExpiry = now + std::chrono::seconds(API_COOLDOWN_SECONDS);
         isFallback = true;
-        fallbackReason = "Provider switched after retries exhausted";
-        LOG_WARNING(TEXT("TTS Async: Provider switched, retrying with new provider (fallback=true)"));
+        if (activeRequestCount_ > 0) activeRequestCount_--;
+        LOG_WARNING(TEXT("TTS Async: API failed, switching to SAPI fallback (cooldown %ds)"), API_COOLDOWN_SECONDS);
         return false;
     }
 
-    // 重试次数用尽且无法降级，标记失败
+    // 已试过SAPI仍然失败，标记真正失败
     req.state = AsyncTTSState::Failed;
-    LOG_ERROR(TEXT("TTS Async: Request failed after %d retries"), req.retryCount);
-
-    // 记录失败，用于降级判断
+    LOG_ERROR(TEXT("TTS Async: Request failed even with SAPI fallback"));
     consecutiveFailures++;
     lastFailureTime = std::chrono::steady_clock::now();
-
-    // 手动模式下重试耗尽后立即触发 fallback（不等连续失败累积），确保下一条弹幕走恢复流程
-    if (IsManualEngineMode() || consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-        TriggerFallback();
-    }
-
-    // 不在这里降级到SAPI，因为可能有其他请求正在播放
-    // audioPlayer是单例，调用Stop()会打断其他请求的播放
-    // 让失败的请求直接失败，不尝试SAPI降级播放
     return true;
 }
 
@@ -1169,6 +1177,7 @@ void TTSManager::RefreshEngineStatus()
 
     isFallback = false;
     consecutiveFailures = 0;
+    apiCooldownExpiry = std::chrono::steady_clock::time_point();
     LOG_INFO(TEXT("TTS engine status refreshed"));
 
 }
@@ -1195,9 +1204,9 @@ void TTSManager::TriggerFallback()
 
     if (!isFallback) {
         isFallback = true;
+        apiCooldownExpiry = std::chrono::steady_clock::now() + std::chrono::seconds(API_COOLDOWN_SECONDS);
         fallbackReason = "Consecutive failures exceeded limit";
-        LOG_WARNING(TEXT("TTS engine fallback triggered: switching to SAPI after %d consecutive failures"),
-            consecutiveFailures.load());
+        LOG_WARNING(TEXT("TTS engine fallback triggered: switching to SAPI (cooldown %ds)"), API_COOLDOWN_SECONDS);
     }
 
 }
@@ -1237,18 +1246,11 @@ void TTSManager::TryRecovery()
         }
     }
 
-    // Reset available flag to allow a test request
-    ttsProvider->ResetAvailable();
-
-    if (ttsProvider->IsAvailable()) {
-        isFallback = false;
-        consecutiveFailures = 0;
-        lastRecoveryAttempt = std::chrono::steady_clock::now();
-        LOG_INFO(TEXT("TTS recovery successful"));
-    } else {
-        lastRecoveryAttempt = std::chrono::steady_clock::now();
-        LOG_WARNING(TEXT("TTS recovery failed - API still not available"));
-    }
+    // 冷却到期，清除fallback状态，让下一个真实请求验证API是否恢复
+    isFallback = false;
+    consecutiveFailures = 0;
+    lastRecoveryAttempt = std::chrono::steady_clock::now();
+    LOG_INFO(TEXT("TTS recovery: cooldown expired, cleared fallback. Next request will test API."));
 
 }
 
@@ -1259,7 +1261,12 @@ bool TTSManager::ShouldTryRecovery() const
         return false;
     }
 
+    // 冷却期间不尝试恢复，等冷却到期
     auto now = std::chrono::steady_clock::now();
+    if (now < apiCooldownExpiry) {
+        return false;
+    }
+
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - lastRecoveryAttempt).count();
     return elapsed >= RECOVERY_INTERVAL_SECONDS;
 }
