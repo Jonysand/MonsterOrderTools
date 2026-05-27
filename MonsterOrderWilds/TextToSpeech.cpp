@@ -40,6 +40,10 @@ TTSManager::TTSManager()
         return; // Failed to initialize COM
     }
     hr = CoCreateInstance(CLSID_SpVoice, NULL, CLSCTX_ALL, IID_ISpVoice, (void**)&pVoice);
+    if (FAILED(hr)) {
+        LOG_ERROR(TEXT("TTSManager: CoCreateInstance failed, hr=0x%08X"), hr);
+        pVoice = NULL;
+    }
     LastTickTime = std::chrono::steady_clock::now();
     lastFailureTime = std::chrono::steady_clock::now();
     lastRecoveryAttempt = std::chrono::steady_clock::now();
@@ -465,6 +469,24 @@ std::wstring TTSManager::BuildSapiSsml(const TString& text)
     return L"<speak version='1.0' xml:lang='zh-CN'><prosody pitch='" + pitchStr + L"'>" + safeText + L"</prosody></speak>";
 }
 
+bool TTSManager::RecreateSapiVoice()
+{
+    // 注意：调用者需持有 sapiMutex_
+    if (pVoice != NULL) {
+        pVoice->WaitUntilDone(INFINITE);
+        pVoice->Release();
+        pVoice = NULL;
+    }
+    HRESULT hr = CoCreateInstance(CLSID_SpVoice, NULL, CLSCTX_ALL, IID_ISpVoice, (void**)&pVoice);
+    if (FAILED(hr)) {
+        LOG_ERROR(TEXT("RecreateSapiVoice: CoCreateInstance failed, hr=0x%08X"), hr);
+        pVoice = NULL;
+        return false;
+    }
+    LOG_INFO(TEXT("RecreateSapiVoice: pVoice recreated successfully"));
+    return true;
+}
+
 bool TTSManager::SpeakWithSapi(const TString& text)
 {
     std::lock_guard<std::mutex> lock(sapiMutex_);
@@ -472,14 +494,26 @@ bool TTSManager::SpeakWithSapi(const TString& text)
     LOG_DEBUG(TEXT("SpeakWithSapi: pVoice=%p"), pVoice);
 
     if (pVoice == NULL) {
-        LOG_ERROR(TEXT("SpeakWithSapi: pVoice is NULL, cannot speak"));
-        return false;
+        LOG_WARNING(TEXT("SpeakWithSapi: pVoice is NULL, attempting recreate"));
+        if (!RecreateSapiVoice()) {
+            return false;
+        }
     }
 
     SetupSapiVoiceParams(pVoice);
     std::wstring ssml = BuildSapiSsml(text);
     HRESULT hr = pVoice->Speak(ssml.c_str(), SPF_IS_XML | SPF_ASYNC, NULL);
     LOG_DEBUG(TEXT("SpeakWithSapi: Speak result=0x%08X"), hr);
+
+    if (FAILED(hr)) {
+        LOG_WARNING(TEXT("SpeakWithSapi: Speak failed (hr=0x%08X), attempting recreate"), hr);
+        if (RecreateSapiVoice()) {
+            SetupSapiVoiceParams(pVoice);
+            hr = pVoice->Speak(ssml.c_str(), SPF_IS_XML | SPF_ASYNC, NULL);
+            LOG_DEBUG(TEXT("SpeakWithSapi: Retry Speak result=0x%08X"), hr);
+        }
+    }
+
     return SUCCEEDED(hr);
 }
 
@@ -510,14 +544,26 @@ bool TTSManager::SpeakWithSapiSync(const TString& text)
     std::lock_guard<std::mutex> lock(sapiMutex_);
 
     if (pVoice == NULL) {
-        LOG_ERROR(TEXT("SpeakWithSapiSync: pVoice is NULL"));
-        return false;
+        LOG_WARNING(TEXT("SpeakWithSapiSync: pVoice is NULL, attempting recreate"));
+        if (!RecreateSapiVoice()) {
+            return false;
+        }
     }
 
     SetupSapiVoiceParams(pVoice);
     std::wstring ssml = BuildSapiSsml(text);
     HRESULT hr = pVoice->Speak(ssml.c_str(), SPF_IS_XML, NULL);
     LOG_DEBUG(TEXT("SpeakWithSapiSync: Speak result=0x%08X"), hr);
+
+    if (FAILED(hr)) {
+        LOG_WARNING(TEXT("SpeakWithSapiSync: Speak failed (hr=0x%08X), attempting recreate"), hr);
+        if (RecreateSapiVoice()) {
+            SetupSapiVoiceParams(pVoice);
+            hr = pVoice->Speak(ssml.c_str(), SPF_IS_XML, NULL);
+            LOG_DEBUG(TEXT("SpeakWithSapiSync: Retry Speak result=0x%08X"), hr);
+        }
+    }
+
     return SUCCEEDED(hr);
 }
 
@@ -628,7 +674,11 @@ void TTSManager::ProcessAsyncTTS()
             LOG_INFO(TEXT("TTS Async: Request %s, cleaning up"),
                 reqPtr->state == AsyncTTSState::Completed ? TEXT("completed") : TEXT("failed"));
             it = asyncPendingQueue_.erase(it);
-            activeRequestCount_--;
+            if (activeRequestCount_ > 0) {
+                activeRequestCount_--;
+            } else {
+                LOG_WARNING(TEXT("TTS Async: activeRequestCount_ already 0, skipping decrement"));
+            }
             break;
         }
     }
@@ -743,13 +793,16 @@ void TTSManager::ProcessPendingRequestInternal(std::list<std::shared_ptr<AsyncTT
         {
             std::lock_guard<std::mutex> lock(sapiMutex_);
             if (pVoice == NULL) {
-                LOG_ERROR(TEXT("TTS Async: pVoice is NULL, SAPI playback failed"));
-                req.state = AsyncTTSState::Failed;
-                req.errorMessage = "pVoice is NULL";
-                if (req.callback) {
-                    req.callback(false, req.errorMessage);
+                LOG_WARNING(TEXT("TTS Async: pVoice is NULL, attempting recreate"));
+                if (!RecreateSapiVoice()) {
+                    LOG_ERROR(TEXT("TTS Async: RecreateSapiVoice failed, SAPI playback failed"));
+                    req.state = AsyncTTSState::Failed;
+                    req.errorMessage = "pVoice is NULL and recreate failed";
+                    if (req.callback) {
+                        req.callback(false, req.errorMessage);
+                    }
+                    return;
                 }
-                return;
             }
 
             SetupSapiVoiceParams(pVoice);

@@ -147,6 +147,8 @@ private:
 	void SetupSapiVoiceParams(ISpVoice* voice);
 	// SAPI辅助方法：转义文本并构建SSML
 	static std::wstring BuildSapiSsml(const TString& text);
+	// SAPI辅助方法：重建pVoice（用于pVoice损坏或Speak失败时）
+	bool RecreateSapiVoice();
 	// 处理失败/超时（内部版，不获取锁，由ProcessAsyncTTS在持有锁时调用）
 	// 返回值：true = 请求真正失败（不再重试），false = 正在重试
 	bool HandleRequestFailureInternal(AsyncTTSRequest& req);
