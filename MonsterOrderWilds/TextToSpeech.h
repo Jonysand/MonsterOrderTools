@@ -222,7 +222,7 @@ private:
 	std::atomic<int> consecutiveFailures{ 0 };          // 连续失败次数
 	std::chrono::steady_clock::time_point lastFailureTime;  // 上次失败时间
 	std::chrono::steady_clock::time_point lastRecoveryAttempt;  // 上次恢复尝试时间
-	std::chrono::steady_clock::time_point apiCooldownExpiry;  // API冷却到期时间（冷却期间直接走SAPI）
+	std::atomic<int64_t> apiCooldownExpiryMs{ 0 };  // API冷却到期时间（epoch毫秒），冷却期间直接走SAPI
 	static constexpr int MAX_CONSECUTIVE_FAILURES = 3;  // 最大连续失败次数
 	static constexpr int RECOVERY_INTERVAL_SECONDS = 10;  // 恢复尝试间隔（秒）
 	static constexpr int64_t COOLDOWN_CLEANUP_INTERVAL_MS = 60000;  // 冷却清理间隔（毫秒）

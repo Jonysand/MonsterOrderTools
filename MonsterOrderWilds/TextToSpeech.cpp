@@ -524,8 +524,9 @@ TTSEngineType TTSManager::GetActiveEngineType() const
         return TTSEngineType::SAPI;
     }
     // API冷却期间直接走SAPI，避免重复尝试不可用的API
-    auto now = std::chrono::steady_clock::now();
-    if (now < apiCooldownExpiry) {
+    auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+    if (nowMs < apiCooldownExpiryMs.load(std::memory_order_relaxed)) {
         return TTSEngineType::SAPI;
     }
     const auto& config = ConfigManager::Inst()->GetConfig();
@@ -704,10 +705,11 @@ void TTSManager::ProcessAsyncTTS()
 					}
 				}
 				// 判断是否使用 SAPI 引擎
-				auto now = std::chrono::steady_clock::now();
+				auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+					std::chrono::steady_clock::now().time_since_epoch()).count();
 				bool willUseSapi = ((*it)->engineType == TTSEngineType::SAPI) ||
 					isFallback ||
-					(now < apiCooldownExpiry) ||
+					(nowMs < apiCooldownExpiryMs.load(std::memory_order_relaxed)) ||
 					((*it)->hasTriedSapiFallback) ||
 					(ttsProvider && ttsProvider->GetProviderName() == "sapi");
 				if (willUseSapi) {
@@ -941,8 +943,9 @@ void TTSManager::ProcessRequestingStateInternal(AsyncTTSRequest& req)
                 req.retryCount = 0;
                 req.requestStartTime = std::chrono::steady_clock::now();
                 req.totalStartTime = std::chrono::steady_clock::now();
-                auto now = std::chrono::steady_clock::now();
-                apiCooldownExpiry = now + std::chrono::seconds(API_COOLDOWN_SECONDS);
+                auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now().time_since_epoch()).count();
+                apiCooldownExpiryMs.store(nowMs + API_COOLDOWN_SECONDS * 1000, std::memory_order_relaxed);
                 isFallback = true;
                 if (activeRequestCount_ > 0) activeRequestCount_--;
                 LOG_WARNING(TEXT("TTS Async: Total timeout, switching to SAPI fallback (cooldown %ds)"), API_COOLDOWN_SECONDS);
@@ -1149,8 +1152,9 @@ bool TTSManager::HandleRequestFailureInternal(AsyncTTSRequest& req)
         req.requestStartTime = std::chrono::steady_clock::now();
         req.totalStartTime = std::chrono::steady_clock::now();
         req.errorMessage.clear();
-        auto now = std::chrono::steady_clock::now();
-        apiCooldownExpiry = now + std::chrono::seconds(API_COOLDOWN_SECONDS);
+        auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()).count();
+        apiCooldownExpiryMs.store(nowMs + API_COOLDOWN_SECONDS * 1000, std::memory_order_relaxed);
         isFallback = true;
         if (activeRequestCount_ > 0) activeRequestCount_--;
         LOG_WARNING(TEXT("TTS Async: API failed, switching to SAPI fallback (cooldown %ds)"), API_COOLDOWN_SECONDS);
@@ -1177,7 +1181,7 @@ void TTSManager::RefreshEngineStatus()
 
     isFallback = false;
     consecutiveFailures = 0;
-    apiCooldownExpiry = std::chrono::steady_clock::time_point();
+    apiCooldownExpiryMs.store(0, std::memory_order_relaxed);
     LOG_INFO(TEXT("TTS engine status refreshed"));
 
 }
@@ -1204,7 +1208,9 @@ void TTSManager::TriggerFallback()
 
     if (!isFallback) {
         isFallback = true;
-        apiCooldownExpiry = std::chrono::steady_clock::now() + std::chrono::seconds(API_COOLDOWN_SECONDS);
+        auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()).count();
+        apiCooldownExpiryMs.store(nowMs + API_COOLDOWN_SECONDS * 1000, std::memory_order_relaxed);
         fallbackReason = "Consecutive failures exceeded limit";
         LOG_WARNING(TEXT("TTS engine fallback triggered: switching to SAPI (cooldown %ds)"), API_COOLDOWN_SECONDS);
     }
@@ -1249,6 +1255,7 @@ void TTSManager::TryRecovery()
     // 冷却到期，清除fallback状态，让下一个真实请求验证API是否恢复
     isFallback = false;
     consecutiveFailures = 0;
+    apiCooldownExpiryMs.store(0, std::memory_order_relaxed);
     lastRecoveryAttempt = std::chrono::steady_clock::now();
     LOG_INFO(TEXT("TTS recovery: cooldown expired, cleared fallback. Next request will test API."));
 
@@ -1263,7 +1270,9 @@ bool TTSManager::ShouldTryRecovery() const
 
     // 冷却期间不尝试恢复，等冷却到期
     auto now = std::chrono::steady_clock::now();
-    if (now < apiCooldownExpiry) {
+    auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+        now.time_since_epoch()).count();
+    if (nowMs < apiCooldownExpiryMs.load(std::memory_order_relaxed)) {
         return false;
     }
 
