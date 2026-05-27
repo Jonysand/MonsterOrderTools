@@ -540,6 +540,213 @@ extern "C" {
             return false;
         }
     }
+
+    __declspec(dllexport) bool __stdcall ProfileManager_ExportCheckinRecords(const char* filePath, const char* format, const char* username, int startDate, int endDate, char* outMessage, int messageBufferSize)
+    {
+        try
+        {
+#if !ONLY_ORDER_MONSTER
+            // 参数验证
+            if (!filePath || !format)
+            {
+                if (outMessage && messageBufferSize > 0)
+                {
+                    strncpy_s(outMessage, messageBufferSize, "Invalid parameters", _TRUNCATE);
+                }
+                return false;
+            }
+
+            std::string usernameStr = username ? username : "";
+            std::string formatStr = format;
+            std::string filePathStr = filePath;
+
+            // 如果指定了用户名，先查询对应的UID
+            std::string uid;
+            if (!usernameStr.empty()) {
+                uid = ProfileManager::Inst()->GetUidByUsername(usernameStr);
+                if (uid.empty()) {
+                    if (outMessage && messageBufferSize > 0)
+                    {
+                        strncpy_s(outMessage, messageBufferSize, "User not found", _TRUNCATE);
+                    }
+                    return false;
+                }
+            }
+
+            // 获取打卡记录
+            auto records = ProfileManager::Inst()->GetCheckinRecords(uid, startDate, endDate);
+
+            // 写入文件
+            std::ofstream file(filePathStr, std::ios::out | std::ios::trunc);
+            if (!file.is_open())
+            {
+                if (outMessage && messageBufferSize > 0)
+                {
+                    strncpy_s(outMessage, messageBufferSize, "Cannot open file for writing", _TRUNCATE);
+                }
+                return false;
+            }
+
+            // 写入UTF-8 BOM
+            file << "\xEF\xBB\xBF";
+
+            if (formatStr == "csv")
+            {
+                // CSV头
+                file << "uid,username,checkin_date,created_at\n";
+                for (const auto& record : records)
+                {
+                    file << record.uid << ","
+                         << record.username << ","
+                         << record.checkinDate << ","
+                         << record.createdAt << "\n";
+                }
+            }
+            else if (formatStr == "json")
+            {
+                file << "[\n";
+                for (size_t i = 0; i < records.size(); ++i)
+                {
+                    const auto& record = records[i];
+                    file << "  {\n";
+                    file << "    \"uid\": \"" << record.uid << "\",\n";
+                    file << "    \"username\": \"" << record.username << "\",\n";
+                    file << "    \"checkinDate\": " << record.checkinDate << ",\n";
+                    file << "    \"createdAt\": " << record.createdAt << "\n";
+                    file << "  }";
+                    if (i < records.size() - 1) file << ",";
+                    file << "\n";
+                }
+                file << "]\n";
+            }
+            else
+            {
+                if (outMessage && messageBufferSize > 0)
+                {
+                    strncpy_s(outMessage, messageBufferSize, "Unsupported format. Use 'csv' or 'json'", _TRUNCATE);
+                }
+                return false;
+            }
+
+            file.close();
+            if (outMessage && messageBufferSize > 0)
+            {
+                std::string successMsg = "Exported " + std::to_string(records.size()) + " records";
+                strncpy_s(outMessage, messageBufferSize, successMsg.c_str(), _TRUNCATE);
+            }
+            return true;
+#else
+            if (outMessage && messageBufferSize > 0)
+            {
+                outMessage[0] = '\0';
+            }
+            return false;
+#endif
+        }
+        catch (const std::exception& e)
+        {
+            LOG_ERROR(TEXT("ProfileManager_ExportCheckinRecords failed: %s"), e.what());
+            if (outMessage && messageBufferSize > 0)
+            {
+                strncpy_s(outMessage, messageBufferSize, e.what(), _TRUNCATE);
+            }
+            return false;
+        }
+    }
+
+    __declspec(dllexport) bool __stdcall ProfileManager_ExportUsersSummary(const char* filePath, const char* format, char* outMessage, int messageBufferSize)
+    {
+        try
+        {
+#if !ONLY_ORDER_MONSTER
+            if (!filePath || !format)
+            {
+                if (outMessage && messageBufferSize > 0)
+                {
+                    strncpy_s(outMessage, messageBufferSize, "Invalid parameters", _TRUNCATE);
+                }
+                return false;
+            }
+
+            std::string formatStr = format;
+            std::string filePathStr = filePath;
+
+            auto users = ProfileManager::Inst()->GetAllUsersSummary();
+
+            std::ofstream file(filePathStr, std::ios::out | std::ios::trunc);
+            if (!file.is_open())
+            {
+                if (outMessage && messageBufferSize > 0)
+                {
+                    strncpy_s(outMessage, messageBufferSize, "Cannot open file for writing", _TRUNCATE);
+                }
+                return false;
+            }
+
+            file << "\xEF\xBB\xBF";
+
+            if (formatStr == "csv")
+            {
+                file << "uid,username,continuous_days,cumulative_days\n";
+                for (const auto& user : users)
+                {
+                    file << user.uid << ","
+                         << user.username << ","
+                         << user.continuousDays << ","
+                         << user.cumulativeDays << "\n";
+                }
+            }
+            else if (formatStr == "json")
+            {
+                file << "[\n";
+                for (size_t i = 0; i < users.size(); ++i)
+                {
+                    const auto& user = users[i];
+                    file << "  {\n";
+                    file << "    \"uid\": \"" << user.uid << "\",\n";
+                    file << "    \"username\": \"" << user.username << "\",\n";
+                    file << "    \"continuousDays\": " << user.continuousDays << ",\n";
+                    file << "    \"cumulativeDays\": " << user.cumulativeDays << "\n";
+                    file << "  }";
+                    if (i < users.size() - 1) file << ",";
+                    file << "\n";
+                }
+                file << "]\n";
+            }
+            else
+            {
+                if (outMessage && messageBufferSize > 0)
+                {
+                    strncpy_s(outMessage, messageBufferSize, "Unsupported format. Use 'csv' or 'json'", _TRUNCATE);
+                }
+                return false;
+            }
+
+            file.close();
+            if (outMessage && messageBufferSize > 0)
+            {
+                std::string successMsg = "Exported " + std::to_string(users.size()) + " users";
+                strncpy_s(outMessage, messageBufferSize, successMsg.c_str(), _TRUNCATE);
+            }
+            return true;
+#else
+            if (outMessage && messageBufferSize > 0)
+            {
+                outMessage[0] = '\0';
+            }
+            return false;
+#endif
+        }
+        catch (const std::exception& e)
+        {
+            LOG_ERROR(TEXT("ProfileManager_ExportUsersSummary failed: %s"), e.what());
+            if (outMessage && messageBufferSize > 0)
+            {
+                strncpy_s(outMessage, messageBufferSize, e.what(), _TRUNCATE);
+            }
+            return false;
+        }
+    }
 }
 
 OnAIReplyCallback g_aiReplyCallback = nullptr;

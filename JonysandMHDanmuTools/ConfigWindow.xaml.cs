@@ -602,5 +602,68 @@ namespace MonsterOrderWindows
                 MessageBox.Show("执行一键黑幕时出错：" + ex.Message, "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+
+        private void ExportCheckinRecordsButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // 显示导出选项对话框
+                var dialog = new ExportOptionsDialog();
+                if (dialog.ShowDialog() == true)
+                {
+                    // 获取用户选择的选项
+                    string format = dialog.SelectedFormat;
+                    string username = dialog.SelectedUsername;
+                    int startDate = dialog.StartDate;
+                    int endDate = dialog.EndDate;
+
+                    // 根据是否填写用户名决定默认文件名
+                    string defaultFileName = string.IsNullOrEmpty(username)
+                        ? $"users_summary_{DateTime.Now:yyyyMMdd}"
+                        : $"checkin_records_{username}_{DateTime.Now:yyyyMMdd}";
+
+                    // 显示文件保存对话框
+                    var saveDialog = new Microsoft.Win32.SaveFileDialog();
+                    saveDialog.Filter = format == "csv" ? "CSV文件 (*.csv)|*.csv" : "JSON文件 (*.json)|*.json";
+                    saveDialog.DefaultExt = format;
+                    saveDialog.FileName = defaultFileName;
+
+                    if (saveDialog.ShowDialog() == true)
+                    {
+                        string filePath = saveDialog.FileName;
+                        var messageBytes = new byte[4096];
+                        bool success;
+
+                        if (string.IsNullOrEmpty(username))
+                        {
+                            // 没有填写用户名，导出所有用户汇总数据
+                            success = NativeImports.ProfileManager_ExportUsersSummary(
+                                filePath, format, messageBytes, messageBytes.Length);
+                        }
+                        else
+                        {
+                            // 填写了用户名，导出该用户的详细打卡记录
+                            success = NativeImports.ProfileManager_ExportCheckinRecords(
+                                filePath, format, username, startDate, endDate, messageBytes, messageBytes.Length);
+                        }
+
+                        string message = System.Text.Encoding.UTF8.GetString(messageBytes).TrimEnd('\0');
+
+                        if (success)
+                        {
+                            MessageBox.Show($"导出成功！{message}", "导出完成", MessageBoxButton.OK, MessageBoxImage.Information);
+                        }
+                        else
+                        {
+                            MessageBox.Show($"导出失败：{message}", "导出错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("导出打卡记录时出错：" + ex.Message, "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
     }
 }

@@ -603,6 +603,17 @@
                                 Foreground="White"
                                 BorderBrush="#444"
                                 Click="BatchCheckinButton_Click" />
+                            <Button
+                                Name="ExportCheckinRecordsButton"
+                                Content="导出打卡记录"
+                                Margin="0,10,0,0"
+                                Width="120"
+                                Height="32"
+                                HorizontalAlignment="Left"
+                                Background="#2196F3"
+                                Foreground="White"
+                                BorderBrush="#2196F3"
+                                Click="ExportCheckinRecordsButton_Click" />
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

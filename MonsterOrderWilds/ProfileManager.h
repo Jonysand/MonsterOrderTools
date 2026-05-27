@@ -47,6 +47,13 @@ struct RetroactiveCardData {
     int32_t lastEarnedDate = 0;
 };
 
+struct CheckinRecord {
+    std::string uid;
+    std::string username;
+    int32_t checkinDate = 0;
+    int64_t createdAt = 0;
+};
+
 class ProfileManager {
     DECLARE_SINGLETON(ProfileManager)
 
@@ -103,6 +110,23 @@ public:
         std::string message;
     };
     BatchCheckinResult BatchCheckin();
+
+    // 查询打卡记录（uid 为空查全部，startDate/endDate > 0 时按日期范围过滤）
+    std::vector<CheckinRecord> GetCheckinRecords(const std::string& uid = "", int32_t startDate = 0, int32_t endDate = 0);
+
+    // 根据用户名查询UID（返回空字符串表示未找到）
+    std::string GetUidByUsername(const std::string& username);
+
+    // 用户汇总数据结构
+    struct UserSummary {
+        std::string uid;
+        std::string username;
+        int32_t continuousDays = 0;
+        int32_t cumulativeDays = 0;
+    };
+
+    // 获取所有用户汇总数据
+    std::vector<UserSummary> GetAllUsersSummary();
 
     // 获取原始数据库句柄（用于测试清理等场景）
     void* GetStorage() const { return storage_; }

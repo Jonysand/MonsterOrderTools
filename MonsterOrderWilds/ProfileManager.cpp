@@ -1502,6 +1502,111 @@ static int32_t NextDate(int32_t date) {
     return (tm.tm_year + 1900) * 10000 + (tm.tm_mon + 1) * 100 + tm.tm_mday;
 }
 
+std::vector<CheckinRecord> ProfileManager::GetCheckinRecords(const std::string& uid, int32_t startDate, int32_t endDate) {
+    std::vector<CheckinRecord> results;
+    if (!storage_) return results;
+
+    std::lock_guard<std::recursive_mutex> lock(profilesLock_);
+    sqlite3* db = (sqlite3*)storage_;
+
+    std::string sql = "SELECT uid, username, checkin_date, created_at FROM checkin_records WHERE 1=1";
+    if (!uid.empty()) {
+        sql += " AND uid = ?";
+    }
+    if (startDate > 0) {
+        sql += " AND checkin_date >= ?";
+    }
+    if (endDate > 0) {
+        sql += " AND checkin_date <= ?";
+    }
+    sql += " ORDER BY checkin_date DESC";
+
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+        LOG_ERROR(TEXT("ProfileManager: GetCheckinRecords prepare failed: %hs"), sqlite3_errmsg(db));
+        return results;
+    }
+
+    int paramIndex = 1;
+    if (!uid.empty()) {
+        sqlite3_bind_text(stmt, paramIndex++, uid.c_str(), -1, SQLITE_TRANSIENT);
+    }
+    if (startDate > 0) {
+        sqlite3_bind_int(stmt, paramIndex++, startDate);
+    }
+    if (endDate > 0) {
+        sqlite3_bind_int(stmt, paramIndex++, endDate);
+    }
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        CheckinRecord record;
+        record.uid = (const char*)sqlite3_column_text(stmt, 0);
+        const char* username = (const char*)sqlite3_column_text(stmt, 1);
+        record.username = username ? username : "";
+        record.checkinDate = sqlite3_column_int(stmt, 2);
+        record.createdAt = sqlite3_column_int64(stmt, 3);
+        results.push_back(std::move(record));
+    }
+    sqlite3_finalize(stmt);
+
+    LOG_DEBUG(TEXT("ProfileManager: GetCheckinRecords returned %d records"), (int)results.size());
+    return results;
+}
+
+std::string ProfileManager::GetUidByUsername(const std::string& username) {
+    if (!storage_ || username.empty()) return "";
+
+    std::lock_guard<std::recursive_mutex> lock(profilesLock_);
+    sqlite3* db = (sqlite3*)storage_;
+
+    const char* sql = "SELECT uid FROM user_profiles WHERE username = ? LIMIT 1";
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        LOG_ERROR(TEXT("ProfileManager: GetUidByUsername prepare failed: %hs"), sqlite3_errmsg(db));
+        return "";
+    }
+
+    sqlite3_bind_text(stmt, 1, username.c_str(), -1, SQLITE_TRANSIENT);
+
+    std::string uid;
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        const char* result = (const char*)sqlite3_column_text(stmt, 0);
+        if (result) uid = result;
+    }
+    sqlite3_finalize(stmt);
+    return uid;
+}
+
+std::vector<ProfileManager::UserSummary> ProfileManager::GetAllUsersSummary() {
+    std::vector<UserSummary> results;
+    if (!storage_) return results;
+
+    std::lock_guard<std::recursive_mutex> lock(profilesLock_);
+    sqlite3* db = (sqlite3*)storage_;
+
+    const char* sql = "SELECT uid, username, continuous_days, cumulative_days FROM user_profiles WHERE cumulative_days > 0 ORDER BY cumulative_days DESC";
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        LOG_ERROR(TEXT("ProfileManager: GetAllUsersSummary prepare failed: %hs"), sqlite3_errmsg(db));
+        return results;
+    }
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        UserSummary summary;
+        const char* uid = (const char*)sqlite3_column_text(stmt, 0);
+        const char* username = (const char*)sqlite3_column_text(stmt, 1);
+        summary.uid = uid ? uid : "";
+        summary.username = username ? username : "";
+        summary.continuousDays = sqlite3_column_int(stmt, 2);
+        summary.cumulativeDays = sqlite3_column_int(stmt, 3);
+        results.push_back(std::move(summary));
+    }
+    sqlite3_finalize(stmt);
+
+    LOG_DEBUG(TEXT("ProfileManager: GetAllUsersSummary returned %d users"), (int)results.size());
+    return results;
+}
+
 ProfileManager::BatchCheckinResult ProfileManager::BatchCheckin() {
     std::lock_guard<std::recursive_mutex> lock(profilesLock_);
     BatchCheckinResult result;
