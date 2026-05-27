@@ -114,7 +114,7 @@ public:
 
 public:
 	// TTS 超时和并发控制常量
-	static constexpr int MAX_CONCURRENT_TTS = 64;      // API并发请求数
+	static constexpr int MAX_CONCURRENT_TTS = 2;      // API并发请求数
 	static constexpr int MAX_ASYNC_QUEUE_SIZE = 0;      // 队列大小限制（0=不限制）
 	static constexpr int MAX_RETRY_COUNT = 5;           // 最大重试次数
 	static constexpr int RETRY_INTERVAL_MS = 500;       // 重试间隔（毫秒）

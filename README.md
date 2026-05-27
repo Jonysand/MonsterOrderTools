@@ -6,6 +6,15 @@
 
 所有变更详见 [openspec/changes/archive/](openspec/changes/archive/)
 
+## [v32] - 2026-05-27
+
+### Fixed
+- **Manbo TTS 断连自动恢复**: 修复 Manbo TTS 失败后永久卡在 SAPI 引擎、无法自动恢复的问题
+  - 根因: `HandleRequestFailureInternal` 中 `TrySwitchToNextProvider()` 成功切换 provider 后未设置 `isFallback = true`，导致 `ShouldTryRecovery()` 永远返回 false，恢复机制形同虚设
+  - 修复: provider 切换成功后设置 `isFallback = true`，触发 10 秒周期的自动恢复检测
+  - 修复: `TryRecovery()` 扩展为自动模式（auto）下也尝试恢复到 Manbo（原来仅手动模式恢复）
+  - 同类覆盖: MiMo 失败降级到 SAPI 后同样适用此修复
+
 ## [v30] - 2026-05-10
 
 ### Changed

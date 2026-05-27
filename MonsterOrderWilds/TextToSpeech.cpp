@@ -1079,7 +1079,9 @@ bool TTSManager::HandleRequestFailureInternal(AsyncTTSRequest& req)
         req.retryAfterTime = std::chrono::steady_clock::time_point(); // 清除重试等待，立即启动新Provider请求
         req.errorMessage.clear(); // 重置错误消息
         activeRequestCount_--;
-        LOG_WARNING(TEXT("TTS Async: Provider switched, retrying with new provider"));
+        isFallback = true;
+        fallbackReason = "Provider switched after retries exhausted";
+        LOG_WARNING(TEXT("TTS Async: Provider switched, retrying with new provider (fallback=true)"));
         return false;
     }
 
@@ -1156,23 +1158,29 @@ void TTSManager::TryRecovery()
 
     LOG_INFO(TEXT("Attempting TTS recovery..."));
 
-    // 如果用户手动选择了引擎，且当前 provider 与用户选择不同，先恢复原始引擎
+    // 确定目标引擎：手动模式用用户选择，自动模式默认 manbo
+    std::string targetEngine;
     if (IsManualEngineMode()) {
-        std::string currentName = ttsProvider->GetProviderName();
-        std::string targetName;
-        if (userSelectedEngineName_ == "manbo") targetName = "manbo";
-        else if (userSelectedEngineName_ == "mimo") targetName = "xiaomi";
-        else if (userSelectedEngineName_ == "sapi") targetName = "sapi";
+        targetEngine = userSelectedEngineName_;
+    } else {
+        targetEngine = "manbo";
+    }
 
-        if (!targetName.empty() && currentName != targetName) {
-            LOG_INFO(TEXT("TTS recovery: restoring user-selected engine %hs (current: %hs)"),
-                userSelectedEngineName_.c_str(), currentName.c_str());
-            auto restored = TTSProviderFactory::Create(GetMIMO_API_KEY(), userSelectedEngineName_);
-            if (restored) {
-                ttsProvider = restored;
-            } else {
-                LOG_WARNING(TEXT("TTS recovery: failed to restore engine %hs"), userSelectedEngineName_.c_str());
-            }
+    // 如果当前 provider 与目标引擎不同，先恢复原始引擎
+    std::string currentName = ttsProvider->GetProviderName();
+    std::string targetProviderName;
+    if (targetEngine == "manbo") targetProviderName = "manbo";
+    else if (targetEngine == "mimo") targetProviderName = "xiaomi";
+    else if (targetEngine == "sapi") targetProviderName = "sapi";
+
+    if (!targetProviderName.empty() && currentName != targetProviderName) {
+        LOG_INFO(TEXT("TTS recovery: restoring engine %hs (current: %hs)"),
+            targetEngine.c_str(), currentName.c_str());
+        auto restored = TTSProviderFactory::Create(GetMIMO_API_KEY(), targetEngine);
+        if (restored) {
+            ttsProvider = restored;
+        } else {
+            LOG_WARNING(TEXT("TTS recovery: failed to create engine %hs"), targetEngine.c_str());
         }
     }
 
