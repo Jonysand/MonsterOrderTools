@@ -1,5 +1,6 @@
 #include "ITTSProvider.h"
 #include "TTSProvider.h"
+#include "ConfigManager.h"
 #include <iostream>
 #include <cassert>
 #include <string>

@@ -19,7 +19,7 @@ DEFINE_SINGLETON(RetroactiveCheckInModule)
 
 namespace {
     constexpr int32_t STREAK_DAYS_REQUIRED = 7;
-    constexpr int32_t MONTHLY_FIRST_LIKES_REQUIRED = 1000;
+    constexpr int32_t MONTHLY_FIRST_LIKES_REQUIRED = 30;
 }
 
 bool RetroactiveCheckInModule::Init() {
@@ -185,7 +185,7 @@ void RetroactiveCheckInModule::ProcessLike(const LikeEvent& event) {
 
             if (totalLikes >= MONTHLY_FIRST_LIKES_REQUIRED) {
                 if (self->CheckRule2_MonthlyFirst(event.uid, date, totalLikes)) {
-                    std::string reply = event.username + "，恭喜！今日点赞突破1000，获得1张补签卡！";
+                    std::string reply = event.username + "，恭喜！今日点赞突破30，获得1张补签卡！";
                     self->SendReply(event.username, reply);
                 }
             }
@@ -370,14 +370,14 @@ void RetroactiveCheckInModule::HandleQueryCommand(const DanmuProcessor::CaptainD
 
     int32_t claimedMonth = cards.monthlyFirstClaimed / 100;
     if (claimedMonth == currentMonth && cards.monthlyFirstClaimed > 0) {
-        oss << "\n月度点赞1000：已领取";
+        oss << "\n月度点赞30：已领取";
     } else {
         int32_t currentLikes = dailyLike.totalLikes;
         int32_t remainingLikes = MONTHLY_FIRST_LIKES_REQUIRED - currentLikes;
         if (remainingLikes <= 0) {
-            oss << "\n月度点赞1000：已满足，可领取";
+            oss << "\n月度点赞30：已满足，可领取";
         } else {
-            oss << "\n月度点赞1000：" << currentLikes << "/" << MONTHLY_FIRST_LIKES_REQUIRED << "，差" << remainingLikes;
+            oss << "\n月度点赞30：" << currentLikes << "/" << MONTHLY_FIRST_LIKES_REQUIRED << "，差" << remainingLikes;
         }
     }
 

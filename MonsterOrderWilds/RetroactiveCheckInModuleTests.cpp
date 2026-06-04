@@ -157,7 +157,7 @@ void TestMonthlyFirstReward() {
     LikeEvent evt;
     evt.uid = "monthly_user";
     evt.username = "MonthlyUser";
-    evt.likeCount = 1005;
+    evt.likeCount = 35;
     evt.date = 20260424;
     evt.timestamp = 1777030207;
 
@@ -168,7 +168,7 @@ void TestMonthlyFirstReward() {
     assert(cards.cardCount == 1);
     assert(cards.monthlyFirstClaimed == 20260424);
 
-    evt.likeCount = 100;
+    evt.likeCount = 10;
     RetroactiveCheckInModule::Inst()->PushLikeEvent(evt);
 
     assert(ProfileManager::Inst()->LoadRetroactiveCards("monthly_user", cards));
@@ -181,28 +181,28 @@ void TestMonthlyFirstBoundary() {
     CleanupTestData();
     RetroactiveCheckInModule::Inst()->Init();
 
-    // 999赞不应发放
+    // 29赞不应发放
     LikeEvent evt;
     evt.uid = "test_boundary_monthly";
     evt.username = "BoundaryUser";
-    evt.likeCount = 999;
+    evt.likeCount = 29;
     evt.date = 20260424;
     evt.timestamp = 1777030207;
     RetroactiveCheckInModule::Inst()->PushLikeEvent(evt);
 
     RetroactiveCardData cards;
     assert(ProfileManager::Inst()->LoadRetroactiveCards("test_boundary_monthly", cards));
-    assert(cards.cardCount == 0); // 999不应奖励
+    assert(cards.cardCount == 0); // 29不应奖励
 
-    // 再点1赞达到1000，应发放
+    // 再点1赞达到30，应发放
     evt.likeCount = 1;
     RetroactiveCheckInModule::Inst()->PushLikeEvent(evt);
 
     assert(ProfileManager::Inst()->LoadRetroactiveCards("test_boundary_monthly", cards));
-    assert(cards.cardCount == 1); // 1000应奖励
+    assert(cards.cardCount == 1); // 30应奖励
 
-    // 同一天再次超过1000，不应重复发放
-    evt.likeCount = 100;
+    // 同一天再次超过30，不应重复发放
+    evt.likeCount = 10;
     RetroactiveCheckInModule::Inst()->PushLikeEvent(evt);
 
     assert(ProfileManager::Inst()->LoadRetroactiveCards("test_boundary_monthly", cards));
@@ -233,7 +233,7 @@ void TestCrossMonthReset() {
     LikeEvent evt;
     evt.uid = "cross_month_user";
     evt.username = "CrossMonthUser";
-    evt.likeCount = 1005;
+    evt.likeCount = 35;
     evt.date = 20260501;
     evt.timestamp = 1777600000;
 
@@ -357,7 +357,7 @@ void TestQueryCommand() {
     streak.streakRewardIssued = 0;
     ProfileManager::Inst()->SaveLikeStreak(streak);
 
-    ProfileManager::Inst()->AddDailyLike("67890", 20260424, 800, streak.currentStreak);
+    ProfileManager::Inst()->AddDailyLike("67890", 20260424, 15, streak.currentStreak);
 
     DanmuProcessor::CaptainDanmuEvent evt;
     evt.uid = "67890";

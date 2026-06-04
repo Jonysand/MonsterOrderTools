@@ -53,43 +53,43 @@ TBD - created by archiving change retroactive-checkin-cards. Update Purpose afte
 - **AND** 发放第2张补签卡
 - **AND** 更新 `streak_reward_issued` 为 20260501
 
-### Requirement: 补签卡发放 - 每月首次点赞1000规则
-用户每月任意一天内首次点赞累计达到1000，立即发放1张补签卡。每天的点赞累计独立计算，跨天需重新点满1000。
+### Requirement: 补签卡发放 - 每月首次点赞30规则
+用户每月任意一天内首次点赞累计达到30，立即发放1张补签卡。每天的点赞累计独立计算，跨天需重新点满30。
 
-#### Scenario: 用户本月首次点赞达1000
-- **GIVEN** 用户 "user1" 在 20260424 当前 total_likes=980
-- **WHEN** 收到 like_count=25 的点赞事件
-- **THEN** total_likes 更新为 1005
+#### Scenario: 用户本月首次点赞达30
+- **GIVEN** 用户 "user1" 在 20260424 当前 total_likes=20
+- **WHEN** 收到 like_count=15 的点赞事件
+- **THEN** total_likes 更新为 35
 - **AND** 检查 `monthly_first_claimed` 不在本月（202604）
 - **AND** `retroactive_cards.card_count` 增加1
 - **AND** `monthly_first_claimed` 更新为 20260424
-- **AND** 系统播报/回复："恭喜 user1 今日点赞突破1000，获得1张补签卡！"
+- **AND** 系统播报/回复："恭喜 user1 今日点赞突破30，获得1张补签卡！"
 
-#### Scenario: 用户同月内第二次达到1000
-- **GIVEN** 用户 "user1" 在 20260424 已领取过首次1000奖励（monthly_first_claimed=20260424）
-- **WHEN** 20260425 点赞累计达到1200
+#### Scenario: 用户同月内第二次达到30
+- **GIVEN** 用户 "user1" 在 20260424 已领取过首次30奖励（monthly_first_claimed=20260424）
+- **WHEN** 20260425 点赞累计达到50
 - **THEN** 检查 `monthly_first_claimed` 在本月（202604）
 - **AND** 不发放补签卡
 
-#### Scenario: 用户今天未达1000，次日重新计算
-- **GIVEN** 用户 "user1" 在 20260424 点赞累计为800（未满1000）
+#### Scenario: 用户今天未达30，次日重新计算
+- **GIVEN** 用户 "user1" 在 20260424 点赞累计为20（未满30）
 - **WHEN** 20260425 开始新的直播日，收到 like_count=10
-- **THEN** 20260425 的 total_likes=10（不是810）
-- **AND** 需要继续累计到1000才能在20260425获得奖励
-- **AND** 20260424 的800不计入20260425
+- **THEN** 20260425 的 total_likes=10（不是30）
+- **AND** 需要继续累计到30才能在20260425获得奖励
+- **AND** 20260424 的20不计入20260425
 
 #### Scenario: 跨月后重新获得资格
-- **GIVEN** 用户 "user1" 在 202604 已领取过首次1000奖励
-- **WHEN** 20260501 点赞累计达到1000
+- **GIVEN** 用户 "user1" 在 202604 已领取过首次30奖励
+- **WHEN** 20260501 点赞累计达到30
 - **THEN** 检查 `monthly_first_claimed` 的月份为 202604，与新月份 202605 不同
 - **AND** 清空上月领取状态（重置 `monthly_first_claimed=0`）
 - **AND** 发放1张补签卡
 - **AND** 更新 `monthly_first_claimed` 为 20260501
 
-#### Scenario: 用户首次点赞直接超过1000
+#### Scenario: 用户首次点赞直接超过30
 - **GIVEN** 用户 "user1" 是新用户，无历史记录
-- **WHEN** 第一次点赞 like_count=1500
-- **THEN** total_likes=1500，立即触发首次1000奖励
+- **WHEN** 第一次点赞 like_count=50
+- **THEN** total_likes=50，立即触发首次30奖励
 - **AND** 发放1张补签卡
 
 ### Requirement: 跨月自动重置
