@@ -6,6 +6,37 @@
 
 所有变更详见 [openspec/changes/archive/](openspec/changes/archive/)
 
+## [v36] - 2026-06-05
+
+### Fixed
+- **补签逻辑修复**: 修复用户今天已打卡时无法补签历史缺失日期的问题
+  - `FindLastMissingCheckinDate` 从当前日期向前逐天检查，找到最近的缺失日期
+  - 取消补签30天限制，支持补签任意历史缺失日期
+- **补签后连续打卡天数修复**: 修复补签成功后连续打卡天数不更新的问题
+  - `HandleRetroactiveCommand` 使用 `CalculateContinuousDaysFromRecords` 替代 `CalculateContinuousDays`，正确计算补签后的连续天数
+  - `ExecuteRetroactiveCheckin` 使用 `SaveProfile` 替代 `SaveProfileToDb`，同步更新内存缓存
+
+### Added
+- **特殊用户 TTS 引擎**: 为特定 OpenID 实现专用 ManboTTS provider
+  - 移除 API key 依赖，特殊用户直接使用专用端点
+  - 修复 guard_level 过滤逻辑
+  - 特殊用户 TTS 失败后走通用 fallback 链而非强制 SAPI
+- **导出打卡记录支持部分昵称匹配**: 导出时可按昵称部分匹配筛选用户
+- **月度首破点赞阈值调整**: 月度点赞首破阈值从 1000 调整为 30
+
+## [v35] - 2026-06-02
+
+### Fixed
+- **TTS API 失败即时 SAPI Fallback**: API 请求失败后立即切换 SAPI 播放，新增冷却恢复机制
+  - API 失败一次（3s）即转 SAPI，冷却期内新请求直接走 SAPI
+  - 冷却到期后自动重试 API，及时恢复在线语音
+
+## [v34] - 2026-05-30
+
+### Fixed
+- **TTS SAPI pVoice 重建机制**: pVoice 损坏时自动重建，防止 SAPI 播放永久失效
+- **apiCooldownExpiry 数据竞争修复**: 修复并发访问导致的状态不一致问题
+
 ## [v33] - 2026-05-27
 
 ### Added
