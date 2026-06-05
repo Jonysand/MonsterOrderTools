@@ -7,6 +7,8 @@
 #include "StringUtils.h"
 #include "CaptainCheckInModule.h"
 #include "RetroactiveCheckInModule.h"
+#include "SpecialUserHelper.h"
+#include "SpecialManboTTSProvider.h"
 
 #pragma warning(disable: 4996)
 
@@ -55,6 +57,13 @@ TTSManager::TTSManager()
         GetMIMO_API_KEY(),
         config.ttsEngine);
     audioPlayer = new AudioPlayer();
+#if !ONLY_ORDER_MONSTER
+    std::string specialApiKey = GetSPECIAL_USER_TTS_API_KEY();
+    if (!specialApiKey.empty()) {
+        specialTtsProvider_ = std::make_shared<SpecialManboTTSProvider>(specialApiKey);
+        LOG_INFO(TEXT("Special TTS provider initialized"));
+    }
+#endif
     TTSCacheManager::Inst()->Initialize();
 
     ConfigManager::Inst()->AddConfigChangedListener([this](const ConfigData& config) {
@@ -104,7 +113,7 @@ void TTSManager::Tick()
             LOG_INFO(TEXT("=== NormalMsgQueue has %zu messages ==="), NormalMsgQueue.size());
             if (ConfigManager::Inst()->GetConfig().enableVoice) {
                 LOG_INFO(TEXT("=== enableVoice is true, calling Speak ==="));
-                Speak(NormalMsgQueue.front());
+                Speak(NormalMsgQueue.front().first, NormalMsgQueue.front().second);
             } else {
                 LOG_INFO(TEXT("=== enableVoice is false, skipping Speak ==="));
             }
@@ -113,7 +122,7 @@ void TTSManager::Tick()
         if (!GiftMsgQueue.empty())
         {
             if (ConfigManager::Inst()->GetConfig().enableVoice)
-                Speak(GiftMsgQueue.front());
+                Speak(GiftMsgQueue.front().first, GiftMsgQueue.front().second);
             GiftMsgQueue.pop_front();
         }
         if (!HistoryLogMsgQueue.empty())
@@ -129,7 +138,11 @@ void TTSManager::Tick()
             {
                 TString msg = TEXT("感谢 ") + utf8_to_wstring(it->second.uname) + TEXT(" 赠送的") + std::to_wstring(it->second.gift_num) + TEXT("个") + utf8_to_wstring(it->second.gift_name);
                 if (ConfigManager::Inst()->GetConfig().enableVoice && (!ConfigManager::Inst()->GetConfig().onlySpeekPaidGift || it->second.paid))
-                    GiftMsgQueue.push_back(msg);
+#if !ONLY_ORDER_MONSTER
+                    GiftMsgQueue.push_back({msg, it->second.userId});
+#else
+                    GiftMsgQueue.push_back({msg, ""});
+#endif
                 HistoryLogMsgQueue.push_back(msg);
                 it = ComboGiftMsgPrepareMap.erase(it);
             }
@@ -144,7 +157,11 @@ void TTSManager::Tick()
                     TString msg = TEXT("感谢 ") + utf8_to_wstring(it->second.uname) +
                                   TEXT(" 赠送的") + std::to_wstring(it->second.gift_num) +
                                   TEXT("个") + utf8_to_wstring(it->second.gift_name);
-                    GiftMsgQueue.push_back(msg);
+#if !ONLY_ORDER_MONSTER
+                    GiftMsgQueue.push_back({msg, it->second.userId});
+#else
+                    GiftMsgQueue.push_back({msg, ""});
+#endif
                     HistoryLogMsgQueue.push_back(msg);
                 }
                 it = dynamicComboMap_.erase(it);
@@ -185,9 +202,22 @@ void TTSManager::HandleSpeekDm(const json& data)
         return;
     if (!ConfigManager::Inst()->GetConfig().enableVoice)
         return;
+#if !ONLY_ORDER_MONSTER
+    // 提取 OpenID
+    std::string userId;
+    if (data.contains("open_id")) {
+        userId = data["open_id"].get<std::string>();
+    } else if (data.contains("uid")) {
+        userId = std::to_string(data["uid"].get<int64_t>());
+    }
+#endif
     if (msg.rfind(TEXT("点餐"), 0) == 0) {
         // 以"点餐"开头
-        HandleDmOrderFood(msg, utf8_to_wstring(uname));
+#if !ONLY_ORDER_MONSTER
+        HandleDmOrderFood(msg, utf8_to_wstring(uname), userId);
+#else
+        HandleDmOrderFood(msg, utf8_to_wstring(uname), "");
+#endif
     }
     std::string msgUtf8 = WstringToUtf8(msg);
     if (CaptainCheckInModule::Inst()->IsCheckinMessage(msgUtf8)) {
@@ -209,6 +239,7 @@ void TTSManager::HandleSpeekDm(const json& data)
         reqPtr->ResetTiming();
         reqPtr->responseFormat = "mp3";
         reqPtr->voice = voiceFile;
+        reqPtr->userId = userId;  // 复用前面提取的 userId
 
         {
             std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
@@ -225,7 +256,11 @@ void TTSManager::HandleSpeekDm(const json& data)
 #endif
     {
         std::lock_guard<std::mutex> lock(queueMutex_);
-        NormalMsgQueue.push_back(msgTString);
+#if !ONLY_ORDER_MONSTER
+        NormalMsgQueue.push_back({msgTString, userId});
+#else
+        NormalMsgQueue.push_back({msgTString, ""});
+#endif
     }
 }
 
@@ -276,6 +311,9 @@ void TTSManager::HandleSpeekSendGift(const json& data)
                 info.gift_num = gift_num;
                 info.combo_timeout = combo_timeout;
                 info.paid = paid;
+#if !ONLY_ORDER_MONSTER
+                info.userId = open_id;
+#endif
                 ComboGiftMsgPrepareMap.emplace(official_combo_id, std::move(info));
             }
         } else {
@@ -288,7 +326,11 @@ void TTSManager::HandleSpeekSendGift(const json& data)
                 if (!it->second.firstReported && it->second.gift_num >= 3) {
                     TString firstMsg = TEXT("感谢 ") + utf8_to_wstring(it->second.uname) +
                                        TEXT(" 开始赠送") + utf8_to_wstring(it->second.gift_name);
-                    GiftMsgQueue.push_back(firstMsg);
+#if !ONLY_ORDER_MONSTER
+                    GiftMsgQueue.push_back({firstMsg, it->second.userId});
+#else
+                    GiftMsgQueue.push_back({firstMsg, ""});
+#endif
                     HistoryLogMsgQueue.push_back(firstMsg);
                     it->second.firstReported = true;
                     UpdateCooldown(combo_id);
@@ -303,12 +345,19 @@ void TTSManager::HandleSpeekSendGift(const json& data)
                 entry.paid = paid;
                 entry.firstReported = false;
                 entry.lastUpdateTime = GetTickCount64();
+#if !ONLY_ORDER_MONSTER
+                entry.userId = open_id;
+#endif
                 dynamicComboMap_.emplace(combo_id, std::move(entry));
 
                 if (gift_num < 3) {
                     TString msg = TEXT("感谢 ") + utf8_to_wstring(uname) + TEXT(" 赠送的") +
                                   std::to_wstring(gift_num) + TEXT("个") + utf8_to_wstring(gift_name);
-                    GiftMsgQueue.push_back(msg);
+#if !ONLY_ORDER_MONSTER
+                    GiftMsgQueue.push_back({msg, open_id});
+#else
+                    GiftMsgQueue.push_back({msg, ""});
+#endif
                     HistoryLogMsgQueue.push_back(msg);
                     UpdateCooldown(combo_id);
 
@@ -333,7 +382,17 @@ void TTSManager::HandleSpeekSC(const json& data)
     TString msg = TEXT("感谢 ") + utf8_to_wstring(uname) + TEXT(" 赠送的") + std::to_wstring(rmb) + TEXT("元SC：") + utf8_to_wstring(message);
     std::lock_guard<std::mutex> lock(queueMutex_);
     HistoryLogMsgQueue.push_back(msg);
-    GiftMsgQueue.push_back(msg);
+#if !ONLY_ORDER_MONSTER
+    std::string userId;
+    if (data.contains("open_id")) {
+        userId = data["open_id"].get<std::string>();
+    } else if (data.contains("uid")) {
+        userId = std::to_string(data["uid"].get<int64_t>());
+    }
+    GiftMsgQueue.push_back({msg, userId});
+#else
+    GiftMsgQueue.push_back({msg, ""});
+#endif
 }
 
 void TTSManager::HandleSpeekGuard(const json& data)
@@ -366,7 +425,17 @@ void TTSManager::HandleSpeekGuard(const json& data)
     TString msg = TEXT("感谢 ") + utf8_to_wstring(uname) + TEXT(" 上船") + std::to_wstring(guard_num) + utf8_to_wstring(guard_unit) + TEXT("的") + guard_name;
     std::lock_guard<std::mutex> lock(queueMutex_);
     HistoryLogMsgQueue.push_back(msg);
-    GiftMsgQueue.push_back(msg);
+#if !ONLY_ORDER_MONSTER
+    std::string userId;
+    if (data.contains("open_id")) {
+        userId = data["open_id"].get<std::string>();
+    } else if (data.contains("uid")) {
+        userId = std::to_string(data["uid"].get<int64_t>());
+    }
+    GiftMsgQueue.push_back({msg, userId});
+#else
+    GiftMsgQueue.push_back({msg, ""});
+#endif
 }
 
 void TTSManager::HandleSpeekEnter(const json& data)
@@ -380,7 +449,7 @@ void TTSManager::HandleSpeekEnter(const json& data)
     HistoryLogMsgQueue.push_back(msg);
 }
 
-bool TTSManager::Speak(const TString& text)
+bool TTSManager::Speak(const TString& text, const std::string& userId)
 {
     LOG_INFO(TEXT("=== TTS Speak called with text: %s ==="), text.c_str());
 
@@ -389,6 +458,7 @@ bool TTSManager::Speak(const TString& text)
     reqPtr->engineType = GetActiveEngineType();
     reqPtr->state = AsyncTTSState::Pending;
     reqPtr->ResetTiming();
+    reqPtr->userId = userId;
 
     LOG_INFO(TEXT("TTS Engine type: %d"), (int)reqPtr->engineType);
 
@@ -857,6 +927,25 @@ void TTSManager::ProcessPendingRequestInternal(std::list<std::shared_ptr<AsyncTT
         return;
     }
 
+#if !ONLY_ORDER_MONSTER
+    // 检查是否为特殊用户
+    auto provider = ttsProvider;
+    if (SpecialUser::IsSpecialUser(req.userId)) {
+        auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()).count();
+        bool specialInCooldown = nowMs < specialProviderCooldownExpiryMs_.load(std::memory_order_relaxed);
+
+        if (specialTtsProvider_ && specialTtsProvider_->IsAvailable() && !specialInCooldown) {
+            provider = specialTtsProvider_;
+            LOG_DEBUG(TEXT("Using special TTS provider for user: %hs"), req.userId.c_str());
+        } else {
+            // fallback SAPI
+            req.engineType = TTSEngineType::SAPI;
+            LOG_DEBUG(TEXT("Special TTS provider unavailable, using SAPI for user: %hs"), req.userId.c_str());
+        }
+    }
+#endif
+
     // 构建请求参数
     TTSRequest ttsReq;
 
@@ -878,7 +967,7 @@ void TTSManager::ProcessPendingRequestInternal(std::list<std::shared_ptr<AsyncTT
         LOG_ERROR(TEXT("TTS Async: Request queue is empty, cannot send request"));
         return;
     }
-    ttsProvider->RequestTTS(ttsReq, [this, reqPtr](const TTSResponse& response) {
+    provider->RequestTTS(ttsReq, [this, reqPtr](const TTSResponse& response) {
         // 回调在HTTP线程中执行，需要线程安全地修改状态
         std::lock_guard<std::recursive_mutex> lock(asyncMutex_);
         // reqPtr 是 shared_ptr，只要lambda还持有它，请求就不会被释放
@@ -903,6 +992,19 @@ void TTSManager::ProcessPendingRequestInternal(std::list<std::shared_ptr<AsyncTT
             }
             reqPtr->errorMessage = response.errorMsg;
             LOG_ERROR(TEXT("TTS Async: API request failed (HTTP %d): %s"), response.httpStatusCode, utf8_to_wstring(response.errorMsg).c_str());
+#if !ONLY_ORDER_MONSTER
+            if (SpecialUser::IsSpecialUser(reqPtr->userId) && !reqPtr->hasTriedSapiFallback) {
+                specialProviderFailures_++;
+                if (specialProviderFailures_ >= MAX_SPECIAL_PROVIDER_FAILURES) {
+                    auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now().time_since_epoch()).count();
+                    specialProviderCooldownExpiryMs_.store(
+                        nowMs + SPECIAL_PROVIDER_COOLDOWN_SECONDS * 1000,
+                        std::memory_order_relaxed);
+                    LOG_WARNING(TEXT("Special TTS provider cooldown triggered"));
+                }
+            }
+#endif
             if (HandleRequestFailureInternal(*reqPtr) && reqPtr->callback) {
                 reqPtr->callback(false, response.errorMsg);
             }
@@ -1259,6 +1361,14 @@ void TTSManager::TryRecovery()
     lastRecoveryAttempt = std::chrono::steady_clock::now();
     LOG_INFO(TEXT("TTS recovery: cooldown expired, cleared fallback. Next request will test API."));
 
+#if !ONLY_ORDER_MONSTER
+    specialProviderFailures_ = 0;
+    specialProviderCooldownExpiryMs_.store(0, std::memory_order_relaxed);
+    if (specialTtsProvider_) {
+        specialTtsProvider_->ResetAvailable();
+    }
+#endif
+
 }
 
 bool TTSManager::ShouldTryRecovery() const
@@ -1302,7 +1412,7 @@ void TTSManager::CleanupExpiredCooldowns() {
     }
 }
 
-void TTSManager::HandleDmOrderFood(const std::wstring& msg, const std::wstring& uname)
+void TTSManager::HandleDmOrderFood(const std::wstring& msg, const std::wstring& uname, const std::string& userId)
 {
     if (msg.length() <= 2) return;
     std::wstring msgWithoutPrefix = msg.substr(2);
@@ -1310,5 +1420,5 @@ void TTSManager::HandleDmOrderFood(const std::wstring& msg, const std::wstring& 
     std::uniform_int_distribution<int> dist(0, 60);
     int randomValue = dist(rng);
     std::lock_guard<std::mutex> lock(queueMutex_);
-    NormalMsgQueue.push_back(uname + TEXT(" 下单的 ") + msgWithoutPrefix + TEXT(" 已接单，预计") + std::to_wstring(randomValue) + TEXT("分钟后送达！"));
+    NormalMsgQueue.push_back({uname + TEXT(" 下单的 ") + msgWithoutPrefix + TEXT(" 已接单，预计") + std::to_wstring(randomValue) + TEXT("分钟后送达！"), userId});
 }

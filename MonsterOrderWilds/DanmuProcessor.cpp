@@ -1,6 +1,7 @@
 #include "framework.h"
 #include "DanmuProcessor.h"
 #include "WriteLog.h"
+#include "SpecialUserHelper.h"
 #if !ONLY_ORDER_MONSTER
 #include "RetroactiveCheckInModule.h"
 #endif
@@ -274,6 +275,11 @@ DanmuData DanmuProcessor::ParseDanmuJson(const json& j) const
 
         if (dataObj.contains("guard_level"))
             data.guardLevel = dataObj["guard_level"].get<int>();
+
+        // 特殊判定：特定open_id永远判定为总督
+        if (SpecialUser::IsSpecialUser(data.userId)) {
+            data.guardLevel = 1;
+        }
     }
     catch (const std::exception& e)
     {

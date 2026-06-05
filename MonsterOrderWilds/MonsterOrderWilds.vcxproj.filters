@@ -130,6 +130,9 @@
     <ClInclude Include="DataBridgeExports.h">
       <Filter>Bridge</Filter>
     </ClInclude>
+    <ClInclude Include="SpecialManboTTSProvider.h">
+      <Filter>DataProcessing</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="UnitTestLog.h">
@@ -188,6 +191,9 @@
     </ClCompile>
 
     <ClCompile Include="ManboTTSProvider.cpp">
+      <Filter>DataProcessing</Filter>
+    </ClCompile>
+    <ClCompile Include="SpecialManboTTSProvider.cpp">
       <Filter>DataProcessing</Filter>
     </ClCompile>
     <ClCompile Include="TTSCacheManager.cpp">

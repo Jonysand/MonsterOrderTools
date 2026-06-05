@@ -55,6 +55,7 @@ struct AsyncTTSRequest
 	bool isCheckinTTS = false;              // 是否为checkin TTS
 	std::string checkinUsername;            // checkin用户名（用于缓存）
 	std::string voice;                     // 语音
+	std::string userId;                     // 用户 OpenID（用于特殊用户识别）
 	int speed = 0;                          // 语速
 	bool playbackStarted = false;            // 是否已开始播放
 	bool sapiStreamEnded = false;            // SAPI流是否已结束
@@ -79,6 +80,8 @@ class TTSManager
 		std::string gift_name;
 		// 是否收费
 		bool paid;
+		// 用户 OpenID（用于特殊用户识别）
+		std::string userId;
 	};
 
 public:
@@ -129,7 +132,7 @@ public:
 	// 实例存活标志，用于防止SAPI回调中的UAF
 	static std::atomic<bool> s_instanceAlive;
 
-	bool Speak(const TString& text);
+	bool Speak(const TString& text, const std::string& userId = "");
 	bool PlayAudioData(const std::vector<uint8_t>& audioData, const std::string& format = "mp3");
 	void SpeakCheckinTTS(const TString& text, const std::string& username, std::function<void(bool success, const std::string& errorMsg)> callback = nullptr);
 private:
@@ -155,7 +158,7 @@ private:
 	// 返回值：true = 请求真正失败（不再重试），false = 正在重试
 	bool HandleRequestFailureInternal(AsyncTTSRequest& req);
 
-	void HandleDmOrderFood(const std::wstring& text, const std::wstring& uname);
+	void HandleDmOrderFood(const std::wstring& text, const std::wstring& uname, const std::string& userId);
 
 	// 引擎选择和降级逻辑
 	enum class TTSEngine {
@@ -171,9 +174,9 @@ private:
 	bool IsManualEngineMode() const { return !userSelectedEngineName_.empty() && userSelectedEngineName_ != "auto"; }
 
 	// 一般弹幕播报队列
-	std::list<TString> NormalMsgQueue;
+	std::list<std::pair<TString, std::string>> NormalMsgQueue;
 	// 送礼弹幕播报队列
-	std::list<TString> GiftMsgQueue;
+	std::list<std::pair<TString, std::string>> GiftMsgQueue;
 	// 送礼弹幕播报准备队列，处理连击送礼
 	std::map<std::string, ComboGiftMsgEntry> ComboGiftMsgPrepareMap;
 	// 历史记录队列
@@ -204,6 +207,7 @@ private:
 		bool paid;
 		bool firstReported;
 		int64_t lastUpdateTime;
+		std::string userId;  // 用户 OpenID（用于特殊用户识别）
 		
 		DynamicComboEntry() : gift_num(0), combo_timeout(0), paid(false), firstReported(false), lastUpdateTime(0) {}
 	};
@@ -214,6 +218,15 @@ private:
 	bool IsInCooldown(const std::string& comboId);
 	void UpdateCooldown(const std::string& comboId);
 	void CleanupExpiredCooldowns();
+
+#if !ONLY_ORDER_MONSTER
+	// 特殊用户 TTS provider
+	std::shared_ptr<ITTSProvider> specialTtsProvider_;
+	std::atomic<int> specialProviderFailures_{ 0 };
+	std::atomic<int64_t> specialProviderCooldownExpiryMs_{ 0 };
+	static constexpr int MAX_SPECIAL_PROVIDER_FAILURES = 3;
+	static constexpr int SPECIAL_PROVIDER_COOLDOWN_SECONDS = 30;
+#endif
 
 	// 引擎降级相关
 	std::atomic<bool> isFallback{ false };              // 是否已降级到SAPI

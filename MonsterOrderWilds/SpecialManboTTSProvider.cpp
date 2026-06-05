@@ -1,0 +1,188 @@
+#include "framework.h"
+#include "SpecialManboTTSProvider.h"
+#include "Network.h"
+#include "WriteLog.h"
+#include <winhttp.h>
+#include <string>
+#include <vector>
+#include <sstream>
+#include <iomanip>
+
+#pragma comment(lib, "winhttp.lib")
+
+namespace {
+    std::string UrlEncode(const std::string& value) {
+        std::ostringstream escaped;
+        escaped.fill('0');
+        escaped << std::hex;
+        
+        for (char c : value) {
+            if (std::isalnum(static_cast<unsigned char>(c)) || c == '-' || c == '_' || c == '.' || c == '~') {
+                escaped << c;
+            } else {
+                escaped << std::uppercase;
+                escaped << '%' << std::setw(2) << static_cast<int>(static_cast<unsigned char>(c));
+                escaped << std::nouppercase;
+            }
+        }
+        
+        return escaped.str();
+    }
+}
+
+SpecialManboTTSProvider::SpecialManboTTSProvider(const std::string& apiKey) 
+    : apiKey_(apiKey), available_(true) {}
+
+std::string SpecialManboTTSProvider::GetProviderName() const { return "special_manbo"; }
+
+std::string SpecialManboTTSProvider::GetLastError() const { return lastError_; }
+
+std::string SpecialManboTTSProvider::BuildRequestUrl(const TTSRequest& request) const {
+    std::string url = "/apis/mbAIsc?text=";
+    url += UrlEncode(request.text);
+    url += "&format=mp3";
+    return url;
+}
+
+TTSResponse SpecialManboTTSProvider::ParseApiResponse(const std::string& responseBody) const {
+    TTSResponse result;
+    result.success = false;
+    
+    try {
+        auto j = nlohmann::json::parse(responseBody);
+        if (j.contains("code") && j["code"].get<int>() == 200) {
+            if (j.contains("url") && j["url"].is_string()) {
+                result.success = true;
+                result.errorMsg = j["url"].get<std::string>();
+            } else {
+                result.errorMsg = "Invalid response format: missing url";
+            }
+        } else {
+            if (j.contains("msg") && j["msg"].is_string()) {
+                result.errorMsg = j["msg"].get<std::string>();
+            } else {
+                result.errorMsg = "API error";
+            }
+        }
+    } catch (const std::exception& e) {
+        result.errorMsg = std::string("Parse error: ") + e.what();
+    }
+    return result;
+}
+
+void SpecialManboTTSProvider::DownloadAudio(const std::string& audioUrl, TTSCallback callback) {
+    std::string host;
+    std::string path;
+    int port = 443;
+    bool useHttps = true;
+    
+    size_t protocolEnd = audioUrl.find("://");
+    if (protocolEnd != std::string::npos) {
+        useHttps = audioUrl.substr(0, protocolEnd) == "https";
+        size_t hostStart = protocolEnd + 3;
+        size_t pathStart = audioUrl.find('/', hostStart);
+        if (pathStart != std::string::npos) {
+            host = audioUrl.substr(hostStart, pathStart - hostStart);
+            path = audioUrl.substr(pathStart);
+        } else {
+            host = audioUrl.substr(hostStart);
+            path = "/";
+        }
+    } else {
+        lastError_ = "Invalid audio URL format";
+        TTSResponse resp;
+        resp.success = false;
+        resp.errorMsg = lastError_;
+        try {
+            callback(resp);
+        } catch (...) {}
+        return;
+    }
+    
+    std::wstring wHost(host.begin(), host.end());
+    std::wstring wPath(path.begin(), path.end());
+    
+    Network::MakeHttpsRequestAsync(
+        wHost.c_str(),
+        port,
+        wPath.c_str(),
+        TEXT("GET"),
+        "",
+        "",
+        useHttps,
+        [self = shared_from_this(), callback](bool success, const std::string& resp, DWORD error, DWORD httpStatusCode) {
+            if (!success || error != 0 || httpStatusCode != 200) {
+                self->lastError_ = "Audio download failed";
+                if (httpStatusCode != 0 && httpStatusCode != 200) {
+                    self->lastError_ += " (HTTP " + std::to_string(httpStatusCode) + ")";
+                }
+                self->available_ = false;
+                TTSResponse response;
+                response.success = false;
+                response.errorMsg = self->lastError_;
+                response.httpStatusCode = static_cast<int>(httpStatusCode);
+                try {
+                    callback(response);
+                } catch (...) {}
+                return;
+            }
+            
+            TTSResponse response;
+            response.success = true;
+            response.audioData.assign(resp.begin(), resp.end());
+            response.httpStatusCode = static_cast<int>(httpStatusCode);
+            try {
+                callback(response);
+            } catch (...) {}
+        });
+}
+
+void SpecialManboTTSProvider::RequestTTS(const TTSRequest& request, TTSCallback callback) {
+    std::string requestUrl = BuildRequestUrl(request);
+    std::wstring wRequestUrl(requestUrl.begin(), requestUrl.end());
+
+    std::string headers = "Authorization: Bearer " + apiKey_ + "\r\n";
+
+    Network::MakeHttpsRequestAsync(
+        TEXT("api.milorapart.top"),
+        443,
+        wRequestUrl.c_str(),
+        TEXT("GET"),
+        headers,
+        "",
+        true,
+        [self = shared_from_this(), callback](bool success, const std::string& resp, DWORD error, DWORD httpStatusCode) {
+            if (!success || error != 0 || httpStatusCode != 200) {
+                self->lastError_ = "HTTP request failed";
+                if (httpStatusCode != 0 && httpStatusCode != 200) {
+                    self->lastError_ += " (HTTP " + std::to_string(httpStatusCode) + ")";
+                }
+                self->available_ = false;
+                TTSResponse response;
+                response.success = false;
+                response.errorMsg = self->lastError_;
+                response.httpStatusCode = static_cast<int>(httpStatusCode);
+                try {
+                    callback(response);
+                } catch (...) {}
+                return;
+            }
+            
+            auto apiResp = self->ParseApiResponse(resp);
+            if (!apiResp.success) {
+                self->lastError_ = apiResp.errorMsg;
+                self->available_ = false;
+                TTSResponse response;
+                response.success = false;
+                response.errorMsg = self->lastError_;
+                response.httpStatusCode = static_cast<int>(httpStatusCode);
+                try {
+                    callback(response);
+                } catch (...) {}
+                return;
+            }
+            
+            std::string audioUrl = apiResp.errorMsg;
+            self->DownloadAudio(audioUrl, callback);
+        });
+}

@@ -258,6 +258,7 @@ xcopy /y /q "$(ProjectDir)dict\*" "$(OutDir)dict\"</Command>
     <ClInclude Include="ProfileManager.h" />
     <ClInclude Include="PriorityQueueManager.h" />
     <ClInclude Include="Resource.h" />
+    <ClInclude Include="SpecialManboTTSProvider.h" />
     <ClInclude Include="StringProcessor.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="TextToSpeech.h" />
@@ -290,6 +291,7 @@ xcopy /y /q "$(ProjectDir)dict\*" "$(OutDir)dict\"</Command>
     <ClCompile Include="Network.cpp" />
     <ClCompile Include="PriorityQueueManager.cpp" />
     <ClCompile Include="ProfileManager.cpp" />
+    <ClCompile Include="SpecialManboTTSProvider.cpp" />
     <ClCompile Include="StringProcessor.cpp" />
     <ClCompile Include="TextToSpeech.cpp" />
     <ClCompile Include="TTSCacheManager.cpp" />
