@@ -939,9 +939,8 @@ void TTSManager::ProcessPendingRequestInternal(std::list<std::shared_ptr<AsyncTT
             provider = specialTtsProvider_;
             LOG_DEBUG(TEXT("Using special TTS provider for user: %hs"), req.userId.c_str());
         } else {
-            // fallback SAPI
-            req.engineType = TTSEngineType::SAPI;
-            LOG_DEBUG(TEXT("Special TTS provider unavailable, using SAPI for user: %hs"), req.userId.c_str());
+            // fallback 到通用 TTS 逻辑（不修改 engineType，保持原有 fallback 链）
+            LOG_DEBUG(TEXT("Special TTS provider unavailable, using default provider for user: %hs"), req.userId.c_str());
         }
     }
 #endif
@@ -1003,11 +1002,18 @@ void TTSManager::ProcessPendingRequestInternal(std::list<std::shared_ptr<AsyncTT
                         std::memory_order_relaxed);
                     LOG_WARNING(TEXT("Special TTS provider cooldown triggered"));
                 }
+                // 特殊 provider 失败后，保持原有 engineType，走通用 TTS fallback 逻辑
+                reqPtr->userId.clear();
+                reqPtr->state = AsyncTTSState::Pending;
+                reqPtr->retryCount = 0;
+                reqPtr->requestStartTime = std::chrono::steady_clock::now();
+                reqPtr->totalStartTime = std::chrono::steady_clock::now();
+                reqPtr->errorMessage.clear();
+                if (activeRequestCount_ > 0) activeRequestCount_--;
+                LOG_INFO(TEXT("Special TTS provider failed, falling back to default TTS"));
+                return;
             }
 #endif
-            if (HandleRequestFailureInternal(*reqPtr) && reqPtr->callback) {
-                reqPtr->callback(false, response.errorMsg);
-            }
         }
     });
 
