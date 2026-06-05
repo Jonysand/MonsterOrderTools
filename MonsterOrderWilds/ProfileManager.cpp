@@ -1368,7 +1368,7 @@ bool ProfileManager::ExecuteRetroactiveCheckin(const std::string& uid, const std
             profile.lastCheckinDate = targetDate;
         }
         profile.updatedAt = GetCurrentTimestamp();
-        SaveProfileToDb(profile);
+        SaveProfile(profile);
     }
 
     // 提交事务
@@ -1408,9 +1408,8 @@ int32_t ProfileManager::FindLastMissingCheckinDate(const std::string& uid, int32
 
     // 从当前日期开始向前检查，找到最近的缺失日期
     int32_t checkDate = currentDate;
-    int32_t maxCheckDays = 30;  // 最多检查30天，避免性能问题
     
-    for (int32_t i = 0; i < maxCheckDays; i++) {
+    while (checkDate != 0) {
         // 检查checkDate是否有打卡记录
         const char* checkSql = "SELECT 1 FROM checkin_records WHERE uid = ? AND checkin_date = ?";
         if (sqlite3_prepare_v2(db, checkSql, -1, &stmt, nullptr) == SQLITE_OK) {

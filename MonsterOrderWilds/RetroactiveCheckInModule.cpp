@@ -322,8 +322,8 @@ void RetroactiveCheckInModule::HandleRetroactiveCommand(const DanmuProcessor::Ca
     }
 
     if (ExecuteRetroactive(event.uid, event.username, missingDate)) {
-        int32_t newContinuousDays = ProfileManager::Inst()->CalculateContinuousDays(
-            event.uid, missingDate);
+        int32_t newContinuousDays = ProfileManager::Inst()->CalculateContinuousDaysFromRecords(
+            event.uid);
 
         // 重新加载卡片数量，确保显示最新值
         RetroactiveCardData updatedCards;

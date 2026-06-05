@@ -370,6 +370,11 @@ void TestRetroactiveCommandWithHistoricalGap() {
     assert(ProfileManager::Inst()->LoadRetroactiveCards("test_gap_user", cards));
     assert(cards.cardCount == 2);  // 3-1=2
 
+    // 验证连续打卡天数正确更新（20260601→20260602→20260603→20260604→20260605 = 5天）
+    UserProfileData profile;
+    assert(ProfileManager::Inst()->LoadProfile("test_gap_user", profile));
+    assert(profile.continuousDays == 5);
+
     TestLog("[PASS] TestRetroactiveCommandWithHistoricalGap");
 }
 
