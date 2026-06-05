@@ -338,6 +338,75 @@ void TestRetroactiveCommand() {
     TestLog("[PASS] TestRetroactiveCommand");
 }
 
+void TestRetroactiveCommandWithHistoricalGap() {
+    CleanupTestData();
+    RetroactiveCheckInModule::Inst()->Init();
+
+    // 创建补签卡
+    RetroactiveCardData cards;
+    cards.uid = "test_gap_user";
+    cards.cardCount = 3;
+    cards.totalEarned = 3;
+    cards.monthlyFirstClaimed = 0;
+    cards.lastEarnedDate = 0;
+    ProfileManager::Inst()->SaveRetroactiveCards(cards);
+
+    // 创建打卡记录：20260601, 20260603, 20260604, 20260605 (缺失20260602)
+    ProfileManager::Inst()->InsertRetroactiveCheckin("test_gap_user", "GapUser", 20260601);
+    ProfileManager::Inst()->InsertRetroactiveCheckin("test_gap_user", "GapUser", 20260603);
+    ProfileManager::Inst()->InsertRetroactiveCheckin("test_gap_user", "GapUser", 20260604);
+    ProfileManager::Inst()->InsertRetroactiveCheckin("test_gap_user", "GapUser", 20260605);
+
+    // 用户今天已打卡（20260605），但20260602缺失
+    DanmuProcessor::CaptainDanmuEvent evt;
+    evt.uid = "test_gap_user";
+    evt.username = "GapUser";
+    evt.content = "补签";
+    evt.sendDate = 20260605;  // 今天已打卡
+
+    RetroactiveCheckInModule::Inst()->PushDanmuEvent(evt);
+
+    // 验证补签成功（应该补签20260602）
+    assert(ProfileManager::Inst()->LoadRetroactiveCards("test_gap_user", cards));
+    assert(cards.cardCount == 2);  // 3-1=2
+
+    TestLog("[PASS] TestRetroactiveCommandWithHistoricalGap");
+}
+
+void TestRetroactiveCommandNoGap() {
+    CleanupTestData();
+    RetroactiveCheckInModule::Inst()->Init();
+
+    // 创建补签卡
+    RetroactiveCardData cards;
+    cards.uid = "test_no_gap";
+    cards.cardCount = 2;
+    cards.totalEarned = 2;
+    cards.monthlyFirstClaimed = 0;
+    cards.lastEarnedDate = 0;
+    ProfileManager::Inst()->SaveRetroactiveCards(cards);
+
+    // 创建连续打卡记录：20260603, 20260604, 20260605
+    ProfileManager::Inst()->InsertRetroactiveCheckin("test_no_gap", "NoGapUser", 20260603);
+    ProfileManager::Inst()->InsertRetroactiveCheckin("test_no_gap", "NoGapUser", 20260604);
+    ProfileManager::Inst()->InsertRetroactiveCheckin("test_no_gap", "NoGapUser", 20260605);
+
+    // 用户今天已打卡（20260605），连续打卡无缺失
+    DanmuProcessor::CaptainDanmuEvent evt;
+    evt.uid = "test_no_gap";
+    evt.username = "NoGapUser";
+    evt.content = "补签";
+    evt.sendDate = 20260605;
+
+    RetroactiveCheckInModule::Inst()->PushDanmuEvent(evt);
+
+    // 验证没有补签（卡片数量不变）
+    assert(ProfileManager::Inst()->LoadRetroactiveCards("test_no_gap", cards));
+    assert(cards.cardCount == 2);  // 未使用
+
+    TestLog("[PASS] TestRetroactiveCommandNoGap");
+}
+
 void TestQueryCommand() {
     CleanupTestData();
     RetroactiveCheckInModule::Inst()->Init();
@@ -531,6 +600,8 @@ void RunRetroactiveCheckInModuleTests() {
     TestNoMissingDateRetroactive();
     TestEmptyUid();
     TestInvalidLikeCount();
+    TestRetroactiveCommandWithHistoricalGap();
+    TestRetroactiveCommandNoGap();
     TestConcurrentDeduction();
     std::cout << "========== All RetroactiveCheckInModule Tests Passed ==========" << std::endl;
 }

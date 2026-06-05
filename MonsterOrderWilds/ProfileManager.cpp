@@ -1406,74 +1406,32 @@ int32_t ProfileManager::FindLastMissingCheckinDate(const std::string& uid, int32
     sqlite3* db = (sqlite3*)storage_;
     sqlite3_stmt* stmt = nullptr;
 
-    const char* sql = "SELECT MAX(checkin_date) FROM checkin_records WHERE uid = ?";
-
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
-        return 0;
-    }
-
-    sqlite3_bind_text(stmt, 1, uid.c_str(), -1, SQLITE_TRANSIENT);
-
-    int32_t lastCheckinDate = 0;
-    if (sqlite3_step(stmt) == SQLITE_ROW) {
-        lastCheckinDate = sqlite3_column_int(stmt, 0);
-    }
-    sqlite3_finalize(stmt);
-
-    if (lastCheckinDate == 0) {
-        return 0;
-    }
-
-    if (lastCheckinDate >= currentDate) {
-        return 0;
-    }
-
-    int32_t year = currentDate / 10000;
-    int32_t month = (currentDate % 10000) / 100;
-    int32_t day = currentDate % 100;
-
-    int32_t lastYear = lastCheckinDate / 10000;
-    int32_t lastMonth = (lastCheckinDate % 10000) / 100;
-    int32_t lastDay = lastCheckinDate % 100;
-
-    if (year == lastYear && month == lastMonth && day == lastDay + 1) {
-        return 0;
-    }
-    int32_t lastMonthDays = DateUtils::GetDaysInMonth(lastYear, lastMonth);
-    if (year == lastYear && month == lastMonth + 1 && day == 1 && lastDay == lastMonthDays) {
-        return 0;
-    }
-    if (year == lastYear + 1 && month == 1 && lastMonth == 12 && day == 1 && lastDay == 31) {
-        return 0;
-    }
-
-    int32_t missingDate = currentDate;
-    if (day > 1) {
-        missingDate = currentDate - 1;
-    } else {
-        int32_t prevMonth = month - 1;
-        int32_t prevYear = year;
-        if (prevMonth == 0) {
-            prevMonth = 12;
-            prevYear--;
-        }
-        int32_t prevMonthDays = DateUtils::GetDaysInMonth(prevYear, prevMonth);
-        missingDate = prevYear * 10000 + prevMonth * 100 + prevMonthDays;
-    }
-
-    const char* checkSql = "SELECT 1 FROM checkin_records WHERE uid = ? AND checkin_date = ?";
-    if (sqlite3_prepare_v2(db, checkSql, -1, &stmt, nullptr) == SQLITE_OK) {
-        sqlite3_bind_text(stmt, 1, uid.c_str(), -1, SQLITE_TRANSIENT);
-        sqlite3_bind_int(stmt, 2, missingDate);
-
-        if (sqlite3_step(stmt) == SQLITE_ROW) {
+    // 从当前日期开始向前检查，找到最近的缺失日期
+    int32_t checkDate = currentDate;
+    int32_t maxCheckDays = 30;  // 最多检查30天，避免性能问题
+    
+    for (int32_t i = 0; i < maxCheckDays; i++) {
+        // 检查checkDate是否有打卡记录
+        const char* checkSql = "SELECT 1 FROM checkin_records WHERE uid = ? AND checkin_date = ?";
+        if (sqlite3_prepare_v2(db, checkSql, -1, &stmt, nullptr) == SQLITE_OK) {
+            sqlite3_bind_text(stmt, 1, uid.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_bind_int(stmt, 2, checkDate);
+            
+            bool hasRecord = (sqlite3_step(stmt) == SQLITE_ROW);
             sqlite3_finalize(stmt);
-            return 0;
+            
+            if (!hasRecord) {
+                // 找到缺失日期
+                return checkDate;
+            }
         }
-        sqlite3_finalize(stmt);
+        
+        // 检查前一天
+        checkDate = DateUtils::GetPreviousDate(checkDate);
+        if (checkDate == 0) break;
     }
-
-    return missingDate;
+    
+    return 0;  // 没有找到缺失日期
 }
 
 // 辅助函数：获取今天日期 YYYYMMDD

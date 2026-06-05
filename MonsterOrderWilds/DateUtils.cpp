@@ -64,4 +64,27 @@ namespace DateUtils {
         return false;
     }
 
+    int32_t GetPreviousDate(int32_t date) {
+        if (date <= 0) return 0;
+        
+        int32_t year = date / 10000;
+        int32_t month = (date % 10000) / 100;
+        int32_t day = date % 100;
+        
+        if (day > 1) {
+            // 同月前一天
+            return year * 10000 + month * 100 + (day - 1);
+        } else {
+            // 需要回退到上个月
+            int32_t prevMonth = month - 1;
+            int32_t prevYear = year;
+            if (prevMonth == 0) {
+                prevMonth = 12;
+                prevYear--;
+            }
+            int32_t prevMonthDays = GetDaysInMonth(prevYear, prevMonth);
+            return prevYear * 10000 + prevMonth * 100 + prevMonthDays;
+        }
+    }
+
 }
