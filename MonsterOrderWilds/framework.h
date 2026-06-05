@@ -53,7 +53,7 @@ using json = nlohmann::json;
 #define ONLY_ORDER_MONSTER 0
 #endif
 
-#define APP_VERSION 35
+#define APP_VERSION 36
 
 #ifdef UNICODE
 typedef std::wstring TString;
