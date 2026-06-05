@@ -1535,6 +1535,40 @@ std::string ProfileManager::GetUidByUsername(const std::string& username) {
     return uid;
 }
 
+std::vector<std::string> ProfileManager::GetUidsByUsernamePartial(const std::string& username) {
+    std::vector<std::string> uids;
+    if (!storage_ || username.empty()) return uids;
+
+    std::lock_guard<std::recursive_mutex> lock(profilesLock_);
+    sqlite3* db = (sqlite3*)storage_;
+
+    // 转义 LIKE 通配符
+    std::string escaped;
+    for (char c : username) {
+        if (c == '%' || c == '_' || c == '\\') escaped += '\\';
+        escaped += c;
+    }
+
+    std::string pattern = "%" + escaped + "%";
+    const char* sql = "SELECT uid FROM user_profiles WHERE username LIKE ? ESCAPE '\\'";
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        LOG_ERROR(TEXT("ProfileManager: GetUidsByUsernamePartial prepare failed: %hs"), sqlite3_errmsg(db));
+        return uids;
+    }
+
+    sqlite3_bind_text(stmt, 1, pattern.c_str(), -1, SQLITE_TRANSIENT);
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        const char* result = (const char*)sqlite3_column_text(stmt, 0);
+        if (result) uids.push_back(result);
+    }
+    sqlite3_finalize(stmt);
+
+    LOG_DEBUG(TEXT("ProfileManager: GetUidsByUsernamePartial '%hs' matched %d users"), username.c_str(), (int)uids.size());
+    return uids;
+}
+
 std::vector<ProfileManager::UserSummary> ProfileManager::GetAllUsersSummary() {
     std::vector<UserSummary> results;
     if (!storage_) return results;

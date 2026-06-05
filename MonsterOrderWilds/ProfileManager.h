@@ -114,8 +114,11 @@ public:
     // 查询打卡记录（uid 为空查全部，startDate/endDate > 0 时按日期范围过滤）
     std::vector<CheckinRecord> GetCheckinRecords(const std::string& uid = "", int32_t startDate = 0, int32_t endDate = 0);
 
-    // 根据用户名查询UID（返回空字符串表示未找到）
+    // 根据用户名查询UID（精确匹配，返回空字符串表示未找到）
     std::string GetUidByUsername(const std::string& username);
+
+    // 根据用户名部分匹配查询UID列表（LIKE '%username%'）
+    std::vector<std::string> GetUidsByUsernamePartial(const std::string& username);
 
     // 用户汇总数据结构
     struct UserSummary {

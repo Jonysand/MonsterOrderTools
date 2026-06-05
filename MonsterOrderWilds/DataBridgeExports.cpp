@@ -1,6 +1,7 @@
 #include "DataBridgeExports.h"
 #include "ConfigFieldRegistry.h"
 #include "WriteLog.h"
+#include <algorithm>
 #include <cstring>
 #include <mutex>
 
@@ -560,11 +561,11 @@ extern "C" {
             std::string formatStr = format;
             std::string filePathStr = filePath;
 
-            // 如果指定了用户名，先查询对应的UID
-            std::string uid;
+            // 如果指定了用户名，部分匹配查询所有UID
+            std::vector<std::string> uids;
             if (!usernameStr.empty()) {
-                uid = ProfileManager::Inst()->GetUidByUsername(usernameStr);
-                if (uid.empty()) {
+                uids = ProfileManager::Inst()->GetUidsByUsernamePartial(usernameStr);
+                if (uids.empty()) {
                     if (outMessage && messageBufferSize > 0)
                     {
                         strncpy_s(outMessage, messageBufferSize, "User not found", _TRUNCATE);
@@ -573,8 +574,20 @@ extern "C" {
                 }
             }
 
-            // 获取打卡记录
-            auto records = ProfileManager::Inst()->GetCheckinRecords(uid, startDate, endDate);
+            // 获取打卡记录（多用户合并）
+            std::vector<CheckinRecord> records;
+            if (uids.empty()) {
+                records = ProfileManager::Inst()->GetCheckinRecords("", startDate, endDate);
+            } else {
+                for (const auto& uid : uids) {
+                    auto userRecords = ProfileManager::Inst()->GetCheckinRecords(uid, startDate, endDate);
+                    records.insert(records.end(), userRecords.begin(), userRecords.end());
+                }
+                // 按日期降序排序
+                std::sort(records.begin(), records.end(), [](const CheckinRecord& a, const CheckinRecord& b) {
+                    return a.checkinDate > b.checkinDate;
+                });
+            }
 
             // 写入文件
             std::ofstream file(filePathStr, std::ios::out | std::ios::trunc);
@@ -631,7 +644,12 @@ extern "C" {
             file.close();
             if (outMessage && messageBufferSize > 0)
             {
-                std::string successMsg = "Exported " + std::to_string(records.size()) + " records";
+                std::string successMsg;
+                if (!uids.empty()) {
+                    successMsg = "Matched " + std::to_string(uids.size()) + " user(s), exported " + std::to_string(records.size()) + " records";
+                } else {
+                    successMsg = "Exported " + std::to_string(records.size()) + " records";
+                }
                 strncpy_s(outMessage, messageBufferSize, successMsg.c_str(), _TRUNCATE);
             }
             return true;
