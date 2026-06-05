@@ -6,7 +6,7 @@
 
 class SpecialManboTTSProvider : public ITTSProvider, public std::enable_shared_from_this<SpecialManboTTSProvider> {
 public:
-    SpecialManboTTSProvider(const std::string& apiKey);
+    SpecialManboTTSProvider();
     std::string GetProviderName() const override;
     bool IsAvailable() const override { return available_; }
     void ResetAvailable() override { available_ = true; }
@@ -16,7 +16,6 @@ public:
     TTSResponse ParseApiResponse(const std::string& responseBody) const;
 private:
     void DownloadAudio(const std::string& audioUrl, TTSCallback callback);
-    std::string apiKey_;
     std::string lastError_;
     bool available_;
 };

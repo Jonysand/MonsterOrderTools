@@ -30,8 +30,8 @@ namespace {
     }
 }
 
-SpecialManboTTSProvider::SpecialManboTTSProvider(const std::string& apiKey) 
-    : apiKey_(apiKey), available_(true) {}
+SpecialManboTTSProvider::SpecialManboTTSProvider() 
+    : available_(true) {}
 
 std::string SpecialManboTTSProvider::GetProviderName() const { return "special_manbo"; }
 
@@ -141,14 +141,12 @@ void SpecialManboTTSProvider::RequestTTS(const TTSRequest& request, TTSCallback 
     std::string requestUrl = BuildRequestUrl(request);
     std::wstring wRequestUrl(requestUrl.begin(), requestUrl.end());
 
-    std::string headers = "Authorization: Bearer " + apiKey_ + "\r\n";
-
     Network::MakeHttpsRequestAsync(
         TEXT("api.milorapart.top"),
         443,
         wRequestUrl.c_str(),
         TEXT("GET"),
-        headers,
+        "",
         "",
         true,
         [self = shared_from_this(), callback](bool success, const std::string& resp, DWORD error, DWORD httpStatusCode) {

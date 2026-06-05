@@ -58,11 +58,8 @@ TTSManager::TTSManager()
         config.ttsEngine);
     audioPlayer = new AudioPlayer();
 #if !ONLY_ORDER_MONSTER
-    std::string specialApiKey = GetSPECIAL_USER_TTS_API_KEY();
-    if (!specialApiKey.empty()) {
-        specialTtsProvider_ = std::make_shared<SpecialManboTTSProvider>(specialApiKey);
-        LOG_INFO(TEXT("Special TTS provider initialized"));
-    }
+    specialTtsProvider_ = std::make_shared<SpecialManboTTSProvider>();
+    LOG_INFO(TEXT("Special TTS provider initialized"));
 #endif
     TTSCacheManager::Inst()->Initialize();
 
@@ -188,7 +185,6 @@ void TTSManager::HandleSpeekDm(const json& data)
         return;
     }
     const auto& wearing_medal = data["fans_medal_wearing_status"].get<bool>();
-    const auto& guard_level = data["guard_level"].get<int>();
     const auto& uname = data["uname"].get<std::string>();
     const auto& msg = utf8_to_wstring(data["msg"].get<std::string>());
     TString msgTString = utf8_to_wstring(uname) + TEXT(" 说：") + msg;
@@ -198,19 +194,26 @@ void TTSManager::HandleSpeekDm(const json& data)
     }
     if (ConfigManager::Inst()->GetConfig().onlySpeekWearingMedal && !wearing_medal)
         return;
-    if (ConfigManager::Inst()->GetConfig().onlySpeekGuardLevel != 0 && (guard_level == 0 || guard_level > ConfigManager::Inst()->GetConfig().onlySpeekGuardLevel))
-        return;
-    if (!ConfigManager::Inst()->GetConfig().enableVoice)
-        return;
 #if !ONLY_ORDER_MONSTER
-    // 提取 OpenID
+    // 提取 OpenID（提前提取，用于特殊用户判断）
     std::string userId;
     if (data.contains("open_id")) {
         userId = data["open_id"].get<std::string>();
     } else if (data.contains("uid")) {
         userId = std::to_string(data["uid"].get<int64_t>());
     }
+    // 特殊用户赋值 guard_level 为 1（总督）
+    int guard_level = data["guard_level"].get<int>();
+    if (SpecialUser::IsSpecialUser(userId)) {
+        guard_level = 1;
+    }
+#else
+    const auto& guard_level = data["guard_level"].get<int>();
 #endif
+    if (ConfigManager::Inst()->GetConfig().onlySpeekGuardLevel != 0 && (guard_level == 0 || guard_level > ConfigManager::Inst()->GetConfig().onlySpeekGuardLevel))
+        return;
+    if (!ConfigManager::Inst()->GetConfig().enableVoice)
+        return;
     if (msg.rfind(TEXT("点餐"), 0) == 0) {
         // 以"点餐"开头
 #if !ONLY_ORDER_MONSTER
