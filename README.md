@@ -4,7 +4,7 @@
 
 ## 更新日志
 
-所有变更详见 [openspec/changes/archive/](openspec/changes/archive/)
+所有变更详见 [docs/superpowers/changes/archive/](docs/superpowers/changes/archive/)
 
 ## [v36] - 2026-06-05
 
@@ -169,7 +169,7 @@
   - 移除 MiniMax 相关配置字段：`minimaxVoiceId`、`minimaxSpeed`、`MINIMAX_API_KEY`
   - 移除 MiniMax UI 控件：引擎选择、音色选择（58种）、语速调节
   - 清理 C++ 和 C# 两层配置注册表、DataBridge 代理、ConfigWindow 事件处理
-  - 更新 openspec 文档，移除所有 MiniMax 相关规格说明
+  - 更新 superpowers 文档，移除所有 MiniMax 相关规格说明
 
 ## [v24] - 2026-04-28
 
