@@ -579,13 +579,22 @@ void CaptainCheckInModule::SaveProfileAsync(const UserProfile& profile) {
         UserProfileData dbProfile;
         dbProfile.uid = profileCopy.uid;
         dbProfile.username = profileCopy.username;
-        dbProfile.lastCheckinDate = profileCopy.lastCheckinDate;
-        dbProfile.continuousDays = profileCopy.continuousDays;
-        dbProfile.cumulativeDays = profileCopy.cumulativeDays;
         dbProfile.lastDanmuTimestamp = profileCopy.lastDanmuTimestamp;
         dbProfile.createdAt = profileCopy.createdAt;
         dbProfile.keywords = profileCopy.keywords;
         dbProfile.danmuHistory = profileCopy.danmuHistory;
+
+        UserProfileData latestProfile;
+        if (ProfileManager::Inst()->LoadProfile(profileCopy.uid, latestProfile)) {
+            dbProfile.lastCheckinDate = latestProfile.lastCheckinDate;
+            dbProfile.continuousDays = latestProfile.continuousDays;
+            dbProfile.cumulativeDays = latestProfile.cumulativeDays;
+        } else {
+            dbProfile.lastCheckinDate = profileCopy.lastCheckinDate;
+            dbProfile.continuousDays = profileCopy.continuousDays;
+            dbProfile.cumulativeDays = profileCopy.cumulativeDays;
+        }
+
         ProfileManager::Inst()->SaveProfile(dbProfile);
     }).detach();
 }
