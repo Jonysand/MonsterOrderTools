@@ -117,6 +117,12 @@ namespace MonsterOrderWindows
         [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
         public static extern bool ProfileManager_ExportUsersSummary(string filePath, string format, [Out] byte[] outMessage, int messageBufferSize);
 
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
+        public static extern bool ProfileManager_SearchUsers(string keyword, [Out] byte[] outJson, int jsonBufferSize, [Out] byte[] outMessage, int messageBufferSize);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Ansi)]
+        public static extern bool ProfileManager_AddRetroactiveCards(string uid, int count, [Out] byte[] outMessage, int messageBufferSize);
+
         [UnmanagedFunctionPointer(CallingConvention.StdCall, CharSet = CharSet.Unicode)]
         public delegate void DanmuProcessedCallback(string userName, string monsterName, IntPtr userData);
 

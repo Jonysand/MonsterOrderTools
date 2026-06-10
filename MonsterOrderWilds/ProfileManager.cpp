@@ -721,26 +721,32 @@ int32_t ProfileManager::CalculateContinuousDays(const std::string& uid, int32_t 
     int32_t lastMonth = (lastDate % 10000) / 100;
     int32_t lastDay = lastDate % 100;
 
+    bool isNextDay = false;
     if (year == lastYear && month == lastMonth) {
         if (day == lastDay + 1) {
-            return lastContinuousDays + 1;
+            isNextDay = true;
         }
         else if (day == lastDay) {
-            return lastContinuousDays;
+            return CalculateContinuousDaysFromRecords(uid);
         }
     }
     else if (year == lastYear && month == lastMonth + 1) {
         int32_t lastMonthDays = DateUtils::GetDaysInMonth(lastYear, lastMonth);
         if (day == 1 && lastDay == lastMonthDays) {
-            return lastContinuousDays + 1;
+            isNextDay = true;
         }
     }
     else if (year == lastYear + 1) {
         if (month == 1 && lastMonth == 12) {
             if (day == 1 && lastDay == 31) {
-                return lastContinuousDays + 1;
+                isNextDay = true;
             }
         }
+    }
+
+    if (isNextDay) {
+        int32_t recordBasedDays = CalculateContinuousDaysFromRecords(uid);
+        return recordBasedDays + 1;
     }
 
     return 1;

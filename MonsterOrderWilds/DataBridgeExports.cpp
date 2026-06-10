@@ -9,6 +9,33 @@
 #include "CaptainCheckInModule.h"
 #include "RetroactiveCheckInModule.h"
 #include "ProfileManager.h"
+#include <sstream>
+#include <iomanip>
+#endif
+
+#if !ONLY_ORDER_MONSTER
+static std::string EscapeJsonString(const std::string& input) {
+    std::ostringstream oss;
+    for (char c : input) {
+        switch (c) {
+            case '"':  oss << "\\\""; break;
+            case '\\': oss << "\\\\"; break;
+            case '\b': oss << "\\b";  break;
+            case '\f': oss << "\\f";  break;
+            case '\n': oss << "\\n";  break;
+            case '\r': oss << "\\r";  break;
+            case '\t': oss << "\\t";  break;
+            default:
+                if (c >= 0 && c < 32) {
+                    oss << "\\u" << std::hex << std::setw(4) << std::setfill('0') << (int)c;
+                } else {
+                    oss << c;
+                }
+                break;
+        }
+    }
+    return oss.str();
+}
 #endif
 
 extern "C" {
@@ -762,6 +789,136 @@ extern "C" {
             {
                 strncpy_s(outMessage, messageBufferSize, e.what(), _TRUNCATE);
             }
+            return false;
+        }
+    }
+
+    __declspec(dllexport) bool __stdcall ProfileManager_SearchUsers(const char* keyword, char* outJson, int jsonBufferSize, char* outMessage, int messageBufferSize)
+    {
+        try
+        {
+#if !ONLY_ORDER_MONSTER
+            if (!keyword || !outJson || jsonBufferSize <= 0)
+            {
+                if (outMessage && messageBufferSize > 0)
+                    strncpy_s(outMessage, messageBufferSize, "Invalid parameters", _TRUNCATE);
+                return false;
+            }
+
+            std::string keywordStr(keyword);
+            if (keywordStr.empty())
+            {
+                if (outMessage && messageBufferSize > 0)
+                    strncpy_s(outMessage, messageBufferSize, "Keyword is empty", _TRUNCATE);
+                return false;
+            }
+
+            // 限制关键词长度，防止超长输入导致性能问题
+            if (keywordStr.length() > 100)
+                keywordStr = keywordStr.substr(0, 100);
+
+            auto uids = ProfileManager::Inst()->GetUidsByUsernamePartial(keywordStr);
+            if (uids.empty())
+            {
+                outJson[0] = '\0';
+                if (outMessage && messageBufferSize > 0)
+                    strncpy_s(outMessage, messageBufferSize, "No matching users found", _TRUNCATE);
+                return true; // 搜索成功但无结果
+            }
+
+            // 构建JSON结果
+            std::ostringstream oss;
+            oss << "[";
+            bool first = true;
+            for (const auto& uid : uids)
+            {
+                UserProfileData profile;
+                if (ProfileManager::Inst()->LoadProfile(uid, profile))
+                {
+                    if (!first) oss << ",";
+                    oss << "{\"uid\":\"" << EscapeJsonString(profile.uid) << "\","
+                        << "\"username\":\"" << EscapeJsonString(profile.username) << "\","
+                        << "\"cardCount\":";
+
+                    RetroactiveCardData cardData;
+                    if (ProfileManager::Inst()->LoadRetroactiveCards(uid, cardData))
+                        oss << cardData.cardCount;
+                    else
+                        oss << 0;
+
+                    oss << "}";
+                    first = false;
+                }
+            }
+            oss << "]";
+
+            std::string jsonResult = oss.str();
+            if ((int)jsonResult.size() >= jsonBufferSize)
+            {
+                if (outMessage && messageBufferSize > 0)
+                    strncpy_s(outMessage, messageBufferSize, "Result buffer too small", _TRUNCATE);
+                return false;
+            }
+            strncpy_s(outJson, jsonBufferSize, jsonResult.c_str(), _TRUNCATE);
+
+            if (outMessage && messageBufferSize > 0)
+                outMessage[0] = '\0';
+            return true;
+#else
+            outJson[0] = '\0';
+            if (outMessage && messageBufferSize > 0)
+                outMessage[0] = '\0';
+            return false;
+#endif
+        }
+        catch (const std::exception& e)
+        {
+            LOG_ERROR(TEXT("ProfileManager_SearchUsers failed: %s"), e.what());
+            if (outMessage && messageBufferSize > 0)
+                strncpy_s(outMessage, messageBufferSize, e.what(), _TRUNCATE);
+            return false;
+        }
+    }
+
+    __declspec(dllexport) bool __stdcall ProfileManager_AddRetroactiveCards(const char* uid, int count, char* outMessage, int messageBufferSize)
+    {
+        try
+        {
+#if !ONLY_ORDER_MONSTER
+            if (!uid || count <= 0)
+            {
+                if (outMessage && messageBufferSize > 0)
+                    strncpy_s(outMessage, messageBufferSize, "Invalid parameters", _TRUNCATE);
+                return false;
+            }
+
+            bool success = ProfileManager::Inst()->AddRetroactiveCard(uid, count);
+            if (success)
+            {
+                if (outMessage && messageBufferSize > 0)
+                {
+                    std::string msg = "Successfully added " + std::to_string(count) + " card(s)";
+                    strncpy_s(outMessage, messageBufferSize, msg.c_str(), _TRUNCATE);
+                }
+                return true;
+            }
+            else
+            {
+                if (outMessage && messageBufferSize > 0)
+                    strncpy_s(outMessage, messageBufferSize, "Failed to add cards", _TRUNCATE);
+                return false;
+            }
+#else
+            if (outMessage && messageBufferSize > 0)
+                outMessage[0] = '\0';
+            return false;
+#endif
+        }
+        catch (const std::exception& e)
+        {
+            LOG_ERROR(TEXT("ProfileManager_AddRetroactiveCards failed: %s"), e.what());
+            if (outMessage && messageBufferSize > 0)
+                strncpy_s(outMessage, messageBufferSize, e.what(), _TRUNCATE);
             return false;
         }
     }

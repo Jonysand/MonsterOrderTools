@@ -665,5 +665,20 @@ namespace MonsterOrderWindows
                 MessageBox.Show("导出打卡记录时出错：" + ex.Message, "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+
+        private void GMRetroactiveCardButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var dialog = new GMRetroactiveCardDialog();
+                dialog.Owner = Window.GetWindow(this);
+                dialog.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("打开GM发放补签窗口时出错：" + ex.Message, "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                System.Diagnostics.Debug.WriteLine($"[GMRetroactiveCardButton_Click] Exception: {ex.Message}");
+            }
+        }
     }
 }

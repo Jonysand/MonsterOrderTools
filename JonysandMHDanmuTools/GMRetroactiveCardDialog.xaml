@@ -1,0 +1,133 @@
+﻿<Window
+    x:Class="MonsterOrderWindows.GMRetroactiveCardDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="GM发放补签卡"
+    Height="400" Width="380"
+    WindowStartupLocation="CenterOwner"
+    ResizeMode="NoResize"
+    Background="#eee">
+    <Border Background="#eee" Padding="16" CornerRadius="6">
+        <StackPanel>
+            <TextBlock Text="GM发放补签卡"
+                       FontFamily="Segoe UI Variable"
+                       FontSize="18"
+                       FontWeight="SemiBold"
+                       Foreground="#222"
+                       Margin="0,0,0,16" />
+
+            <!-- 搜索区域 -->
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                <Border Background="#ddd" CornerRadius="6" Padding="6,2" Height="32" Width="220">
+                    <Grid>
+                        <TextBox Name="SearchKeywordTextBox"
+                                 VerticalAlignment="Center"
+                                 Width="208"
+                                 Height="28"
+                                 FontFamily="Segoe UI Variable"
+                                 FontSize="14"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 Foreground="#222"
+                                 KeyDown="SearchKeywordTextBox_KeyDown" />
+                        <TextBlock Name="SearchPlaceholder"
+                                   Text="输入用户昵称"
+                                   Foreground="#888"
+                                   VerticalAlignment="Center"
+                                   Margin="4,0,0,0"
+                                   IsHitTestVisible="False"
+                                   FontSize="14"
+                                   FontFamily="Segoe UI Variable"
+                                   Visibility="Visible" />
+                    </Grid>
+                </Border>
+                <Button Name="SearchButton"
+                        Content="搜索"
+                        Margin="8,0,0,0"
+                        Width="60"
+                        Height="32"
+                        Background="#0078D4"
+                        Foreground="White"
+                        BorderBrush="#0078D4"
+                        Click="SearchButton_Click" />
+            </StackPanel>
+
+            <!-- 搜索状态提示 -->
+            <TextBlock Name="SearchStatusText"
+                       Text=""
+                       Foreground="#888"
+                       FontFamily="Segoe UI Variable"
+                       FontSize="12"
+                       Margin="0,0,0,4" />
+
+            <!-- 用户列表 -->
+            <TextBlock Text="匹配结果（点击选择用户）："
+                       FontFamily="Segoe UI Variable"
+                       FontSize="13"
+                       Foreground="#444"
+                       Margin="0,4,0,4" />
+            <Border Background="White" CornerRadius="4" BorderBrush="#ccc" BorderThickness="1"
+                    Height="140" Margin="0,0,0,12">
+                <ListBox Name="UsersListBox"
+                         FontFamily="Segoe UI Variable"
+                         FontSize="13"
+                         Foreground="#222"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         SelectionChanged="UsersListBox_SelectionChanged" />
+            </Border>
+
+            <!-- 选中用户信息 -->
+            <TextBlock Name="SelectedUserText"
+                       Text="未选择用户"
+                       FontFamily="Segoe UI Variable"
+                       FontSize="13"
+                       Foreground="#0078D4"
+                       FontWeight="SemiBold"
+                       Margin="0,0,0,8" />
+
+            <!-- 补签卡数量 -->
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                <TextBlock Text="补签卡数量："
+                           VerticalAlignment="Center"
+                           FontFamily="Segoe UI Variable"
+                           FontSize="14"
+                           Foreground="#222"
+                           Margin="0,0,8,0" />
+                <Border Background="#ddd" CornerRadius="6" Padding="6,2" Height="32" Width="80">
+                    <TextBox Name="CardCountTextBox"
+                             VerticalAlignment="Center"
+                             Width="68"
+                             Height="28"
+                             FontFamily="Segoe UI Variable"
+                             FontSize="14"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             Foreground="#222"
+                             Text="1" />
+                </Border>
+            </StackPanel>
+
+            <!-- 按钮区域 -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Name="ConfirmButton"
+                        Content="确认发放"
+                        Width="80"
+                        Height="32"
+                        Background="#4CAF50"
+                        Foreground="White"
+                        BorderBrush="#4CAF50"
+                        Margin="0,0,8,0"
+                        Click="ConfirmButton_Click" />
+                <Button Name="CancelButton"
+                        Content="取消"
+                        Width="80"
+                        Height="32"
+                        Background="#888"
+                        Foreground="White"
+                        BorderBrush="#888"
+                        Click="CancelButton_Click" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

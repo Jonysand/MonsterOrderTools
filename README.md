@@ -6,6 +6,23 @@
 
 所有变更详见 [docs/superpowers/changes/archive/](docs/superpowers/changes/archive/)
 
+## [v38] - 2026-06-10
+
+### Fixed
+- **连续打卡天数计算修复**: 修复增量式计算导致连续打卡天数累积误差的问题
+  - 根因: `CalculateContinuousDays` 依赖存储的 `profile.continuousDays` 值，如果该值曾经出错（如补签覆盖），错误会永久传播
+  - 修复: 改用 `CalculateContinuousDaysFromRecords` 从数据库记录重新计算，确保结果始终正确
+  - 影响: Isaac-Nihility 用户连续打卡天数从错误的50天恢复为正确的52天
+
+## [v37] - 2026-06-10
+
+### Added
+- **GM 补签卡发放**: 新增 GM 管理界面，支持搜索用户并手动发放补签卡
+  - 新增 `GMRetroactiveCardDialog` 对话框，支持按昵称搜索用户
+  - 新增 `ProfileManager_SearchUsers` API，支持部分昵称匹配搜索
+  - 新增 `ProfileManager_AddRetroactiveCards` API，为指定用户发放补签卡
+  - 配置页新增"GM发放补签卡"按钮（仅非 Lite 模式显示）
+
 ## [v36] - 2026-06-05
 
 ### Fixed
