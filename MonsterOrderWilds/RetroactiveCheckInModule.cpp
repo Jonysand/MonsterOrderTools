@@ -315,6 +315,19 @@ void RetroactiveCheckInModule::HandleRetroactiveCommand(const DanmuProcessor::Ca
         return;
     }
 
+    // 补签有效性校验：实时从 checkin_records 重算连续天数与累计天数
+    // 当 continuousDays >= cumulativeDays 时，说明用户满勤无缺失，或存在历史脏数据，
+    // 此时补签无意义（甚至可能因脏数据误判出"缺失日期"）。直接拒绝，不扣卡、不插记录。
+    int32_t continuousDays = ProfileManager::Inst()->CalculateContinuousDaysFromRecords(event.uid);
+    int32_t cumulativeDays = ProfileManager::Inst()->GetCumulativeDaysFromRecords(event.uid);
+    if (continuousDays >= cumulativeDays) {
+        std::ostringstream oss;
+        oss << event.username << "，当前连续打卡" << continuousDays
+            << "天、累计" << cumulativeDays << "天，无需补签哦~";
+        SendReply(event.username, oss.str());
+        return;
+    }
+
     int32_t missingDate = ProfileManager::Inst()->FindLastMissingCheckinDate(event.uid, currentDate);
     if (missingDate == 0) {
         SendReply(event.username, event.username + "，当前没有需要补签的日期。");

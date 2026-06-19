@@ -6,6 +6,17 @@
 
 所有变更详见 [docs/superpowers/changes/archive/](docs/superpowers/changes/archive/)
 
+## [v39] - 2026-06-19
+
+### Added
+- **补签有效性校验**: 当连续打卡天数 ≥ 累计（总）打卡天数时，补签无效
+  - 规则覆盖两种场景：`==` 表示满勤无缺失；`>` 表示历史脏数据（如 v38 修复的连续天数累积误差）
+  - 入口层早判断（`HandleRetroactiveCommand`）：实时从 `checkin_records` 重算连续天数与累计天数，不满足时回复"无需补签"并直接返回，不扣卡、不插记录
+  - 底层事务兜底（`ExecuteRetroactiveCheckin`）：事务内再次校验，不满足则 ROLLBACK 返回失败，保证所有调用路径数据一致
+  - 数据源采用实时重算而非 profile 存储值，避免历史脏数据干扰，与 v38 修复方向一致
+  - 新增单元测试 `TestRetroactiveInvalid_FullAttendance`、`TestRetroactiveInvalid_SingleDay`
+  - `GetCumulativeDaysFromRecords` 由 private 提升为 public，供补签模块复用
+
 ## [v38] - 2026-06-10
 
 ### Fixed

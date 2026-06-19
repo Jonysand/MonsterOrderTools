@@ -100,6 +100,9 @@ public:
     // 从 checkin_records 表中重新计算用户的连续打卡天数（支持补签后正确计算）
     int32_t CalculateContinuousDaysFromRecords(const std::string& uid);
 
+    // 从 checkin_records 表中统计用户的累计打卡天数（去重日期总数，用于补签有效性校验）
+    int32_t GetCumulativeDaysFromRecords(const std::string& uid);
+
     // 批量补签：为所有有累计打卡天数的用户补签缺失日期，使打卡连续到今天
     struct BatchCheckinResult {
         bool success = false;
@@ -143,7 +146,6 @@ private:
     bool LoadProfileFromDb(const std::string& uid, UserProfileData& outProfile);
     void SaveProfileToDb(const UserProfileData& profile);
     bool GetLastCheckinRecordFromDb(const std::string& uid, int32_t& outLastDate, int32_t& outContinuousDays);
-    int32_t GetCumulativeDaysFromRecords(const std::string& uid);
     void EvictOldestProfileIfNeeded();
 
     std::string dbPath_;

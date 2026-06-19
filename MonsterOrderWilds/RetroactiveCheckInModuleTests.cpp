@@ -589,6 +589,84 @@ void TestConcurrentDeduction() {
     TestLog("[PASS] TestConcurrentDeduction");
 }
 
+// 补签有效性校验：连续打卡天数 >= 累计打卡天数时补签无效（满勤场景）
+// 构造 20260601/02/03 连续 3 天打卡，sendDate=20260603（今天已打卡）
+// continuousDays==3, cumulativeDays==3，应触发早判断，不扣卡、不插记录
+void TestRetroactiveInvalid_FullAttendance() {
+    CleanupTestData();
+    RetroactiveCheckInModule::Inst()->Init();
+
+    RetroactiveCardData cards;
+    cards.uid = "test_full_attendance";
+    cards.cardCount = 2;
+    cards.totalEarned = 2;
+    cards.monthlyFirstClaimed = 0;
+    cards.lastEarnedDate = 0;
+    ProfileManager::Inst()->SaveRetroactiveCards(cards);
+
+    // 连续 3 天打卡（满勤，无缺失）
+    ProfileManager::Inst()->InsertRetroactiveCheckin("test_full_attendance", "FullUser", 20260601);
+    ProfileManager::Inst()->InsertRetroactiveCheckin("test_full_attendance", "FullUser", 20260602);
+    ProfileManager::Inst()->InsertRetroactiveCheckin("test_full_attendance", "FullUser", 20260603);
+
+    // 验证前置条件：continuous==cumulative==3
+    int32_t continuous = ProfileManager::Inst()->CalculateContinuousDaysFromRecords("test_full_attendance");
+    int32_t cumulative = ProfileManager::Inst()->GetCumulativeDaysFromRecords("test_full_attendance");
+    assert(continuous == 3);
+    assert(cumulative == 3);
+
+    DanmuProcessor::CaptainDanmuEvent evt;
+    evt.uid = "test_full_attendance";
+    evt.username = "FullUser";
+    evt.content = "补签";
+    evt.sendDate = 20260603;
+
+    RetroactiveCheckInModule::Inst()->PushDanmuEvent(evt);
+
+    // 验证补签无效：卡数不变、累计天数不变
+    assert(ProfileManager::Inst()->LoadRetroactiveCards("test_full_attendance", cards));
+    assert(cards.cardCount == 2);
+    assert(ProfileManager::Inst()->GetCumulativeDaysFromRecords("test_full_attendance") == 3);
+
+    TestLog("[PASS] TestRetroactiveInvalid_FullAttendance");
+}
+
+// 补签有效性校验：单天打卡场景（continuous==1 >= cumulative==1）
+// 即使用户只有 1 天记录且当天就是 sendDate，也应被拒绝补签
+void TestRetroactiveInvalid_SingleDay() {
+    CleanupTestData();
+    RetroactiveCheckInModule::Inst()->Init();
+
+    RetroactiveCardData cards;
+    cards.uid = "test_single_day";
+    cards.cardCount = 3;
+    cards.totalEarned = 3;
+    cards.monthlyFirstClaimed = 0;
+    cards.lastEarnedDate = 0;
+    ProfileManager::Inst()->SaveRetroactiveCards(cards);
+
+    ProfileManager::Inst()->InsertRetroactiveCheckin("test_single_day", "SingleUser", 20260605);
+
+    int32_t continuous = ProfileManager::Inst()->CalculateContinuousDaysFromRecords("test_single_day");
+    int32_t cumulative = ProfileManager::Inst()->GetCumulativeDaysFromRecords("test_single_day");
+    assert(continuous == 1);
+    assert(cumulative == 1);
+
+    DanmuProcessor::CaptainDanmuEvent evt;
+    evt.uid = "test_single_day";
+    evt.username = "SingleUser";
+    evt.content = "补签";
+    evt.sendDate = 20260605;
+
+    RetroactiveCheckInModule::Inst()->PushDanmuEvent(evt);
+
+    // 验证补签无效：卡数不变
+    assert(ProfileManager::Inst()->LoadRetroactiveCards("test_single_day", cards));
+    assert(cards.cardCount == 3);
+
+    TestLog("[PASS] TestRetroactiveInvalid_SingleDay");
+}
+
 void RunRetroactiveCheckInModuleTests() {
     std::cout << "========== RetroactiveCheckInModule Tests ==========" << std::endl;
     TestLikeEventParsing();
@@ -608,6 +686,8 @@ void RunRetroactiveCheckInModuleTests() {
     TestRetroactiveCommandWithHistoricalGap();
     TestRetroactiveCommandNoGap();
     TestConcurrentDeduction();
+    TestRetroactiveInvalid_FullAttendance();
+    TestRetroactiveInvalid_SingleDay();
     std::cout << "========== All RetroactiveCheckInModule Tests Passed ==========" << std::endl;
 }
 

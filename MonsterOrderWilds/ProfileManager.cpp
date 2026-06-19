@@ -1304,6 +1304,20 @@ bool ProfileManager::ExecuteRetroactiveCheckin(const std::string& uid, const std
         return false;
     }
 
+    // 补签有效性校验（底层兜底）：实时从 checkin_records 重算连续天数与累计天数，
+    // 若 continuousDays >= cumulativeDays（满勤或脏数据），拒绝补签并回滚事务。
+    // 保证即便有其他调用路径绕过入口检查，数据仍保持一致。
+    {
+        int32_t curContinuous = CalculateContinuousDaysFromRecords(uid);
+        int32_t curCumulative = GetCumulativeDaysFromRecords(uid);
+        if (curContinuous >= curCumulative) {
+            sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+            LOG_INFO(TEXT("ProfileManager: ExecuteRetroactiveCheckin rejected (continuous=%d >= cumulative=%d) uid=%hs"),
+                curContinuous, curCumulative, uid.c_str());
+            return false;
+        }
+    }
+
     sqlite3_stmt* stmt = nullptr;
     bool success = false;
 
