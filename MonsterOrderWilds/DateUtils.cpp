@@ -87,4 +87,35 @@ namespace DateUtils {
         }
     }
 
+    int32_t GetWeekStartDate(int32_t date) {
+        if (date <= 0) return 0;
+
+        // YYYYMMDD -> year/month/day
+        int32_t year = date / 10000;
+        int32_t month = (date % 10000) / 100;
+        int32_t day = date % 100;
+
+        // 用 mktime 计算星期几（tm_wday：0=周日，1=周一）
+        std::tm tmIn = {};
+        tmIn.tm_year = year - 1900;
+        tmIn.tm_mon = month - 1;
+        tmIn.tm_mday = day;
+        std::time_t t = std::mktime(&tmIn);
+        if (t == -1) return 0;
+
+        std::tm tmOut = {};
+        if (localtime_s(&tmOut, &t) != 0) return 0;
+
+        int daysBack = tmOut.tm_wday == 0 ? 6 : tmOut.tm_wday - 1;
+        for (int i = 0; i < daysBack; ++i) {
+            date = GetPreviousDate(date);
+        }
+        return date;
+    }
+
+    bool IsSameWeek(int32_t dateA, int32_t dateB) {
+        if (dateA <= 0 || dateB <= 0) return false;
+        return GetWeekStartDate(dateA) == GetWeekStartDate(dateB);
+    }
+
 }

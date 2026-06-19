@@ -175,7 +175,7 @@ bool ProfileManager::Init() {
         "uid TEXT PRIMARY KEY,"
         "card_count INTEGER DEFAULT 0,"
         "total_earned INTEGER DEFAULT 0,"
-        "monthly_first_claimed INTEGER DEFAULT 0,"
+        "weekly_first_claimed INTEGER DEFAULT 0,"
         "last_earned_date INTEGER DEFAULT 0"
         ")";
 
@@ -210,6 +210,31 @@ bool ProfileManager::Init() {
             errMsg = nullptr;
         } else {
             LOG_INFO(TEXT("ProfileManager: Added cumulative_days column to user_profiles"));
+        }
+    }
+
+    // 数据库迁移：检查并添加 weekly_first_claimed 列
+    bool hasWeeklyFirstClaimed = false;
+    sqlite3_stmt* columnStmt2 = nullptr;
+    if (sqlite3_prepare_v2(db, "PRAGMA table_info(retroactive_cards)", -1, &columnStmt2, nullptr) == SQLITE_OK) {
+        while (sqlite3_step(columnStmt2) == SQLITE_ROW) {
+            const char* colName = (const char*)sqlite3_column_text(columnStmt2, 1);
+            if (colName && strcmp(colName, "weekly_first_claimed") == 0) {
+                hasWeeklyFirstClaimed = true;
+                break;
+            }
+        }
+        sqlite3_finalize(columnStmt2);
+    }
+    if (!hasWeeklyFirstClaimed) {
+        const char* alterSql2 = "ALTER TABLE retroactive_cards ADD COLUMN weekly_first_claimed INTEGER DEFAULT 0";
+        result = sqlite3_exec(db, alterSql2, nullptr, nullptr, &errMsg);
+        if (result != SQLITE_OK) {
+            LOG_WARNING(TEXT("ProfileManager: Failed to add weekly_first_claimed column: %hs"), errMsg);
+            sqlite3_free(errMsg);
+            errMsg = nullptr;
+        } else {
+            LOG_INFO(TEXT("ProfileManager: Added weekly_first_claimed column to retroactive_cards"));
         }
     }
 
@@ -1034,7 +1059,7 @@ bool ProfileManager::LoadRetroactiveCards(const std::string& uid, RetroactiveCar
 
     sqlite3* db = (sqlite3*)storage_;
     sqlite3_stmt* stmt = nullptr;
-    const char* sql = "SELECT uid, card_count, total_earned, monthly_first_claimed, last_earned_date FROM retroactive_cards WHERE uid = ?";
+    const char* sql = "SELECT uid, card_count, total_earned, weekly_first_claimed, last_earned_date FROM retroactive_cards WHERE uid = ?";
 
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
         return false;
@@ -1046,7 +1071,7 @@ bool ProfileManager::LoadRetroactiveCards(const std::string& uid, RetroactiveCar
         outData.uid = (const char*)sqlite3_column_text(stmt, 0);
         outData.cardCount = sqlite3_column_int(stmt, 1);
         outData.totalEarned = sqlite3_column_int(stmt, 2);
-        outData.monthlyFirstClaimed = sqlite3_column_int(stmt, 3);
+        outData.weeklyFirstClaimed = sqlite3_column_int(stmt, 3);
         outData.lastEarnedDate = sqlite3_column_int(stmt, 4);
         sqlite3_finalize(stmt);
         return true;
@@ -1056,7 +1081,7 @@ bool ProfileManager::LoadRetroactiveCards(const std::string& uid, RetroactiveCar
     outData.uid = uid;
     outData.cardCount = 0;
     outData.totalEarned = 0;
-    outData.monthlyFirstClaimed = 0;
+    outData.weeklyFirstClaimed = 0;
     outData.lastEarnedDate = 0;
     return true;
 }
@@ -1066,7 +1091,7 @@ bool ProfileManager::SaveRetroactiveCards(const RetroactiveCardData& data) {
 
     sqlite3* db = (sqlite3*)storage_;
     sqlite3_stmt* stmt = nullptr;
-    const char* sql = "INSERT OR REPLACE INTO retroactive_cards (uid, card_count, total_earned, monthly_first_claimed, last_earned_date) VALUES (?, ?, ?, ?, ?)";
+    const char* sql = "INSERT OR REPLACE INTO retroactive_cards (uid, card_count, total_earned, weekly_first_claimed, last_earned_date) VALUES (?, ?, ?, ?, ?)";
 
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
         return false;
@@ -1075,7 +1100,7 @@ bool ProfileManager::SaveRetroactiveCards(const RetroactiveCardData& data) {
     sqlite3_bind_text(stmt, 1, data.uid.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_int(stmt, 2, data.cardCount);
     sqlite3_bind_int(stmt, 3, data.totalEarned);
-    sqlite3_bind_int(stmt, 4, data.monthlyFirstClaimed);
+    sqlite3_bind_int(stmt, 4, data.weeklyFirstClaimed);
     sqlite3_bind_int(stmt, 5, data.lastEarnedDate);
 
     bool success = sqlite3_step(stmt) == SQLITE_DONE;
@@ -1250,7 +1275,7 @@ bool ProfileManager::IssueStreakReward(const std::string& uid, int32_t date) {
     return true;
 }
 
-bool ProfileManager::IssueMonthlyFirstReward(const std::string& uid, int32_t date) {
+bool ProfileManager::IssueWeeklyFirstReward(const std::string& uid, int32_t date) {
     if (!storage_) return false;
 
     sqlite3* db = (sqlite3*)storage_;
@@ -1260,19 +1285,20 @@ bool ProfileManager::IssueMonthlyFirstReward(const std::string& uid, int32_t dat
 
     sqlite3_stmt* stmt = nullptr;
 
-    // 原子性更新 monthly_first_claimed 和补签卡数量，添加幂等保护
-    // 只有当 monthly_first_claimed 不是当前月时才更新
-    int32_t currentMonth = date / 100;
-    const char* updateSql = 
-        "UPDATE retroactive_cards SET card_count = card_count + 1, total_earned = total_earned + 1, monthly_first_claimed = ?, last_earned_date = ? WHERE uid = ? AND (monthly_first_claimed = 0 OR monthly_first_claimed / 100 != ?)";
+    // 原子性更新 weekly_first_claimed 和补签卡数量，添加幂等保护
+    // 只有当 weekly_first_claimed 不是当前自然周时才更新
+    // 存储 currentWeekStart（周一日期）而非 date，简化 SQL 跨月判断
+    int32_t currentWeekStart = DateUtils::GetWeekStartDate(date);
+    const char* updateSql =
+        "UPDATE retroactive_cards SET card_count = card_count + 1, total_earned = total_earned + 1, weekly_first_claimed = ?, last_earned_date = ? WHERE uid = ? AND (weekly_first_claimed = 0 OR weekly_first_claimed != ?)";
     if (sqlite3_prepare_v2(db, updateSql, -1, &stmt, nullptr) != SQLITE_OK) {
         sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
         return false;
     }
-    sqlite3_bind_int(stmt, 1, date);
+    sqlite3_bind_int(stmt, 1, currentWeekStart);
     sqlite3_bind_int(stmt, 2, date);
     sqlite3_bind_text(stmt, 3, uid.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_int(stmt, 4, currentMonth);
+    sqlite3_bind_int(stmt, 4, currentWeekStart);
     if (sqlite3_step(stmt) != SQLITE_DONE) {
         sqlite3_finalize(stmt);
         sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
@@ -1287,7 +1313,7 @@ bool ProfileManager::IssueMonthlyFirstReward(const std::string& uid, int32_t dat
     }
 
     if (sqlite3_exec(db, "COMMIT", nullptr, nullptr, nullptr) != SQLITE_OK) {
-        LOG_ERROR(TEXT("ProfileManager: IssueMonthlyFirstReward COMMIT failed: %hs"), sqlite3_errmsg(db));
+        LOG_ERROR(TEXT("ProfileManager: IssueWeeklyFirstReward COMMIT failed: %hs"), sqlite3_errmsg(db));
         return false;
     }
     return true;

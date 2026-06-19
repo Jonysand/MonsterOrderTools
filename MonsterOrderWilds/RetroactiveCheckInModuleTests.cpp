@@ -16,11 +16,11 @@ static void TestLog(const char* msg) {
 static void CleanupTestData() {
     sqlite3* db = (sqlite3*)ProfileManager::Inst()->GetStorage();
     if (db) {
-        sqlite3_exec(db, "DELETE FROM user_profiles WHERE uid LIKE 'test_%' OR uid = 'streak_user' OR uid = 'monthly_user' OR uid = 'cross_month_user' OR uid = '12345' OR uid = '67890' OR uid = '99999' OR uid LIKE 'concurrent_%'", nullptr, nullptr, nullptr);
-        sqlite3_exec(db, "DELETE FROM user_daily_likes WHERE uid LIKE 'test_%' OR uid = 'streak_user' OR uid = 'monthly_user' OR uid = 'cross_month_user'", nullptr, nullptr, nullptr);
-        sqlite3_exec(db, "DELETE FROM user_like_streaks WHERE uid LIKE 'test_%' OR uid = 'streak_user' OR uid = 'monthly_user' OR uid = 'cross_month_user'", nullptr, nullptr, nullptr);
-        sqlite3_exec(db, "DELETE FROM retroactive_cards WHERE uid LIKE 'test_%' OR uid = 'streak_user' OR uid = 'monthly_user' OR uid = 'cross_month_user' OR uid = '12345' OR uid = '67890' OR uid = '99999' OR uid LIKE 'concurrent_%'", nullptr, nullptr, nullptr);
-        sqlite3_exec(db, "DELETE FROM checkin_records WHERE uid LIKE 'test_%' OR uid = 'streak_user' OR uid = 'monthly_user' OR uid = 'cross_month_user' OR uid = '12345' OR uid = '67890' OR uid = '99999' OR uid LIKE 'concurrent_%'", nullptr, nullptr, nullptr);
+        sqlite3_exec(db, "DELETE FROM user_profiles WHERE uid LIKE 'test_%' OR uid = 'streak_user' OR uid = 'weekly_user' OR uid = 'cross_week_user' OR uid = '12345' OR uid = '67890' OR uid = '99999' OR uid LIKE 'concurrent_%'", nullptr, nullptr, nullptr);
+        sqlite3_exec(db, "DELETE FROM user_daily_likes WHERE uid LIKE 'test_%' OR uid = 'streak_user' OR uid = 'weekly_user' OR uid = 'cross_week_user'", nullptr, nullptr, nullptr);
+        sqlite3_exec(db, "DELETE FROM user_like_streaks WHERE uid LIKE 'test_%' OR uid = 'streak_user' OR uid = 'weekly_user' OR uid = 'cross_week_user'", nullptr, nullptr, nullptr);
+        sqlite3_exec(db, "DELETE FROM retroactive_cards WHERE uid LIKE 'test_%' OR uid = 'streak_user' OR uid = 'weekly_user' OR uid = 'cross_week_user' OR uid = '12345' OR uid = '67890' OR uid = '99999' OR uid LIKE 'concurrent_%'", nullptr, nullptr, nullptr);
+        sqlite3_exec(db, "DELETE FROM checkin_records WHERE uid LIKE 'test_%' OR uid = 'streak_user' OR uid = 'weekly_user' OR uid = 'cross_week_user' OR uid = '12345' OR uid = '67890' OR uid = '99999' OR uid LIKE 'concurrent_%'", nullptr, nullptr, nullptr);
     }
 }
 
@@ -150,13 +150,13 @@ void TestStreakBoundary() {
     TestLog("[PASS] TestStreakBoundary");
 }
 
-void TestMonthlyFirstReward() {
+void TestWeeklyFirstReward() {
     CleanupTestData();
     RetroactiveCheckInModule::Inst()->Init();
 
     LikeEvent evt;
-    evt.uid = "monthly_user";
-    evt.username = "MonthlyUser";
+    evt.uid = "weekly_user";
+    evt.username = "WeeklyUser";
     evt.likeCount = 35;
     evt.date = 20260424;
     evt.timestamp = 1777030207;
@@ -164,26 +164,26 @@ void TestMonthlyFirstReward() {
     RetroactiveCheckInModule::Inst()->PushLikeEvent(evt);
 
     RetroactiveCardData cards;
-    assert(ProfileManager::Inst()->LoadRetroactiveCards("monthly_user", cards));
+    assert(ProfileManager::Inst()->LoadRetroactiveCards("weekly_user", cards));
     assert(cards.cardCount == 1);
-    assert(cards.monthlyFirstClaimed == 20260424);
+    assert(cards.weeklyFirstClaimed == 20260420);
 
     evt.likeCount = 10;
     RetroactiveCheckInModule::Inst()->PushLikeEvent(evt);
 
-    assert(ProfileManager::Inst()->LoadRetroactiveCards("monthly_user", cards));
+    assert(ProfileManager::Inst()->LoadRetroactiveCards("weekly_user", cards));
     assert(cards.cardCount == 1);
 
-    TestLog("[PASS] TestMonthlyFirstReward");
+    TestLog("[PASS] TestWeeklyFirstReward");
 }
 
-void TestMonthlyFirstBoundary() {
+void TestWeeklyFirstBoundary() {
     CleanupTestData();
     RetroactiveCheckInModule::Inst()->Init();
 
     // 29赞不应发放
     LikeEvent evt;
-    evt.uid = "test_boundary_monthly";
+    evt.uid = "test_boundary_weekly";
     evt.username = "BoundaryUser";
     evt.likeCount = 29;
     evt.date = 20260424;
@@ -191,59 +191,87 @@ void TestMonthlyFirstBoundary() {
     RetroactiveCheckInModule::Inst()->PushLikeEvent(evt);
 
     RetroactiveCardData cards;
-    assert(ProfileManager::Inst()->LoadRetroactiveCards("test_boundary_monthly", cards));
+    assert(ProfileManager::Inst()->LoadRetroactiveCards("test_boundary_weekly", cards));
     assert(cards.cardCount == 0); // 29不应奖励
 
     // 再点1赞达到30，应发放
     evt.likeCount = 1;
     RetroactiveCheckInModule::Inst()->PushLikeEvent(evt);
 
-    assert(ProfileManager::Inst()->LoadRetroactiveCards("test_boundary_monthly", cards));
+    assert(ProfileManager::Inst()->LoadRetroactiveCards("test_boundary_weekly", cards));
     assert(cards.cardCount == 1); // 30应奖励
 
     // 同一天再次超过30，不应重复发放
     evt.likeCount = 10;
     RetroactiveCheckInModule::Inst()->PushLikeEvent(evt);
 
-    assert(ProfileManager::Inst()->LoadRetroactiveCards("test_boundary_monthly", cards));
+    assert(ProfileManager::Inst()->LoadRetroactiveCards("test_boundary_weekly", cards));
     assert(cards.cardCount == 1); // 不应重复奖励
 
-    TestLog("[PASS] TestMonthlyFirstBoundary");
+    TestLog("[PASS] TestWeeklyFirstBoundary");
 }
 
-void TestCrossMonthReset() {
+void TestCrossWeekReset() {
     CleanupTestData();
     RetroactiveCheckInModule::Inst()->Init();
 
     LikeStreakData streak;
-    streak.uid = "cross_month_user";
+    streak.uid = "cross_week_user";
     streak.currentStreak = 3;
     streak.lastLikeDate = 20260428;
     streak.streakRewardIssued = 0;
     ProfileManager::Inst()->SaveLikeStreak(streak);
 
     RetroactiveCardData cards;
-    cards.uid = "cross_month_user";
+    cards.uid = "cross_week_user";
     cards.cardCount = 0;
     cards.totalEarned = 0;
-    cards.monthlyFirstClaimed = 20260424;
+    cards.weeklyFirstClaimed = 20260420;
     cards.lastEarnedDate = 0;
     ProfileManager::Inst()->SaveRetroactiveCards(cards);
 
     LikeEvent evt;
-    evt.uid = "cross_month_user";
-    evt.username = "CrossMonthUser";
+    evt.uid = "cross_week_user";
+    evt.username = "CrossWeekUser";
     evt.likeCount = 35;
-    evt.date = 20260501;
+    evt.date = 20260427;
     evt.timestamp = 1777600000;
 
     RetroactiveCheckInModule::Inst()->PushLikeEvent(evt);
 
-    assert(ProfileManager::Inst()->LoadRetroactiveCards("cross_month_user", cards));
+    assert(ProfileManager::Inst()->LoadRetroactiveCards("cross_week_user", cards));
     assert(cards.cardCount == 1);
-    assert(cards.monthlyFirstClaimed == 20260501);
+    assert(cards.weeklyFirstClaimed == 20260427);
 
-    TestLog("[PASS] TestCrossMonthReset");
+    TestLog("[PASS] TestCrossWeekReset");
+}
+
+void TestSameWeekNoReset() {
+    CleanupTestData();
+    RetroactiveCheckInModule::Inst()->Init();
+
+    RetroactiveCardData cards;
+    cards.uid = "same_week_user";
+    cards.cardCount = 0;
+    cards.totalEarned = 0;
+    cards.weeklyFirstClaimed = 20260420;
+    cards.lastEarnedDate = 0;
+    ProfileManager::Inst()->SaveRetroactiveCards(cards);
+
+    LikeEvent evt;
+    evt.uid = "same_week_user";
+    evt.username = "SameWeekUser";
+    evt.likeCount = 35;
+    evt.date = 20260425;
+    evt.timestamp = 1777116607;
+
+    RetroactiveCheckInModule::Inst()->PushLikeEvent(evt);
+
+    assert(ProfileManager::Inst()->LoadRetroactiveCards("same_week_user", cards));
+    assert(cards.cardCount == 0);
+    assert(cards.weeklyFirstClaimed == 20260420);
+
+    TestLog("[PASS] TestSameWeekNoReset");
 }
 
 void TestLeapYearAndCrossYear() {
@@ -318,7 +346,6 @@ void TestRetroactiveCommand() {
     cards.uid = "12345";
     cards.cardCount = 2;
     cards.totalEarned = 2;
-    cards.monthlyFirstClaimed = 0;
     cards.lastEarnedDate = 0;
     ProfileManager::Inst()->SaveRetroactiveCards(cards);
 
@@ -347,7 +374,6 @@ void TestRetroactiveCommandWithHistoricalGap() {
     cards.uid = "test_gap_user";
     cards.cardCount = 3;
     cards.totalEarned = 3;
-    cards.monthlyFirstClaimed = 0;
     cards.lastEarnedDate = 0;
     ProfileManager::Inst()->SaveRetroactiveCards(cards);
 
@@ -387,7 +413,6 @@ void TestRetroactiveCommandNoGap() {
     cards.uid = "test_no_gap";
     cards.cardCount = 2;
     cards.totalEarned = 2;
-    cards.monthlyFirstClaimed = 0;
     cards.lastEarnedDate = 0;
     ProfileManager::Inst()->SaveRetroactiveCards(cards);
 
@@ -420,7 +445,6 @@ void TestQueryCommand() {
     cards.uid = "67890";
     cards.cardCount = 3;
     cards.totalEarned = 3;
-    cards.monthlyFirstClaimed = 0;
     cards.lastEarnedDate = 0;
     ProfileManager::Inst()->SaveRetroactiveCards(cards);
 
@@ -452,7 +476,6 @@ void TestNoCardRetroactive() {
     cards.uid = "test_no_card";
     cards.cardCount = 0;
     cards.totalEarned = 0;
-    cards.monthlyFirstClaimed = 0;
     cards.lastEarnedDate = 0;
     ProfileManager::Inst()->SaveRetroactiveCards(cards);
 
@@ -481,7 +504,6 @@ void TestNoMissingDateRetroactive() {
     cards.uid = "test_no_missing";
     cards.cardCount = 2;
     cards.totalEarned = 2;
-    cards.monthlyFirstClaimed = 0;
     cards.lastEarnedDate = 0;
     ProfileManager::Inst()->SaveRetroactiveCards(cards);
 
@@ -554,7 +576,6 @@ void TestConcurrentDeduction() {
     cards.uid = uid;
     cards.cardCount = 5;
     cards.totalEarned = 5;
-    cards.monthlyFirstClaimed = 0;
     cards.lastEarnedDate = 0;
     ProfileManager::Inst()->SaveRetroactiveCards(cards);
 
@@ -600,7 +621,6 @@ void TestRetroactiveInvalid_FullAttendance() {
     cards.uid = "test_full_attendance";
     cards.cardCount = 2;
     cards.totalEarned = 2;
-    cards.monthlyFirstClaimed = 0;
     cards.lastEarnedDate = 0;
     ProfileManager::Inst()->SaveRetroactiveCards(cards);
 
@@ -641,7 +661,6 @@ void TestRetroactiveInvalid_SingleDay() {
     cards.uid = "test_single_day";
     cards.cardCount = 3;
     cards.totalEarned = 3;
-    cards.monthlyFirstClaimed = 0;
     cards.lastEarnedDate = 0;
     ProfileManager::Inst()->SaveRetroactiveCards(cards);
 
@@ -673,9 +692,10 @@ void RunRetroactiveCheckInModuleTests() {
     TestDailyLikeTracking();
     TestStreakReward();
     TestStreakBoundary();
-    TestMonthlyFirstReward();
-    TestMonthlyFirstBoundary();
-    TestCrossMonthReset();
+    TestWeeklyFirstReward();
+    TestWeeklyFirstBoundary();
+    TestCrossWeekReset();
+    TestSameWeekNoReset();
     TestLeapYearAndCrossYear();
     TestRetroactiveCommand();
     TestQueryCommand();

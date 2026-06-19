@@ -56,6 +56,7 @@ extern void RunCaptainCheckInModuleTests();
 extern void RunRetroactiveCheckInModuleTests();
 extern void RunDeepSeekAIChatProviderTests();
 extern void RunLocalVoiceManagerTests();
+extern void RunDateUtilsTests();
 
 int RunTests()
 {
@@ -132,6 +133,10 @@ int RunTests()
 
     TestLog("Running LocalVoiceManager tests...");
     RunLocalVoiceManagerTests();
+    TestLog("");
+
+    TestLog("Running DateUtils tests...");
+    RunDateUtilsTests();
     TestLog("");
 
     TestLog("========================================");

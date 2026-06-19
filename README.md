@@ -6,6 +6,18 @@
 
 所有变更详见 [docs/superpowers/changes/archive/](docs/superpowers/changes/archive/)
 
+## [v40] - 2026-06-19
+
+### Changed
+- **补签卡规则由月改周**: 将"每月首次点赞 30 获得补签卡"改为"每周首次点赞 30 获得补签卡"
+  - 以自然周（周一 00:00 – 周日 24:00）为周期，阈值 30 不变
+  - 新增 `DateUtils::GetWeekStartDate` / `IsSameWeek` 自然周工具函数
+  - 数据库 `retroactive_cards` 表新增 `weekly_first_claimed` 列，删除旧 `monthly_first_claimed` 列（老库残留列无影响）
+  - `IssueMonthlyFirstReward` 重命名为 `IssueWeeklyFirstReward`，SQL 存储周起始日并用 `!=` 比较
+  - 查询回复文案"月度点赞30"改为"每周点赞30"
+  - `RetroactiveCheckInModule` 全面迁移至周维度判断
+  - 更新规格文档与单元测试
+
 ## [v39] - 2026-06-19
 
 ### Added
@@ -204,7 +216,7 @@
 ### Added
 - **补签卡系统**: 新增补签卡机制，舰长可通过点赞获取补签卡，用于补签缺失的打卡日期
   - 连续点赞 7 天获得 1 张补签卡（每 7 天循环发放）
-  - 单日点赞突破 30 获得 1 张补签卡（每月首次）
+  - 单日点赞突破 30 获得 1 张补签卡（每周首次）
   - 弹幕发送"补签"命令消耗补签卡补签最近的缺失日期
   - 弹幕发送"补签查询"查看当前补签卡数量和进度
 - **ONLY_ORDER_MONSTER 编译宏**: 新增仅点怪精简模式（Lite），通过 `ONLY_ORDER_MONSTER=1` 条件编译禁用非核心功能（TTS、打卡、补签卡等）

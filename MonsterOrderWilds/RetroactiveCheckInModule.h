@@ -30,7 +30,7 @@ private:
     void ProcessLike(const LikeEvent& event);
 
     bool CheckRule1_StreakReward(const std::string& uid, int32_t date);
-    bool CheckRule2_MonthlyFirst(const std::string& uid, int32_t date, int32_t totalLikes);
+    bool CheckRule2_WeeklyFirst(const std::string& uid, int32_t date, int32_t totalLikes);
 
     void HandleRetroactiveCommand(const DanmuProcessor::CaptainDanmuEvent& event);
     void HandleQueryCommand(const DanmuProcessor::CaptainDanmuEvent& event);

@@ -19,7 +19,7 @@ DEFINE_SINGLETON(RetroactiveCheckInModule)
 
 namespace {
     constexpr int32_t STREAK_DAYS_REQUIRED = 7;
-    constexpr int32_t MONTHLY_FIRST_LIKES_REQUIRED = 30;
+    constexpr int32_t WEEKLY_FIRST_LIKES_REQUIRED = 30;
 }
 
 bool RetroactiveCheckInModule::Init() {
@@ -183,8 +183,8 @@ void RetroactiveCheckInModule::ProcessLike(const LikeEvent& event) {
             LOG_INFO(TEXT("RetroactiveCheckInModule: Like stored uid=%hs date=%d like_count=%d total_likes=%d"),
                 event.uid.c_str(), date, event.likeCount, totalLikes);
 
-            if (totalLikes >= MONTHLY_FIRST_LIKES_REQUIRED) {
-                if (self->CheckRule2_MonthlyFirst(event.uid, date, totalLikes)) {
+            if (totalLikes >= WEEKLY_FIRST_LIKES_REQUIRED) {
+                if (self->CheckRule2_WeeklyFirst(event.uid, date, totalLikes)) {
                     std::string reply = event.username + "，恭喜！今日点赞突破30，获得1张补签卡！";
                     self->SendReply(event.username, reply);
                 }
@@ -252,29 +252,22 @@ bool RetroactiveCheckInModule::CheckRule1_StreakReward(const std::string& uid, i
     return false;
 }
 
-bool RetroactiveCheckInModule::CheckRule2_MonthlyFirst(const std::string& uid, int32_t date, int32_t totalLikes) {
-    if (totalLikes < MONTHLY_FIRST_LIKES_REQUIRED) return false;
+bool RetroactiveCheckInModule::CheckRule2_WeeklyFirst(const std::string& uid, int32_t date, int32_t totalLikes) {
+    if (totalLikes < WEEKLY_FIRST_LIKES_REQUIRED) return false;
 
     RetroactiveCardData cards;
     if (!ProfileManager::Inst()->LoadRetroactiveCards(uid, cards)) {
         return false;
     }
 
-    int32_t currentMonth = date / 100;
-    int32_t claimedMonth = cards.monthlyFirstClaimed / 100;
-
-    if (currentMonth != claimedMonth) {
-        // 跨月时重置 monthlyFirstClaimed
-        cards.monthlyFirstClaimed = 0;
-        ProfileManager::Inst()->SaveRetroactiveCards(cards);
-    }
-
-    if (cards.monthlyFirstClaimed > 0) {
+    // weeklyFirstClaimed 存储的是周起始日（周一日期），直接比较即可
+    if (cards.weeklyFirstClaimed == DateUtils::GetWeekStartDate(date)) {
+        // 已在本周领过奖
         return false;
     }
 
     // 使用原子接口发放奖励
-    if (ProfileManager::Inst()->IssueMonthlyFirstReward(uid, date)) {
+    if (ProfileManager::Inst()->IssueWeeklyFirstReward(uid, date)) {
         LOG_INFO(TEXT("RetroactiveCheckInModule: Rule2 reward issued to uid=%hs"), uid.c_str());
         return true;
     }
@@ -360,7 +353,6 @@ void RetroactiveCheckInModule::HandleQueryCommand(const DanmuProcessor::CaptainD
     DailyLikeData dailyLike;
 
     int32_t currentDate = event.sendDate > 0 ? event.sendDate : GetCurrentDate();
-    int32_t currentMonth = currentDate / 100;
 
     bool hasCards = ProfileManager::Inst()->LoadRetroactiveCards(event.uid, cards);
     bool hasStreak = ProfileManager::Inst()->LoadLikeStreak(event.uid, streak);
@@ -381,16 +373,16 @@ void RetroactiveCheckInModule::HandleQueryCommand(const DanmuProcessor::CaptainD
         oss << "\n连续点赞" << STREAK_DAYS_REQUIRED << "天：已" << streak.currentStreak << "天，差" << remainingStreak << "天";
     }
 
-    int32_t claimedMonth = cards.monthlyFirstClaimed / 100;
-    if (claimedMonth == currentMonth && cards.monthlyFirstClaimed > 0) {
-        oss << "\n月度点赞30：已领取";
+    bool weeklyClaimed = (cards.weeklyFirstClaimed > 0 && DateUtils::IsSameWeek(currentDate, cards.weeklyFirstClaimed));
+    if (weeklyClaimed) {
+        oss << "\n每周点赞30：已领取";
     } else {
         int32_t currentLikes = dailyLike.totalLikes;
-        int32_t remainingLikes = MONTHLY_FIRST_LIKES_REQUIRED - currentLikes;
+        int32_t remainingLikes = WEEKLY_FIRST_LIKES_REQUIRED - currentLikes;
         if (remainingLikes <= 0) {
-            oss << "\n月度点赞30：已满足，可领取";
+            oss << "\n每周点赞30：已满足，可领取";
         } else {
-            oss << "\n月度点赞30：" << currentLikes << "/" << MONTHLY_FIRST_LIKES_REQUIRED << "，差" << remainingLikes;
+            oss << "\n每周点赞30：" << currentLikes << "/" << WEEKLY_FIRST_LIKES_REQUIRED << "，差" << remainingLikes;
         }
     }
 

@@ -53,22 +53,22 @@ TBD - created by archiving change retroactive-checkin-cards. Update Purpose afte
 - **AND** 发放第2张补签卡
 - **AND** 更新 `streak_reward_issued` 为 20260501
 
-### Requirement: 补签卡发放 - 每月首次点赞30规则
-用户每月任意一天内首次点赞累计达到30，立即发放1张补签卡。每天的点赞累计独立计算，跨天需重新点满30。
+### Requirement: 补签卡发放 - 每周首次点赞30规则
+用户每周任意一天内首次点赞累计达到30，立即发放1张补签卡。每天的点赞累计独立计算，跨周需重新点满30。
 
-#### Scenario: 用户本月首次点赞达30
+#### Scenario: 用户本周首次点赞达30
 - **GIVEN** 用户 "user1" 在 20260424 当前 total_likes=20
 - **WHEN** 收到 like_count=15 的点赞事件
 - **THEN** total_likes 更新为 35
-- **AND** 检查 `monthly_first_claimed` 不在本月（202604）
+- **AND** 检查 `weekly_first_claimed` 不在本周
 - **AND** `retroactive_cards.card_count` 增加1
-- **AND** `monthly_first_claimed` 更新为 20260424
+- **AND** `weekly_first_claimed` 更新为 20260424
 - **AND** 系统播报/回复："恭喜 user1 今日点赞突破30，获得1张补签卡！"
 
-#### Scenario: 用户同月内第二次达到30
-- **GIVEN** 用户 "user1" 在 20260424 已领取过首次30奖励（monthly_first_claimed=20260424）
+#### Scenario: 用户同周内第二次达到30
+- **GIVEN** 用户 "user1" 在 20260424 已领取过首次30奖励（weekly_first_claimed=20260424）
 - **WHEN** 20260425 点赞累计达到50
-- **THEN** 检查 `monthly_first_claimed` 在本月（202604）
+- **THEN** 检查 `weekly_first_claimed` 在本周
 - **AND** 不发放补签卡
 
 #### Scenario: 用户今天未达30，次日重新计算
@@ -78,13 +78,13 @@ TBD - created by archiving change retroactive-checkin-cards. Update Purpose afte
 - **AND** 需要继续累计到30才能在20260425获得奖励
 - **AND** 20260424 的20不计入20260425
 
-#### Scenario: 跨月后重新获得资格
-- **GIVEN** 用户 "user1" 在 202604 已领取过首次30奖励
+#### Scenario: 跨周后重新获得资格
+- **GIVEN** 用户 "user1" 在上周已领取过首次30奖励
 - **WHEN** 20260501 点赞累计达到30
-- **THEN** 检查 `monthly_first_claimed` 的月份为 202604，与新月份 202605 不同
-- **AND** 清空上月领取状态（重置 `monthly_first_claimed=0`）
+- **THEN** 检查 `weekly_first_claimed` 的周数与本周不同
+- **AND** 清空上周领取状态（重置 `weekly_first_claimed=0`）
 - **AND** 发放1张补签卡
-- **AND** 更新 `monthly_first_claimed` 为 20260501
+- **AND** 更新 `weekly_first_claimed` 为 20260501
 
 #### Scenario: 用户首次点赞直接超过30
 - **GIVEN** 用户 "user1" 是新用户，无历史记录
@@ -92,13 +92,13 @@ TBD - created by archiving change retroactive-checkin-cards. Update Purpose afte
 - **THEN** total_likes=50，立即触发首次30奖励
 - **AND** 发放1张补签卡
 
-### Requirement: 跨月自动重置
-系统需要检测跨月并自动重置每月首次点赞的领取状态。
+### Requirement: 跨周自动重置
+系统需要检测跨周并自动重置每周首次点赞的领取状态。
 
-#### Scenario: 跨月时首次点赞触发重置
-- **GIVEN** 用户 "user1" 的 `monthly_first_claimed=20260424`
+#### Scenario: 跨周时首次点赞触发重置
+- **GIVEN** 用户 "user1" 的 `weekly_first_claimed=20260424`
 - **WHEN** 20260501 收到第一个点赞事件
-- **THEN** 比较月份（202605 vs 202604）发现跨月
-- **AND** 重置 `monthly_first_claimed=0`
+- **THEN** 比较周数发现跨周
+- **AND** 重置 `weekly_first_claimed=0`
 - **AND** 正常处理该点赞事件（可继续累计和判断奖励）
 

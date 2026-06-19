@@ -374,6 +374,10 @@ xcopy /y /q "$(ProjectDir)dict\*" "$(OutDir)dict\"</Command>
       <Filter>UnitTests</Filter>
       <ExcludedFromBuild Condition="'$(Configuration)'!='UnitTest'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="DateUtilsTests.cpp">
+      <Filter>UnitTests</Filter>
+      <ExcludedFromBuild Condition="'$(Configuration)'!='UnitTest'">true</ExcludedFromBuild>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="MonsterOrderWilds.rc" />

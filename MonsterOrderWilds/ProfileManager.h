@@ -43,7 +43,7 @@ struct RetroactiveCardData {
     std::string uid;
     int32_t cardCount = 0;
     int32_t totalEarned = 0;
-    int32_t monthlyFirstClaimed = 0;
+    int32_t weeklyFirstClaimed = 0;   // 当前使用：自然周首次点赞 30 奖励标记
     int32_t lastEarnedDate = 0;
 };
 
@@ -89,7 +89,7 @@ public:
 
     // 原子性奖励发放接口（事务保护，防止崩溃导致重复奖励）
     bool IssueStreakReward(const std::string& uid, int32_t date);
-    bool IssueMonthlyFirstReward(const std::string& uid, int32_t date);
+    bool IssueWeeklyFirstReward(const std::string& uid, int32_t date);
 
     bool InsertRetroactiveCheckin(const std::string& uid, const std::string& username, int32_t checkinDate);
     int32_t FindLastMissingCheckinDate(const std::string& uid, int32_t currentDate);
