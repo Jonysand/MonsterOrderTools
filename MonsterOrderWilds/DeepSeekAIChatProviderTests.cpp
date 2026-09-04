@@ -21,9 +21,27 @@ void TestDeepSeekAIChatProvider_ProviderName()
 
 void TestDeepSeekAIChatProvider_InitialState()
 {
-    auto provider = std::make_unique<DeepSeekAIChatProvider>("test_key");
+    // IsAvailable() 依据 apiKey 是否为空判断：空 key 不可用
+    auto provider = std::make_unique<DeepSeekAIChatProvider>("");
     assert(provider->IsAvailable() == false);
     std::cout << "[PASS] TestDeepSeekAIChatProvider_InitialState" << std::endl;
+}
+
+// 回归测试：请求体需按 DeepSeek 官方文档开启思考模式（thinking=low 思考强度）
+void TestDeepSeekAIChatProvider_ThinkingModeRequestBody()
+{
+    std::string body = DeepSeekAIChatProvider::BuildRequestBody("test prompt");
+    auto j = json::parse(body);
+
+    assert(j["model"] == "deepseek-v4-flash");
+    assert(j.contains("thinking"));
+    assert(j["thinking"]["type"] == "enabled");
+    assert(j["reasoning_effort"] == "low");
+    assert(j["messages"].is_array() && j["messages"].size() == 1);
+    assert(j["messages"][0]["role"] == "user");
+    assert(j["messages"][0]["content"] == "test prompt");
+
+    std::cout << "[PASS] TestDeepSeekAIChatProvider_ThinkingModeRequestBody" << std::endl;
 }
 
 void TestDeepSeekAIChatProviderFactory_Create()
@@ -61,6 +79,7 @@ void RunDeepSeekAIChatProviderTests()
     TestDeepSeekAIChatProvider_Interface();
     TestDeepSeekAIChatProvider_ProviderName();
     TestDeepSeekAIChatProvider_InitialState();
+    TestDeepSeekAIChatProvider_ThinkingModeRequestBody();
     TestDeepSeekAIChatProviderFactory_Create();
     TestDeepSeekAIChatProviderFactory_EmptyApiKey();
     TestDeepSeekAIChatProviderFactory_UnsupportedProvider();

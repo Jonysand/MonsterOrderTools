@@ -197,7 +197,7 @@
   },
   "雾瘴尸套龙": {
     "默认历战等级": 0,
-    "图标地址": "MHWorld/MHWI-Vaal_Hazak_Icon.png",
+    "图标地址": "MHWI/MHWI-Blackveil_Vaal_Hazak_Icon.png",
     "别称": [
       "雾瘴尸套",
       "花嫁尸套龙",
@@ -450,14 +450,14 @@
   },
   "250炎王龙 250炎王": {
     "默认历战等级": 0,
-    "图标地址": "MHWorld/MHWI-Teostra_Icon.png",
+    "图标地址": "MHRise/MHRS-Teostra_Icon.png",
     "别称": [
       "250炎王龙 250炎王"
     ]
   },
   "惶怒恐暴龙": {
     "默认历战等级": 0,
-    "图标地址": "MHWorld/MHWI-Savage_Deviljho_Icon.png",
+    "图标地址": "MHWI/MHWI-Savage_Deviljho_Icon.png",
     "别称": [
       "惶怒",
       "酱瓜",
@@ -495,7 +495,7 @@
   },
   "青熊兽": {
     "默认历战等级": 0,
-    "图标地址": "MHRise/MHRS-Apex_Arzuros_Icon.png",
+    "图标地址": "MHRise/MHRS-Arzuros_Icon.png",
     "别称": [
       "青熊",
       "青熊兽"
@@ -511,7 +511,7 @@
   },
   "狱狼龙": {
     "默认历战等级": 0,
-    "图标地址": "MHWI/MHWI-Zinogre_Icon.png",
+    "图标地址": "MHWI/MHWI-Stygian_Zinogre_Icon.png",
     "别称": [
       "狱狼",
       "狱娘",
@@ -1164,7 +1164,7 @@
   },
   "角龙": {
     "默认历战等级": 0,
-    "图标地址": "MHWorld/MHWI-Black_Diablos_Icon.png",
+    "图标地址": "MHWorld/MHWI-Diablos_Icon.png",
     "别称": [
       "角龙"
     ]
@@ -1234,7 +1234,7 @@
   },
   "苍火龙": {
     "默认历战等级": 0,
-    "图标地址": "MHWI/MHWI-Silver_Rathalos_Icon.png",
+    "图标地址": "MHWorld/MHWI-Azure_Rathalos_Icon.png",
     "别称": [
       "苍火",
       "苍火龙"
@@ -1539,7 +1539,7 @@
   },
   "轰龙": {
     "默认历战等级": 0,
-    "图标地址": "MHWI/MHWI-Brute_Tigrex_Icon.png",
+    "图标地址": "MHWI/MHWI-Tigrex_Icon.png",
     "别称": [
       "车龙",
       "车车车龙",
@@ -1633,7 +1633,7 @@
   },
   "霜翼风漂龙": {
     "默认历战等级": 0,
-    "图标地址": "MHWorld/MHWI-Legiana_Icon.png",
+    "图标地址": "MHWI/MHWI-Shrieking_Legiana_Icon.png",
     "别称": [
       "霜漂",
       "霜飘",

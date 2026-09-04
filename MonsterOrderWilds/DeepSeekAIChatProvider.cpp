@@ -38,12 +38,23 @@ std::string DeepSeekAIChatProvider::GetProviderName() const { return "deepseek";
 
 std::string DeepSeekAIChatProvider::GetLastError() const { return lastError_; }
 
-bool DeepSeekAIChatProvider::CallAPI(const std::string& prompt, std::string& outResponse) {
+std::string DeepSeekAIChatProvider::BuildRequestBody(const std::string& prompt) {
+    // 依据 DeepSeek 官方文档《思考模式》：
+    // https://api-docs.deepseek.com/zh-cn/guides/thinking_mode/
+    // - 思考模式开关（OpenAI 格式）："thinking": {"type": "enabled"}（默认即开启，此处显式声明）
+    // - 思考强度控制：       "reasoning_effort": "low"（low/high/max）
+    // 模型使用 deepseek-v4-flash，思考模式与其参数均按 V4 文档校验。
     nlohmann::json reqBody;
-    reqBody["model"] = "deepseek-chat";
+    reqBody["model"] = "deepseek-v4-flash";
+    reqBody["thinking"] = {{"type", "enabled"}};
+    reqBody["reasoning_effort"] = "low";
     reqBody["messages"] = nlohmann::json::array();
     reqBody["messages"].push_back({{"role", "user"}, {"content", prompt}});
-    std::string body = reqBody.dump();
+    return reqBody.dump();
+}
+
+bool DeepSeekAIChatProvider::CallAPI(const std::string& prompt, std::string& outResponse) {
+    std::string body = BuildRequestBody(prompt);
 
     std::string headersStr =
         "Content-Type: application/json\r\n"
@@ -104,12 +115,27 @@ bool DeepSeekAIChatProvider::CallAPI(const std::string& prompt, std::string& out
             return false;
         }
         auto& choice = responseJson["choices"][0];
-        if (!choice.contains("message") || !choice["message"].contains("content")) {
+        if (!choice.contains("message")) {
+            lastError_ = "No message in response";
+            available_ = false;
+            return false;
+        }
+        auto& message = choice["message"];
+        // 思考模式下思维链通过 reasoning_content 返回，最终回答在 content。
+        // 优先取最终回答；content 为空时兜底取 reasoning_content。
+        std::string content;
+        if (message.contains("content") && message["content"].is_string()) {
+            content = message["content"].get<std::string>();
+        }
+        if (content.empty() && message.contains("reasoning_content") && message["reasoning_content"].is_string()) {
+            content = message["reasoning_content"].get<std::string>();
+        }
+        if (content.empty()) {
             lastError_ = "No message content in response";
             available_ = false;
             return false;
         }
-        outResponse = choice["message"]["content"].get<std::string>();
+        outResponse = content;
         available_ = true;
         return true;
     }
@@ -121,11 +147,7 @@ bool DeepSeekAIChatProvider::CallAPI(const std::string& prompt, std::string& out
 }
 
 void DeepSeekAIChatProvider::CallAPIAsync(const std::string& prompt, std::function<void(bool, const std::string&)> callback) {
-    nlohmann::json reqBody;
-    reqBody["model"] = "deepseek-chat";
-    reqBody["messages"] = nlohmann::json::array();
-    reqBody["messages"].push_back({{"role", "user"}, {"content", prompt}});
-    std::string body = reqBody.dump();
+    std::string body = BuildRequestBody(prompt);
 
     std::string headersStr =
         "Content-Type: application/json\r\n"
@@ -162,13 +184,28 @@ void DeepSeekAIChatProvider::CallAPIAsync(const std::string& prompt, std::functi
                     return;
                 }
                 auto& choice = responseJson["choices"][0];
-                if (!choice.contains("message") || !choice["message"].contains("content")) {
+                if (!choice.contains("message")) {
+                    lastError_ = "No message in response";
+                    available_ = false;
+                    if (callback) callback(false, "");
+                    return;
+                }
+                auto& message = choice["message"];
+                // 思考模式下思维链通过 reasoning_content 返回，最终回答在 content。
+                // 优先取最终回答；content 为空时兜底取 reasoning_content。
+                std::string content;
+                if (message.contains("content") && message["content"].is_string()) {
+                    content = message["content"].get<std::string>();
+                }
+                if (content.empty() && message.contains("reasoning_content") && message["reasoning_content"].is_string()) {
+                    content = message["reasoning_content"].get<std::string>();
+                }
+                if (content.empty()) {
                     lastError_ = "No message content in response";
                     available_ = false;
                     if (callback) callback(false, "");
                     return;
                 }
-                std::string content = choice["message"]["content"].get<std::string>();
                 available_ = true;
                 if (callback) callback(true, content);
             }

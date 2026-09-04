@@ -6,11 +6,24 @@
 #include <iostream>
 #include <atomic>
 #include <thread>
+#include <chrono>
+#include <functional>
 
 #ifdef RUN_UNIT_TESTS
 
 static void TestLog(const char* msg) {
     std::cout << msg << std::endl;
+}
+
+// WriteQueue 使用异步工作线程处理点赞任务，PushLikeEvent 返回后任务仍在后台执行，
+// 断言前必须轮询等待预期状态出现，避免竞态导致的误报。
+static bool WaitUntil(const std::function<bool()>& condition, int timeoutMs = 5000) {
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
+    while (std::chrono::steady_clock::now() < deadline) {
+        if (condition()) return true;
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+    return condition();
 }
 
 static void CleanupTestData() {
@@ -83,6 +96,10 @@ void TestStreakReward() {
     }
 
     RetroactiveCardData cards;
+    assert(WaitUntil([&]() {
+        RetroactiveCardData c;
+        return ProfileManager::Inst()->LoadRetroactiveCards("streak_user", c) && c.cardCount == 1;
+    }));
     assert(ProfileManager::Inst()->LoadRetroactiveCards("streak_user", cards));
     assert(cards.cardCount == 1);
     assert(cards.totalEarned == 1);
@@ -105,6 +122,12 @@ void TestStreakBoundary() {
         RetroactiveCheckInModule::Inst()->PushLikeEvent(evt);
     }
 
+    // 等待第6天的点赞任务处理完成（streak 达到 6）
+    assert(WaitUntil([&]() {
+        LikeStreakData s;
+        return ProfileManager::Inst()->LoadLikeStreak("test_boundary_streak", s) && s.currentStreak == 6;
+    }));
+
     RetroactiveCardData cards;
     assert(ProfileManager::Inst()->LoadRetroactiveCards("test_boundary_streak", cards));
     assert(cards.cardCount == 0); // 6天不应奖励
@@ -118,6 +141,10 @@ void TestStreakBoundary() {
     evt7.timestamp = 1777000000 + 6 * 86400;
     RetroactiveCheckInModule::Inst()->PushLikeEvent(evt7);
 
+    assert(WaitUntil([&]() {
+        RetroactiveCardData c;
+        return ProfileManager::Inst()->LoadRetroactiveCards("test_boundary_streak", c) && c.cardCount == 1;
+    }));
     assert(ProfileManager::Inst()->LoadRetroactiveCards("test_boundary_streak", cards));
     assert(cards.cardCount == 1); // 7天应奖励
 
@@ -129,6 +156,12 @@ void TestStreakBoundary() {
     evt8.date = 20260425;
     evt8.timestamp = 1777000000 + 7 * 86400;
     RetroactiveCheckInModule::Inst()->PushLikeEvent(evt8);
+
+    // 等待第8天的点赞任务处理完成（streak 达到 8）
+    assert(WaitUntil([&]() {
+        LikeStreakData s;
+        return ProfileManager::Inst()->LoadLikeStreak("test_boundary_streak", s) && s.currentStreak == 8;
+    }));
 
     assert(ProfileManager::Inst()->LoadRetroactiveCards("test_boundary_streak", cards));
     assert(cards.cardCount == 1); // 8天不应重复奖励
@@ -144,6 +177,10 @@ void TestStreakBoundary() {
         RetroactiveCheckInModule::Inst()->PushLikeEvent(evt);
     }
 
+    assert(WaitUntil([&]() {
+        RetroactiveCardData c;
+        return ProfileManager::Inst()->LoadRetroactiveCards("test_boundary_streak", c) && c.cardCount == 2;
+    }));
     assert(ProfileManager::Inst()->LoadRetroactiveCards("test_boundary_streak", cards));
     assert(cards.cardCount == 2); // 14天应再次奖励
 
@@ -164,12 +201,23 @@ void TestWeeklyFirstReward() {
     RetroactiveCheckInModule::Inst()->PushLikeEvent(evt);
 
     RetroactiveCardData cards;
+    assert(WaitUntil([&]() {
+        RetroactiveCardData c;
+        return ProfileManager::Inst()->LoadRetroactiveCards("weekly_user", c) && c.cardCount == 1;
+    }));
     assert(ProfileManager::Inst()->LoadRetroactiveCards("weekly_user", cards));
     assert(cards.cardCount == 1);
     assert(cards.weeklyFirstClaimed == 20260420);
 
     evt.likeCount = 10;
     RetroactiveCheckInModule::Inst()->PushLikeEvent(evt);
+
+    // 等待第二次点赞任务处理完成（当日点赞累计到 45）
+    assert(WaitUntil([&]() {
+        DailyLikeData d;
+        return ProfileManager::Inst()->GetDailyLike("weekly_user", 20260424, d) && d.totalLikes == 45;
+    }));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     assert(ProfileManager::Inst()->LoadRetroactiveCards("weekly_user", cards));
     assert(cards.cardCount == 1);
@@ -190,6 +238,13 @@ void TestWeeklyFirstBoundary() {
     evt.timestamp = 1777030207;
     RetroactiveCheckInModule::Inst()->PushLikeEvent(evt);
 
+    // 等待点赞任务处理完成（当日点赞累计到 29）
+    assert(WaitUntil([&]() {
+        DailyLikeData d;
+        return ProfileManager::Inst()->GetDailyLike("test_boundary_weekly", 20260424, d) && d.totalLikes == 29;
+    }));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
     RetroactiveCardData cards;
     assert(ProfileManager::Inst()->LoadRetroactiveCards("test_boundary_weekly", cards));
     assert(cards.cardCount == 0); // 29不应奖励
@@ -198,6 +253,10 @@ void TestWeeklyFirstBoundary() {
     evt.likeCount = 1;
     RetroactiveCheckInModule::Inst()->PushLikeEvent(evt);
 
+    assert(WaitUntil([&]() {
+        RetroactiveCardData c;
+        return ProfileManager::Inst()->LoadRetroactiveCards("test_boundary_weekly", c) && c.cardCount == 1;
+    }));
     assert(ProfileManager::Inst()->LoadRetroactiveCards("test_boundary_weekly", cards));
     assert(cards.cardCount == 1); // 30应奖励
 
@@ -205,10 +264,83 @@ void TestWeeklyFirstBoundary() {
     evt.likeCount = 10;
     RetroactiveCheckInModule::Inst()->PushLikeEvent(evt);
 
+    // 等待点赞任务处理完成（当日点赞累计到 40）
+    assert(WaitUntil([&]() {
+        DailyLikeData d;
+        return ProfileManager::Inst()->GetDailyLike("test_boundary_weekly", 20260424, d) && d.totalLikes == 40;
+    }));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
     assert(ProfileManager::Inst()->LoadRetroactiveCards("test_boundary_weekly", cards));
     assert(cards.cardCount == 1); // 不应重复奖励
 
     TestLog("[PASS] TestWeeklyFirstBoundary");
+}
+
+// 回归测试：全新用户（retroactive_cards 无记录）点赞达到 30 应正常发放周奖励。
+// 此前 IssueWeeklyFirstReward 只执行 UPDATE，无行时命中 0 行被幂等检查误判为"本周已领"，
+// 导致查询显示"已满足，可领取"但永远拿不到卡。
+void TestWeeklyFirstReward_NoCardRow() {
+    CleanupTestData();
+    RetroactiveCheckInModule::Inst()->Init();
+
+    RetroactiveCardData cards;
+    assert(ProfileManager::Inst()->LoadRetroactiveCards("test_fresh_weekly_user", cards));
+    assert(cards.cardCount == 0);
+    assert(cards.weeklyFirstClaimed == 0);
+
+    LikeEvent evt;
+    evt.uid = "test_fresh_weekly_user";
+    evt.username = "FreshWeeklyUser";
+    evt.likeCount = 35;
+    evt.date = 20260424;
+    evt.timestamp = 1777030207;
+
+    RetroactiveCheckInModule::Inst()->PushLikeEvent(evt);
+
+    assert(WaitUntil([&]() {
+        RetroactiveCardData c;
+        return ProfileManager::Inst()->LoadRetroactiveCards("test_fresh_weekly_user", c) && c.cardCount == 1;
+    }));
+    assert(ProfileManager::Inst()->LoadRetroactiveCards("test_fresh_weekly_user", cards));
+    assert(cards.cardCount == 1);
+    assert(cards.totalEarned == 1);
+    assert(cards.weeklyFirstClaimed == 20260420);
+
+    TestLog("[PASS] TestWeeklyFirstReward_NoCardRow");
+}
+
+// 回归测试：全新用户（retroactive_cards 无记录）连续点赞 7 天应正常发放连续奖励。
+// 此前 IssueStreakReward 的 cardSql UPDATE 命中 0 行却仍返回成功，
+// 导致用户收到"获得1张补签卡"提示但实际没有入账。
+void TestStreakReward_NoCardRow() {
+    CleanupTestData();
+    RetroactiveCheckInModule::Inst()->Init();
+
+    RetroactiveCardData cards;
+    assert(ProfileManager::Inst()->LoadRetroactiveCards("test_fresh_streak_user", cards));
+    assert(cards.cardCount == 0);
+
+    for (int i = 0; i < 7; ++i) {
+        LikeEvent evt;
+        evt.uid = "test_fresh_streak_user";
+        evt.username = "FreshStreakUser";
+        evt.likeCount = 1;
+        evt.date = 20260418 + i;
+        evt.timestamp = 1777000000 + i * 86400;
+
+        RetroactiveCheckInModule::Inst()->PushLikeEvent(evt);
+    }
+
+    assert(WaitUntil([&]() {
+        RetroactiveCardData c;
+        return ProfileManager::Inst()->LoadRetroactiveCards("test_fresh_streak_user", c) && c.cardCount == 1;
+    }));
+    assert(ProfileManager::Inst()->LoadRetroactiveCards("test_fresh_streak_user", cards));
+    assert(cards.cardCount == 1);
+    assert(cards.totalEarned == 1);
+
+    TestLog("[PASS] TestStreakReward_NoCardRow");
 }
 
 void TestCrossWeekReset() {
@@ -239,6 +371,10 @@ void TestCrossWeekReset() {
 
     RetroactiveCheckInModule::Inst()->PushLikeEvent(evt);
 
+    assert(WaitUntil([&]() {
+        RetroactiveCardData c;
+        return ProfileManager::Inst()->LoadRetroactiveCards("cross_week_user", c) && c.cardCount == 1;
+    }));
     assert(ProfileManager::Inst()->LoadRetroactiveCards("cross_week_user", cards));
     assert(cards.cardCount == 1);
     assert(cards.weeklyFirstClaimed == 20260427);
@@ -266,6 +402,13 @@ void TestSameWeekNoReset() {
     evt.timestamp = 1777116607;
 
     RetroactiveCheckInModule::Inst()->PushLikeEvent(evt);
+
+    // 等待点赞任务处理完成（当日点赞累计到 35）
+    assert(WaitUntil([&]() {
+        DailyLikeData d;
+        return ProfileManager::Inst()->GetDailyLike("same_week_user", 20260425, d) && d.totalLikes == 35;
+    }));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     assert(ProfileManager::Inst()->LoadRetroactiveCards("same_week_user", cards));
     assert(cards.cardCount == 0);
@@ -308,6 +451,10 @@ void TestLeapYearAndCrossYear() {
     }
 
     LikeStreakData streak;
+    assert(WaitUntil([&]() {
+        LikeStreakData s;
+        return ProfileManager::Inst()->LoadLikeStreak("test_leap_year", s) && s.currentStreak == 3;
+    }));
     assert(ProfileManager::Inst()->LoadLikeStreak("test_leap_year", streak));
     assert(streak.currentStreak == 3);
 
@@ -332,6 +479,10 @@ void TestLeapYearAndCrossYear() {
         RetroactiveCheckInModule::Inst()->PushLikeEvent(evt);
     }
 
+    assert(WaitUntil([&]() {
+        LikeStreakData s;
+        return ProfileManager::Inst()->LoadLikeStreak("test_cross_year", s) && s.currentStreak == 2;
+    }));
     assert(ProfileManager::Inst()->LoadLikeStreak("test_cross_year", streak));
     assert(streak.currentStreak == 2);
 
@@ -350,6 +501,7 @@ void TestRetroactiveCommand() {
     ProfileManager::Inst()->SaveRetroactiveCards(cards);
 
     ProfileManager::Inst()->InsertRetroactiveCheckin("12345", "RetroUser", 20260420);
+    ProfileManager::Inst()->InsertRetroactiveCheckin("12345", "RetroUser", 20260422);
 
     DanmuProcessor::CaptainDanmuEvent evt;
     evt.uid = "12345";
@@ -378,7 +530,8 @@ void TestRetroactiveCommandWithHistoricalGap() {
     ProfileManager::Inst()->SaveRetroactiveCards(cards);
 
     // 创建打卡记录：20260601, 20260603, 20260604, 20260605 (缺失20260602)
-    ProfileManager::Inst()->InsertRetroactiveCheckin("test_gap_user", "GapUser", 20260601);
+    // 20260601 用 RecordCheckin 建立用户 profile（生产路径首次打卡会创建 profile）
+    ProfileManager::Inst()->RecordCheckin("test_gap_user", "GapUser", 20260601);
     ProfileManager::Inst()->InsertRetroactiveCheckin("test_gap_user", "GapUser", 20260603);
     ProfileManager::Inst()->InsertRetroactiveCheckin("test_gap_user", "GapUser", 20260604);
     ProfileManager::Inst()->InsertRetroactiveCheckin("test_gap_user", "GapUser", 20260605);
@@ -580,6 +733,7 @@ void TestConcurrentDeduction() {
     ProfileManager::Inst()->SaveRetroactiveCards(cards);
 
     ProfileManager::Inst()->InsertRetroactiveCheckin(uid, "ConcurrentUser", 20260420);
+    ProfileManager::Inst()->InsertRetroactiveCheckin(uid, "ConcurrentUser", 20260422);
 
     std::vector<std::thread> threads;
     std::atomic<int> successCount(0);
@@ -603,9 +757,10 @@ void TestConcurrentDeduction() {
 
     assert(successCount == 5);
     assert(ProfileManager::Inst()->LoadRetroactiveCards(uid, cards));
-    // FindLastMissingCheckinDate 只返回一个缺失日期(20260423)，第一次线程成功扣卡并插入记录后
-    // 后续线程发现无缺失日期就返回了，所以只扣了1张卡
-    assert(cards.cardCount == 4); // 初始5张，补签成功1次，剩余4张
+    // 线程按用户锁串行执行：依次补签 20260424、20260423、20260421 各扣 1 张（5-3=2），
+    // 之后打卡记录 20260420~24 连续满勤，补签有效性校验（continuous>=cumulative）拒绝后续补签，
+    // 卡片不会扣成负数。
+    assert(cards.cardCount == 2);
 
     TestLog("[PASS] TestConcurrentDeduction");
 }
@@ -694,6 +849,8 @@ void RunRetroactiveCheckInModuleTests() {
     TestStreakBoundary();
     TestWeeklyFirstReward();
     TestWeeklyFirstBoundary();
+    TestWeeklyFirstReward_NoCardRow();
+    TestStreakReward_NoCardRow();
     TestCrossWeekReset();
     TestSameWeekNoReset();
     TestLeapYearAndCrossYear();

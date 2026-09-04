@@ -1252,6 +1252,22 @@ bool ProfileManager::IssueStreakReward(const std::string& uid, int32_t date) {
         return false;
     }
 
+    // 确保 retroactive_cards 行存在：全新用户从未获得过补签卡时表中无记录，
+    // 直接 UPDATE 会命中 0 行导致卡片未入账（此前甚至被误报为发放成功）。
+    const char* ensureCardSql =
+        "INSERT OR IGNORE INTO retroactive_cards (uid, card_count, total_earned, weekly_first_claimed, last_earned_date) VALUES (?, 0, 0, 0, 0)";
+    if (sqlite3_prepare_v2(db, ensureCardSql, -1, &stmt, nullptr) != SQLITE_OK) {
+        sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+        return false;
+    }
+    sqlite3_bind_text(stmt, 1, uid.c_str(), -1, SQLITE_TRANSIENT);
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        sqlite3_finalize(stmt);
+        sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+        return false;
+    }
+    sqlite3_finalize(stmt);
+
     // 增加补签卡
     const char* cardSql = 
         "UPDATE retroactive_cards SET card_count = card_count + 1, total_earned = total_earned + 1, last_earned_date = ? WHERE uid = ?";
@@ -1267,6 +1283,14 @@ bool ProfileManager::IssueStreakReward(const std::string& uid, int32_t date) {
         return false;
     }
     sqlite3_finalize(stmt);
+
+    // 行已确保存在，更新必须生效 1 行，否则视为发放失败
+    if (sqlite3_changes(db) != 1) {
+        LOG_ERROR(TEXT("ProfileManager: IssueStreakReward card update affected %d rows for uid=%hs"),
+            sqlite3_changes(db), uid.c_str());
+        sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+        return false;
+    }
 
     if (sqlite3_exec(db, "COMMIT", nullptr, nullptr, nullptr) != SQLITE_OK) {
         LOG_ERROR(TEXT("ProfileManager: IssueStreakReward COMMIT failed: %hs"), sqlite3_errmsg(db));
@@ -1284,6 +1308,22 @@ bool ProfileManager::IssueWeeklyFirstReward(const std::string& uid, int32_t date
     }
 
     sqlite3_stmt* stmt = nullptr;
+
+    // 确保 retroactive_cards 行存在：全新用户从未获得过补签卡时表中无记录，
+    // 直接 UPDATE 会命中 0 行并被幂等检查误判为"本周已领"，导致周奖励永远发不出去。
+    const char* ensureCardSql =
+        "INSERT OR IGNORE INTO retroactive_cards (uid, card_count, total_earned, weekly_first_claimed, last_earned_date) VALUES (?, 0, 0, 0, 0)";
+    if (sqlite3_prepare_v2(db, ensureCardSql, -1, &stmt, nullptr) != SQLITE_OK) {
+        sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+        return false;
+    }
+    sqlite3_bind_text(stmt, 1, uid.c_str(), -1, SQLITE_TRANSIENT);
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        sqlite3_finalize(stmt);
+        sqlite3_exec(db, "ROLLBACK", nullptr, nullptr, nullptr);
+        return false;
+    }
+    sqlite3_finalize(stmt);
 
     // 原子性更新 weekly_first_claimed 和补签卡数量，添加幂等保护
     // 只有当 weekly_first_claimed 不是当前自然周时才更新
