@@ -89,7 +89,8 @@ private:
     std::wstring NormalizeString(const std::wstring& input) const;
 
     // 尝试更新优先状态（处理"优先"、"插队"等关键字）
-    bool TryUpdatePriority(const DanmuData& danmu);
+    // 成功时经 outMonsterName 回填该用户已点的怪物名；已是优先或未在队则返回 false
+    bool TryUpdatePriority(const DanmuData& danmu, std::string* outMonsterName = nullptr);
 
     // 检查是否包含优先关键字
     bool HasPriorityKeyword(const std::wstring& text) const;

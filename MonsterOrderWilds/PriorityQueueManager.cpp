@@ -67,16 +67,32 @@ bool PriorityQueueManager::Contains(const std::string& userId) const
 
 bool PriorityQueueManager::UpdateNodePriority(const std::string& userId)
 {
+    bool changed = false;
     {
         std::lock_guard<Lock> guard(lock_);
         for (auto& node : queue_)
         {
             if (node.userId == userId)
             {
-                node.priority = true;
-                dirty_ = true;
+                if (!node.priority)
+                {
+                    node.priority = true;
+                    dirty_ = true;
+                    changed = true;
+                }
+                else
+                {
+                    LOG_DEBUG(TEXT("PriorityQueueManager: UpdateNodePriority - user already priority: %hs"), userId.c_str());
+                }
                 break;
             }
+        }
+        if (!changed)
+        {
+            bool found = userIds_.count(userId) > 0;
+            if (!found)
+                LOG_DEBUG(TEXT("PriorityQueueManager: UpdateNodePriority - user not in queue: %hs"), userId.c_str());
+            return false;
         }
     }
     // Re-sort since priority changed

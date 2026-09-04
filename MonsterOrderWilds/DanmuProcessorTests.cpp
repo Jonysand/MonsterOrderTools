@@ -4,6 +4,8 @@
 #include "PriorityQueueManager.h"
 #include "UnitTestLog.h"
 #include <cassert>
+#include <filesystem>
+#include <fstream>
 
 #ifdef RUN_UNIT_TESTS
 
@@ -75,6 +77,200 @@ void TestDanmuFilter_OnlyMedalOrder()
     TestLog("[PASS] TestDanmuFilter_OnlyMedalOrder");
 }
 
+static void EnsurePriorityTestMonsterData()
+{
+    MonsterDataManager* monsterMgr = MonsterDataManager::Inst();
+    if (!monsterMgr->IsLoaded())
+    {
+        std::string testDir = "MonsterOrderWilds_configs";
+        std::string testPath = testDir + "/monster_list_test.json";
+        if (!std::filesystem::exists(testDir))
+            std::filesystem::create_directories(testDir);
+        if (!std::filesystem::exists(testPath))
+        {
+            std::ofstream file(testPath);
+            file << R"({
+                "火龙": {
+                    "图标地址": "https://example.com/fire_dragon.png",
+                    "别称": ["火龙"],
+                    "默认历战等级": 0
+                }
+            })";
+            file.close();
+        }
+        monsterMgr->LoadJsonData(testPath);
+    }
+}
+
+void TestPriority_TwoStep_Basic()
+{
+    EnsurePriorityTestMonsterData();
+    DanmuProcessor* processor = DanmuProcessor::Inst();
+    PriorityQueueManager* queueMgr = PriorityQueueManager::Inst();
+    processor->SetOnlyMedalOrder(false);
+    queueMgr->Clear();
+
+    DanmuData order;
+    order.userId = "priority_user_1";
+    order.userName = "优先用户1";
+    order.message = "点怪火龙";
+    order.timestamp = 1000;
+    order.guardLevel = 3;
+    order.hasMedal = true;
+    DanmuProcessResult orderResult = processor->ProcessDanmu(order);
+    assert(orderResult.addedToQueue == true);
+
+    DanmuData prior;
+    prior.userId = "priority_user_1";
+    prior.userName = "优先用户1";
+    prior.message = "优先";
+    prior.timestamp = 1001;
+    prior.guardLevel = 3;
+    prior.hasMedal = true;
+    DanmuProcessResult priorResult = processor->ProcessDanmu(prior);
+    assert(priorResult.priorityUpdated == true);
+    assert(priorResult.userName == "优先用户1");
+    assert(priorResult.monsterName == "火龙");
+    assert(priorResult.addedToQueue == false);
+    assert(priorResult.shouldSpeak == false);
+
+    auto nodes = queueMgr->GetAllNodes();
+    assert(nodes.size() == 1);
+    assert(nodes[0].priority == true);
+
+    queueMgr->Clear();
+    TestLog("[PASS] TestPriority_TwoStep_Basic");
+}
+
+void TestPriority_NonGuard_NoUpdate()
+{
+    EnsurePriorityTestMonsterData();
+    DanmuProcessor* processor = DanmuProcessor::Inst();
+    PriorityQueueManager* queueMgr = PriorityQueueManager::Inst();
+    processor->SetOnlyMedalOrder(false);
+    queueMgr->Clear();
+
+    QueueNodeData node;
+    node.userId = "priority_user_noguard";
+    node.userName = "普通用户";
+    node.monsterName = "火龙";
+    node.timeStamp = 1000;
+    node.priority = false;
+    node.guardLevel = 0;
+    queueMgr->Enqueue(node);
+
+    DanmuData prior;
+    prior.userId = "priority_user_noguard";
+    prior.userName = "普通用户";
+    prior.message = "优先";
+    prior.timestamp = 1001;
+    prior.guardLevel = 0;
+    prior.hasMedal = true;
+    DanmuProcessResult result = processor->ProcessDanmu(prior);
+    assert(result.priorityUpdated == false);
+
+    auto nodes = queueMgr->GetAllNodes();
+    assert(nodes.size() == 1);
+    assert(nodes[0].priority == false);
+
+    queueMgr->Clear();
+    TestLog("[PASS] TestPriority_NonGuard_NoUpdate");
+}
+
+void TestPriority_NotInQueue_NoUpdate()
+{
+    DanmuProcessor* processor = DanmuProcessor::Inst();
+    PriorityQueueManager* queueMgr = PriorityQueueManager::Inst();
+    processor->SetOnlyMedalOrder(false);
+    queueMgr->Clear();
+
+    DanmuData prior;
+    prior.userId = "priority_user_absent";
+    prior.userName = "路人";
+    prior.message = "优先";
+    prior.timestamp = 1001;
+    prior.guardLevel = 3;
+    prior.hasMedal = true;
+    DanmuProcessResult result = processor->ProcessDanmu(prior);
+    assert(result.priorityUpdated == false);
+    assert(queueMgr->GetCount() == 0);
+
+    TestLog("[PASS] TestPriority_NotInQueue_NoUpdate");
+}
+
+void TestPriority_NoMedalFilterExempt()
+{
+    EnsurePriorityTestMonsterData();
+    DanmuProcessor* processor = DanmuProcessor::Inst();
+    PriorityQueueManager* queueMgr = PriorityQueueManager::Inst();
+    queueMgr->Clear();
+
+    processor->SetOnlyMedalOrder(false);
+    DanmuData order;
+    order.userId = "priority_user_nomedal";
+    order.userName = "无牌优先用户";
+    order.message = "点怪火龙";
+    order.timestamp = 1000;
+    order.guardLevel = 3;
+    order.hasMedal = true;
+    DanmuProcessResult orderResult = processor->ProcessDanmu(order);
+    assert(orderResult.addedToQueue == true);
+
+    processor->SetOnlyMedalOrder(true);
+    DanmuData prior;
+    prior.userId = "priority_user_nomedal";
+    prior.userName = "无牌优先用户";
+    prior.message = "优先";
+    prior.timestamp = 1001;
+    prior.guardLevel = 3;
+    prior.hasMedal = false;
+    DanmuProcessResult priorResult = processor->ProcessDanmu(prior);
+    assert(priorResult.priorityUpdated == true);
+
+    processor->SetOnlyMedalOrder(false);
+    queueMgr->Clear();
+    TestLog("[PASS] TestPriority_NoMedalFilterExempt");
+}
+
+void TestPriority_Idempotent()
+{
+    EnsurePriorityTestMonsterData();
+    DanmuProcessor* processor = DanmuProcessor::Inst();
+    PriorityQueueManager* queueMgr = PriorityQueueManager::Inst();
+    processor->SetOnlyMedalOrder(false);
+    queueMgr->Clear();
+
+    DanmuData order;
+    order.userId = "priority_user_repeat";
+    order.userName = "重复优先用户";
+    order.message = "点怪火龙";
+    order.timestamp = 1000;
+    order.guardLevel = 3;
+    order.hasMedal = true;
+    DanmuProcessResult orderResult = processor->ProcessDanmu(order);
+    assert(orderResult.addedToQueue == true);
+
+    DanmuData prior;
+    prior.userId = "priority_user_repeat";
+    prior.userName = "重复优先用户";
+    prior.message = "优先";
+    prior.timestamp = 1001;
+    prior.guardLevel = 3;
+    prior.hasMedal = true;
+    DanmuProcessResult first = processor->ProcessDanmu(prior);
+    assert(first.priorityUpdated == true);
+
+    DanmuProcessResult second = processor->ProcessDanmu(prior);
+    assert(second.priorityUpdated == false);
+
+    auto nodes = queueMgr->GetAllNodes();
+    assert(nodes.size() == 1);
+    assert(nodes[0].priority == true);
+
+    queueMgr->Clear();
+    TestLog("[PASS] TestPriority_Idempotent");
+}
+
 // 运行所有测试
 void RunAllDanmuProcessorTests()
 {
@@ -83,6 +279,11 @@ void RunAllDanmuProcessorTests()
     TestParseDanmuJson_NoGuardLevel();
     TestGenerateSpeakText_Basic();
     TestDanmuFilter_OnlyMedalOrder();
+    TestPriority_TwoStep_Basic();
+    TestPriority_NonGuard_NoUpdate();
+    TestPriority_NotInQueue_NoUpdate();
+    TestPriority_NoMedalFilterExempt();
+    TestPriority_Idempotent();
     TestLog("=== DanmuProcessor Tests Done ===");
 }
 

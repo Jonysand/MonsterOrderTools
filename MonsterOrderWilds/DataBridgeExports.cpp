@@ -451,11 +451,11 @@ extern "C" {
         if (callback != nullptr)
         {
             DataBridge::GetDanmuProcessor()->AddDanmuProcessedListener([](const DanmuProcessResult& result) {
-                if (g_danmuProcessedCallback != nullptr && result.addedToQueue)
+                if (g_danmuProcessedCallback != nullptr && (result.addedToQueue || result.priorityUpdated))
                 {
                     std::wstring wuserName = Utf8ToWstring(result.userName);
                     std::wstring wmonsterName = Utf8ToWstring(result.monsterName);
-                    g_danmuProcessedCallback(wuserName.c_str(), wmonsterName.c_str(), g_danmuProcessedUserData);
+                    g_danmuProcessedCallback(wuserName.c_str(), wmonsterName.c_str(), result.priorityUpdated, g_danmuProcessedUserData);
                 }
             });
         }

@@ -124,7 +124,7 @@ namespace MonsterOrderWindows
         public static extern bool ProfileManager_AddRetroactiveCards(string uid, int count, [Out] byte[] outMessage, int messageBufferSize);
 
         [UnmanagedFunctionPointer(CallingConvention.StdCall, CharSet = CharSet.Unicode)]
-        public delegate void DanmuProcessedCallback(string userName, string monsterName, IntPtr userData);
+        public delegate void DanmuProcessedCallback(string userName, string monsterName, bool isPriority, IntPtr userData);
 
         [UnmanagedFunctionPointer(CallingConvention.StdCall, CharSet = CharSet.Unicode)]
         public delegate void OnAIReplyCallback(string username, string content, IntPtr userData);

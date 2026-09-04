@@ -45,10 +45,21 @@ namespace MonsterOrderWindows
             GlobalEventListener.Invoke("RefreshOrder", null);
         }
 
-        private static void OnDanmuProcessed(string userName, string monsterName, IntPtr userData)
+        private static void OnDanmuProcessed(string userName, string monsterName, bool isPriority, IntPtr userData)
         {
             GlobalEventListener.Invoke("RefreshOrder", null);
-            GlobalEventListener.Invoke("AddRollingInfo", new RollingInfo(userName + " 点怪 " + monsterName + " 成功！", Colors.Yellow));
+            string rollingText;
+            if (isPriority)
+            {
+                rollingText = string.IsNullOrEmpty(monsterName)
+                    ? userName + " 优先插队成功，已置前！"
+                    : userName + " 优先 " + monsterName + " 成功，已置前！";
+            }
+            else
+            {
+                rollingText = userName + " 点怪 " + monsterName + " 成功！";
+            }
+            GlobalEventListener.Invoke("AddRollingInfo", new RollingInfo(rollingText, Colors.Yellow));
         }
 
         private static void OnAIReplyCallback(string username, string content, IntPtr userData)

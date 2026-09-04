@@ -90,6 +90,18 @@ DanmuProcessResult DanmuProcessor::ProcessDanmu(const DanmuData& danmu)
 #endif
 #endif
 
+    // 二次“优先”置前优先于粉丝牌过滤：已在队用户补优先不应被本条弹幕的佩戴状态拦截
+    std::string priorityMonsterName;
+    if (TryUpdatePriority(danmu, &priorityMonsterName))
+    {
+        result.priorityUpdated = true;
+        result.userName = danmu.userName;
+        result.monsterName = priorityMonsterName;
+        LOGW_DEBUG(L"[DanmuProcessor] Priority updated for user, monster length=%d", (int)priorityMonsterName.length());
+        NotifyDanmuProcessed(result);
+        return result;
+    }
+
     if (!PassesFilter(danmu))
     {
         LOGW_DEBUG(L"[DanmuProcessor] PassesFilter failed");
@@ -98,15 +110,8 @@ DanmuProcessResult DanmuProcessor::ProcessDanmu(const DanmuData& danmu)
 
     std::wstring wmsg = Utf8ToWstring(danmu.message);
     std::wstring wnormalizedMsg = NormalizeString(wmsg);
-    
-    LOGW_DEBUG(L"[DanmuProcessor] normalizedMsg length=%d", (int)wnormalizedMsg.length());
 
-    if (TryUpdatePriority(danmu))
-    {
-        result.priorityUpdated = true;
-        NotifyDanmuProcessed(result);
-        return result;
-    }
+    LOGW_DEBUG(L"[DanmuProcessor] normalizedMsg length=%d", (int)wnormalizedMsg.length());
 
     if (danmu.hasMedal && !danmu.userId.empty())
     {
@@ -333,7 +338,7 @@ bool DanmuProcessor::HasPriorityKeyword(const std::wstring& text) const
     return false;
 }
 
-bool DanmuProcessor::TryUpdatePriority(const DanmuData& danmu)
+bool DanmuProcessor::TryUpdatePriority(const DanmuData& danmu, std::string* outMonsterName)
 {
     std::wstring wmsg = Utf8ToWstring(danmu.message);
     std::wstring wnormalizedMsg = NormalizeString(wmsg);
@@ -342,13 +347,33 @@ bool DanmuProcessor::TryUpdatePriority(const DanmuData& danmu)
         return false;
 
     if (danmu.guardLevel <= 0)
+    {
+        LOG_DEBUG(TEXT("[DanmuProcessor] TryUpdatePriority - non-guard user ignored"));
         return false;
+    }
 
     PriorityQueueManager* queueMgr = PriorityQueueManager::Inst();
     if (!queueMgr->Contains(danmu.userId))
         return false;
 
-    queueMgr->UpdateNodePriority(danmu.userId);
+    if (!queueMgr->UpdateNodePriority(danmu.userId))
+    {
+        LOG_DEBUG(TEXT("[DanmuProcessor] TryUpdatePriority - no change (already priority or absent)"));
+        return false;
+    }
+
+    if (outMonsterName != nullptr)
+    {
+        outMonsterName->clear();
+        for (const auto& node : queueMgr->GetAllNodes())
+        {
+            if (node.userId == danmu.userId)
+            {
+                *outMonsterName = node.monsterName;
+                break;
+            }
+        }
+    }
     return true;
 }
 
