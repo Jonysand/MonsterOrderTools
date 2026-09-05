@@ -3,8 +3,8 @@
 
 // 版本信息资源
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 42,0,0,0
-  PRODUCTVERSION 42,0,0,0
+ FILEVERSION 43,0,0,0
+  PRODUCTVERSION 43,0,0,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -21,12 +21,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "小鬼科技"
             VALUE "FileDescription", "MonsterOrderWilds - 点怪机"
-            VALUE "FileVersion", "42"
+            VALUE "FileVersion", "43"
             VALUE "InternalName", "MonsterOrderWilds.exe"
             VALUE "LegalCopyright", "小鬼科技"
             VALUE "OriginalFilename", "MonsterOrderWilds.exe"
             VALUE "ProductName", "MonsterOrderWilds"
-            VALUE "ProductVersion", "42"
+            VALUE "ProductVersion", "43"
         END
     END
     BLOCK "VarFileInfo"

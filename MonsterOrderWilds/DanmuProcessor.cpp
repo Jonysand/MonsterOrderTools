@@ -338,13 +338,28 @@ bool DanmuProcessor::HasPriorityKeyword(const std::wstring& text) const
     return false;
 }
 
+bool DanmuProcessor::IsPriorityOnlyMessage(const std::wstring& normalizedText) const
+{
+    static const std::wstring kPriorityWords[] = { L"优先", L"插队", L"優先", L"插隊" };
+    for (const auto& word : kPriorityWords)
+    {
+        if (normalizedText == word)
+            return true;
+    }
+    return false;
+}
+
 bool DanmuProcessor::TryUpdatePriority(const DanmuData& danmu, std::string* outMonsterName)
 {
     std::wstring wmsg = Utf8ToWstring(danmu.message);
     std::wstring wnormalizedMsg = NormalizeString(wmsg);
 
-    if (!HasPriorityKeyword(wnormalizedMsg))
+    if (!IsPriorityOnlyMessage(wnormalizedMsg))
+    {
+        if (HasPriorityKeyword(wnormalizedMsg))
+            LOGW_DEBUG(L"[DanmuProcessor] TryUpdatePriority - keyword in sentence ignored");
         return false;
+    }
 
     if (danmu.guardLevel <= 0)
     {

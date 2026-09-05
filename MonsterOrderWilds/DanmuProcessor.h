@@ -95,6 +95,9 @@ private:
     // 检查是否包含优先关键字
     bool HasPriorityKeyword(const std::wstring& text) const;
 
+    // 检查归一化文本是否仅为优先词本身（二次优先置前用精确匹配，避免句中误触发）
+    bool IsPriorityOnlyMessage(const std::wstring& normalizedText) const;
+
     // 过滤条件
     bool onlyMedalOrder_ = true;
     bool onlySpeekWearingMedal_ = false;

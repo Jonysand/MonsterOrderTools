@@ -271,6 +271,120 @@ void TestPriority_Idempotent()
     TestLog("[PASS] TestPriority_Idempotent");
 }
 
+static void EnqueuePriorityTestOrder(DanmuProcessor* processor, const std::string& userId, const std::string& userName)
+{
+    DanmuData order;
+    order.userId = userId;
+    order.userName = userName;
+    order.message = "点怪火龙";
+    order.timestamp = 1000;
+    order.guardLevel = 3;
+    order.hasMedal = true;
+    DanmuProcessResult orderResult = processor->ProcessDanmu(order);
+    assert(orderResult.addedToQueue == true);
+}
+
+static DanmuData MakePriorityDanmu(const std::string& userId, const std::string& userName, const std::string& message)
+{
+    DanmuData prior;
+    prior.userId = userId;
+    prior.userName = userName;
+    prior.message = message;
+    prior.timestamp = 1001;
+    prior.guardLevel = 3;
+    prior.hasMedal = true;
+    return prior;
+}
+
+void TestPriority_SentenceContainsKeyword_NoUpdate()
+{
+    EnsurePriorityTestMonsterData();
+    DanmuProcessor* processor = DanmuProcessor::Inst();
+    PriorityQueueManager* queueMgr = PriorityQueueManager::Inst();
+    processor->SetOnlyMedalOrder(false);
+    queueMgr->Clear();
+
+    EnqueuePriorityTestOrder(processor, "priority_user_sentence", "句中优先用户");
+
+    DanmuData prior = MakePriorityDanmu("priority_user_sentence", "句中优先用户", "这个怪优先打");
+    DanmuProcessResult result = processor->ProcessDanmu(prior);
+    assert(result.priorityUpdated == false);
+
+    auto nodes = queueMgr->GetAllNodes();
+    assert(nodes.size() == 1);
+    assert(nodes[0].priority == false);
+
+    queueMgr->Clear();
+    TestLog("[PASS] TestPriority_SentenceContainsKeyword_NoUpdate");
+}
+
+void TestPriority_ExactInsertQueueWord_Updates()
+{
+    EnsurePriorityTestMonsterData();
+    DanmuProcessor* processor = DanmuProcessor::Inst();
+    PriorityQueueManager* queueMgr = PriorityQueueManager::Inst();
+    processor->SetOnlyMedalOrder(false);
+    queueMgr->Clear();
+
+    EnqueuePriorityTestOrder(processor, "priority_user_exact", "插队用户");
+
+    DanmuData prior = MakePriorityDanmu("priority_user_exact", "插队用户", "插队");
+    DanmuProcessResult result = processor->ProcessDanmu(prior);
+    assert(result.priorityUpdated == true);
+    assert(result.monsterName == "火龙");
+
+    auto nodes = queueMgr->GetAllNodes();
+    assert(nodes.size() == 1);
+    assert(nodes[0].priority == true);
+
+    queueMgr->Clear();
+    TestLog("[PASS] TestPriority_ExactInsertQueueWord_Updates");
+}
+
+void TestPriority_PaddedWithSpaces_Updates()
+{
+    EnsurePriorityTestMonsterData();
+    DanmuProcessor* processor = DanmuProcessor::Inst();
+    PriorityQueueManager* queueMgr = PriorityQueueManager::Inst();
+    processor->SetOnlyMedalOrder(false);
+    queueMgr->Clear();
+
+    EnqueuePriorityTestOrder(processor, "priority_user_padded", "空格优先用户");
+
+    DanmuData prior = MakePriorityDanmu("priority_user_padded", "空格优先用户", " 优先 ");
+    DanmuProcessResult result = processor->ProcessDanmu(prior);
+    assert(result.priorityUpdated == true);
+
+    auto nodes = queueMgr->GetAllNodes();
+    assert(nodes.size() == 1);
+    assert(nodes[0].priority == true);
+
+    queueMgr->Clear();
+    TestLog("[PASS] TestPriority_PaddedWithSpaces_Updates");
+}
+
+void TestPriority_WithPunctuation_NoUpdate()
+{
+    EnsurePriorityTestMonsterData();
+    DanmuProcessor* processor = DanmuProcessor::Inst();
+    PriorityQueueManager* queueMgr = PriorityQueueManager::Inst();
+    processor->SetOnlyMedalOrder(false);
+    queueMgr->Clear();
+
+    EnqueuePriorityTestOrder(processor, "priority_user_punct", "标点优先用户");
+
+    DanmuData prior = MakePriorityDanmu("priority_user_punct", "标点优先用户", "优先！");
+    DanmuProcessResult result = processor->ProcessDanmu(prior);
+    assert(result.priorityUpdated == false);
+
+    auto nodes = queueMgr->GetAllNodes();
+    assert(nodes.size() == 1);
+    assert(nodes[0].priority == false);
+
+    queueMgr->Clear();
+    TestLog("[PASS] TestPriority_WithPunctuation_NoUpdate");
+}
+
 // 运行所有测试
 void RunAllDanmuProcessorTests()
 {
@@ -284,6 +398,10 @@ void RunAllDanmuProcessorTests()
     TestPriority_NotInQueue_NoUpdate();
     TestPriority_NoMedalFilterExempt();
     TestPriority_Idempotent();
+    TestPriority_SentenceContainsKeyword_NoUpdate();
+    TestPriority_ExactInsertQueueWord_Updates();
+    TestPriority_PaddedWithSpaces_Updates();
+    TestPriority_WithPunctuation_NoUpdate();
     TestLog("=== DanmuProcessor Tests Done ===");
 }
 
